@@ -104,7 +104,7 @@
   - [x] 2.6 Set up Firebase emulators for local development
   - [x] 2.7 Configure Firebase security rules for Authentication
 
-- [ ] 3.0 Database Schema and Firestore Setup
+- [x] 3.0 Database Schema and Firestore Setup
   - [x] 3.1 Design and implement Firestore collections structure (locations, users, sessions)
   - [x] 3.2 Create Firestore service layer with CRUD operations
   - [x] 3.3 Set up Firestore security rules for role-based access
@@ -113,12 +113,12 @@
   - [x] 3.6 Set up Firestore indexes for query optimization
 
 - [ ] 4.0 Core Location Services and GPS Utilities
-  - [ ] 4.1 Implement GPS coordinate fetching with browser Geolocation API
-  - [ ] 4.2 Create distance calculation utilities (Haversine formula)
-  - [ ] 4.3 Build location validation logic for school radius checking
-  - [ ] 4.4 Handle location permission requests and error states
-  - [ ] 4.5 Implement location accuracy and timeout handling
-  - [ ] 4.6 Create location service abstraction for testing
+  - [x] 4.1 Implement GPS coordinate fetching with browser Geolocation API
+  - [x] 4.2 Create distance calculation utilities (Haversine formula)
+  - [x] 4.3 Build location validation logic for school radius checking
+  - [x] 4.4 Handle location permission requests and error states
+  - [x] 4.5 Implement location accuracy and timeout handling
+  - [x] 4.6 Create location service abstraction for testing
 
 - [ ] 5.0 User Authentication and Role Management
   - [ ] 5.1 Create login form component with Google OAuth and email/password

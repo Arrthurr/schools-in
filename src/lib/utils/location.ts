@@ -10,8 +10,18 @@ export interface LocationError {
   message: string;
 }
 
+const geolocationProvider = {
+  getCurrentPosition: (
+    successCallback: PositionCallback,
+    errorCallback: PositionErrorCallback,
+    options?: PositionOptions
+  ) => {
+    navigator.geolocation.getCurrentPosition(successCallback, errorCallback, options);
+  },
+};
+
 // Get current GPS coordinates using browser Geolocation API
-export const getCurrentLocation = (): Promise<Coordinates> => {
+const getCurrentLocation = (): Promise<Coordinates> => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject({
@@ -27,7 +37,7 @@ export const getCurrentLocation = (): Promise<Coordinates> => {
       maximumAge: 60000 // 1 minute
     };
 
-    navigator.geolocation.getCurrentPosition(
+    geolocationProvider.getCurrentPosition(
       (position) => {
         resolve({
           latitude: position.coords.latitude,
@@ -43,6 +53,10 @@ export const getCurrentLocation = (): Promise<Coordinates> => {
       options
     );
   });
+};
+
+export const locationService = {
+  getCurrentLocation,
 };
 
 // Calculate distance between two coordinates using Haversine formula

@@ -1,7 +1,7 @@
 // Custom React hook for GPS location handling
 
-import { useState, useCallback } from 'react';
-import { getCurrentLocation, Coordinates, LocationError } from '../utils/location';
+import { useState, useEffect } from 'react';
+import { locationService, Coordinates, LocationError } from '../utils/location';
 
 interface UseLocationReturn {
   location: Coordinates | null;
@@ -16,12 +16,12 @@ export const useLocation = (): UseLocationReturn => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<LocationError | null>(null);
 
-  const getLocation = useCallback(async () => {
+  const getLocation = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const coords = await getCurrentLocation();
+      const coords = await locationService.getCurrentLocation();
       setLocation(coords);
     } catch (err) {
       setError(err as LocationError);
@@ -29,7 +29,7 @@ export const useLocation = (): UseLocationReturn => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   const clearError = useCallback(() => {
     setError(null);
