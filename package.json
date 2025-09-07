@@ -14,7 +14,13 @@
     "test:e2e": "cypress open",
     "test:e2e:headless": "cypress run",
     "test:e2e:dev": "start-server-and-test dev http://localhost:3000 'cypress open'",
-    "test:e2e:ci": "start-server-and-test dev http://localhost:3000 'cypress run'"
+    "test:e2e:ci": "start-server-and-test dev http://localhost:3000 'cypress run'",
+    "firebase:emulators": "firebase emulators:start",
+    "firebase:emulators:ui": "firebase emulators:start --only auth,firestore,storage",
+    "firebase:deploy": "firebase deploy",
+    "firebase:deploy:hosting": "firebase deploy --only hosting",
+    "firebase:deploy:rules": "firebase deploy --only firestore:rules,storage",
+    "dev:firebase": "concurrently \"npm run firebase:emulators\" \"npm run dev\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -23,6 +29,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "firebase": "^12.2.1",
     "lucide-react": "^0.542.0",
     "next": "^14.2.0",
     "react": "^18.3.0",
@@ -44,6 +51,7 @@
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.0",
     "cypress": "^15.1.0",
     "eslint": "^9.35.0",
     "eslint-plugin-import": "^2.32.0",
