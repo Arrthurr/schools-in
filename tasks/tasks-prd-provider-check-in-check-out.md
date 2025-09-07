@@ -112,7 +112,7 @@
   - [x] 3.5 Create database seeding scripts for development/testing
   - [x] 3.6 Set up Firestore indexes for query optimization
 
-- [ ] 4.0 Core Location Services and GPS Utilities
+- [x] 4.0 Core Location Services and GPS Utilities
   - [x] 4.1 Implement GPS coordinate fetching with browser Geolocation API
   - [x] 4.2 Create distance calculation utilities (Haversine formula)
   - [x] 4.3 Build location validation logic for school radius checking
