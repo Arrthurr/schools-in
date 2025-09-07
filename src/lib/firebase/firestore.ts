@@ -18,75 +18,30 @@ import {
   DocumentSnapshot
 } from 'firebase/firestore';
 import { db } from '../../../firebase.config';
+import { User, Location, Session } from './types';
 
 // Collection names
 export const COLLECTIONS = {
   USERS: 'users',
-  SCHOOLS: 'schools',
   SESSIONS: 'sessions',
   LOCATIONS: 'locations'
 } as const;
 
-// User interface
-export interface User {
-  id?: string;
-  email: string;
-  role: 'provider' | 'admin';
-  name: string;
-  assignedSchools?: string[];
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
-
-// School interface
-export interface School {
-  id?: string;
-  name: string;
-  address: string;
-  coordinates: {
-    latitude: number;
-    longitude: number;
-  };
-  radius: number; // in meters
-  assignedProviders: string[];
-  isActive: boolean;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
-
-// Session interface
-export interface Session {
-  id?: string;
-  userId: string;
-  schoolId: string;
-  checkInTime: Timestamp;
-  checkOutTime?: Timestamp;
-  checkInLocation: {
-    latitude: number;
-    longitude: number;
-  };
-  checkOutLocation?: {
-    latitude: number;
-    longitude: number;
-  };
-  status: 'active' | 'completed' | 'error';
-  duration?: number; // in minutes
-  notes?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
-
 // Generic CRUD operations
-export const createDocument = async (collectionName: string, data: any): Promise<string> => {
+export const createDocument = async <T extends object>(collectionName: string, data: T): Promise<string> => {
   const docRef = await addDoc(collection(db, collectionName), data);
   return docRef.id;
 };
 
-export const getDocument = async (collectionName: string, docId: string): Promise<DocumentSnapshot<DocumentData>> => {
-  return await getDoc(doc(db, collectionName, docId));
+export const getDocument = async <T>(collectionName: string, docId: string): Promise<T | null> => {
+  const docSnap = await getDoc(doc(db, collectionName, docId));
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as T;
+  }
+  return null;
 };
 
-export const updateDocument = async (collectionName: string, docId: string, data: any): Promise<void> => {
+export const updateDocument = async <T extends object>(collectionName: string, docId: string, data: Partial<T>): Promise<void> => {
   await updateDoc(doc(db, collectionName, docId), data);
 };
 
@@ -94,38 +49,48 @@ export const deleteDocument = async (collectionName: string, docId: string): Pro
   await deleteDoc(doc(db, collectionName, docId));
 };
 
-export const getCollection = async (collectionName: string): Promise<QuerySnapshot<DocumentData>> => {
-  return await getDocs(collection(db, collectionName));
+export const getCollection = async <T>(collectionName: string): Promise<T[]> => {
+  const querySnapshot = await getDocs(collection(db, collectionName));
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
 };
+
 
 // Specific queries
-export const getUserByEmail = async (email: string): Promise<QuerySnapshot<DocumentData>> => {
+export const getUserByEmail = async (email: string): Promise<User | null> => {
   const q = query(collection(db, COLLECTIONS.USERS), where('email', '==', email));
-  return await getDocs(q);
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) {
+    return null;
+  }
+  const doc = querySnapshot.docs[0];
+  return { id: doc.id, ...doc.data() } as User;
 };
 
-export const getSchoolsByProvider = async (providerId: string): Promise<QuerySnapshot<DocumentData>> => {
+export const getLocationsByProvider = async (providerId: string): Promise<Location[]> => {
   const q = query(
-    collection(db, COLLECTIONS.SCHOOLS), 
+    collection(db, COLLECTIONS.LOCATIONS), 
     where('assignedProviders', 'array-contains', providerId)
   );
-  return await getDocs(q);
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Location));
 };
 
-export const getSessionsByUser = async (userId: string, limitCount: number = 50): Promise<QuerySnapshot<DocumentData>> => {
+export const getSessionsByUser = async (userId: string, limitCount: number = 50): Promise<Session[]> => {
   const q = query(
     collection(db, COLLECTIONS.SESSIONS),
     where('userId', '==', userId),
-    orderBy('createdAt', 'desc'),
+    orderBy('checkInTime', 'desc'),
     limit(limitCount)
   );
-  return await getDocs(q);
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
 };
 
-export const getActiveSessions = async (): Promise<QuerySnapshot<DocumentData>> => {
+export const getActiveSessions = async (): Promise<Session[]> => {
   const q = query(
     collection(db, COLLECTIONS.SESSIONS),
     where('status', '==', 'active')
   );
-  return await getDocs(q);
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
 };
