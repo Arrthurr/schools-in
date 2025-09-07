@@ -1,0 +1,211 @@
+# Task List: Provider Location-Based Check-In / Check-Out
+
+## Relevant Files
+
+- `package.json` - Next.js project configuration with dependencies for PWA, Firebase, Tailwind CSS, shadcn/ui, ESLint 9
+- `next.config.js` - Next.js configuration with PWA support and Firebase integration
+- `tailwind.config.js` - Tailwind CSS configuration with brand colors and custom design tokens
+- `eslint.config.mjs` - ESLint 9 flat configuration with Next.js and TypeScript rules
+- `.vscode/settings.json` - VS Code settings for ESLint integration and auto-formatting
+- `jest.config.js` - Jest configuration for unit testing with Next.js and TypeScript
+- `jest.setup.js` - Jest setup file with mocks and test environment configuration
+- `src/lib/test-utils.tsx` - Custom testing utilities and render functions
+- `cypress.config.js` - Cypress configuration for E2E testing with Next.js
+- `cypress/support/e2e.js` - Cypress E2E test support file with global configuration
+- `cypress/support/commands.js` - Custom Cypress commands and utilities
+- `cypress/e2e/homepage.cy.js` - E2E tests for homepage functionality and responsive design
+- `cypress/e2e/navigation.cy.js` - E2E tests for navigation, routing, and performance
+- `cypress/e2e/ui-components.cy.js` - E2E tests for UI components and visual styling
+- `cypress/fixtures/example.json` - Test data fixtures for E2E testing
+- `firebase.config.js` - Firebase SDK configuration and initialization
+- `lib/firebase/auth.ts` - Firebase Authentication service and utilities
+- `lib/firebase/firestore.ts` - Firestore database service and CRUD operations
+- `lib/firebase/firestore.test.ts` - Unit tests for Firestore operations
+- `lib/utils/location.ts` - GPS utilities and location validation functions
+- `lib/utils/location.test.ts` - Unit tests for location utilities
+- `lib/utils/session.ts` - Session management utilities and business logic
+- `lib/utils/session.test.ts` - Unit tests for session utilities
+- `lib/utils.ts` - Utility functions including className merging (cn) for shadcn/ui
+- `lib/hooks/useAuth.ts` - Custom React hook for authentication state management
+- `lib/hooks/useLocation.ts` - Custom React hook for GPS location handling
+- `lib/hooks/useSession.ts` - Custom React hook for session management
+- `components.json` - shadcn/ui configuration file
+- `components/ui/button.tsx` - shadcn/ui Button component
+- `components/ui/card.tsx` - shadcn/ui Card components (Card, CardHeader, CardTitle, CardDescription, CardContent)
+- `components/ui/input.tsx` - shadcn/ui Input component for forms
+- `components/ui/label.tsx` - shadcn/ui Label component for form labels
+- `components/ui/form.tsx` - shadcn/ui Form components for form handling
+- `components/ui/badge.tsx` - shadcn/ui Badge component for status indicators
+- `components/ui/alert.tsx` - shadcn/ui Alert component for notifications
+- `components/ui/dialog.tsx` - shadcn/ui Dialog components for modals
+- `components/ui/sheet.tsx` - shadcn/ui Sheet component for slide-out panels
+- `components/ui/table.tsx` - shadcn/ui Table components for data display
+- `components/auth/LoginForm.tsx` - Login form with Google OAuth and email/password options
+- `components/auth/LoginForm.test.tsx` - Unit tests for LoginForm component
+- `components/auth/ProtectedRoute.tsx` - Route protection wrapper component
+- `components/provider/SchoolList.tsx` - Provider dashboard school list component
+- `components/provider/SchoolList.test.tsx` - Unit tests for SchoolList component
+- `components/provider/CheckInButton.tsx` - Check-in functionality component
+- `components/provider/CheckInButton.test.tsx` - Unit tests for CheckInButton component
+- `components/provider/SessionHistory.tsx` - Provider session history display
+- `components/provider/SessionHistory.test.tsx` - Unit tests for SessionHistory component
+- `components/admin/SchoolManager.tsx` - Admin school management interface
+- `components/admin/SchoolManager.test.tsx` - Unit tests for SchoolManager component
+- `components/admin/SessionReports.tsx` - Admin reporting and export interface
+- `components/admin/SessionReports.test.tsx` - Unit tests for SessionReports component
+- `app/layout.tsx` - Root layout with PWA manifest and global providers
+- `app/page.tsx` - Landing/login page
+- `app/dashboard/page.tsx` - Provider dashboard page
+- `app/admin/page.tsx` - Admin dashboard page
+- `app/admin/schools/page.tsx` - School management page
+- `app/admin/reports/page.tsx` - Reports and export page
+- `app/api/sessions/route.ts` - API route for session CRUD operations
+- `app/api/sessions/route.test.ts` - Unit tests for sessions API
+- `app/api/locations/route.ts` - API route for location/school CRUD operations
+- `app/api/locations/route.test.ts` - Unit tests for locations API
+- `public/manifest.json` - PWA manifest configuration
+- `public/sw.js` - Service worker for offline functionality
+- `cypress/e2e/provider-flow.cy.ts` - E2E tests for provider check-in/out flow
+- `cypress/e2e/admin-flow.cy.ts` - E2E tests for admin management flow
+- `jest.config.js` - Jest configuration for unit tests
+- `cypress.config.js` - Cypress configuration for E2E tests
+
+### Notes
+
+- Unit tests should typically be placed alongside the code files they are testing (e.g., `MyComponent.tsx` and `MyComponent.test.tsx` in the same directory).
+- Use `npm test` to run Jest unit tests. Use `npm run test:e2e` to run Cypress E2E tests.
+- Firebase emulators should be used for local development and testing.
+
+## Tasks
+
+- [ ] 1.0 Project Setup and Infrastructure
+  - [x] 1.1 Initialize Next.js 14+ project with TypeScript and App Router
+  - [x] 1.2 Install and configure Tailwind CSS v4 with brand colors (#154690)
+  - [x] 1.3 Set up shadcn/ui component library
+  - [x] 1.4 Configure ESLint 9 with Next.js and TypeScript rules
+  - [x] 1.5 Set up Jest for unit testing with React Testing Library
+  - [x] 1.6 Configure Cypress for E2E testing
+  - [ ] 1.7 Initialize Git repository with proper .gitignore
+  - [ ] 1.8 Create basic project structure and folder organization
+
+- [ ] 2.0 Firebase Configuration and Authentication
+  - [ ] 2.1 Set up Firebase project and obtain configuration keys
+  - [ ] 2.2 Install Firebase SDK and configure initialization
+  - [ ] 2.3 Set up Firebase Authentication with Google OAuth provider
+  - [ ] 2.4 Configure email/password authentication
+  - [ ] 2.5 Create Firebase Auth service utilities
+  - [ ] 2.6 Set up Firebase emulators for local development
+  - [ ] 2.7 Configure Firebase security rules for Authentication
+
+- [ ] 3.0 Database Schema and Firestore Setup
+  - [ ] 3.1 Design and implement Firestore collections structure (locations, users, sessions)
+  - [ ] 3.2 Create Firestore service layer with CRUD operations
+  - [ ] 3.3 Set up Firestore security rules for role-based access
+  - [ ] 3.4 Implement data validation and sanitization utilities
+  - [ ] 3.5 Create database seeding scripts for development/testing
+  - [ ] 3.6 Set up Firestore indexes for query optimization
+
+- [ ] 4.0 Core Location Services and GPS Utilities
+  - [ ] 4.1 Implement GPS coordinate fetching with browser Geolocation API
+  - [ ] 4.2 Create distance calculation utilities (Haversine formula)
+  - [ ] 4.3 Build location validation logic for school radius checking
+  - [ ] 4.4 Handle location permission requests and error states
+  - [ ] 4.5 Implement location accuracy and timeout handling
+  - [ ] 4.6 Create location service abstraction for testing
+
+- [ ] 5.0 User Authentication and Role Management
+  - [ ] 5.1 Create login form component with Google OAuth and email/password
+  - [ ] 5.2 Implement user registration flow
+  - [ ] 5.3 Build role-based access control system (Provider/Admin)
+  - [ ] 5.4 Create protected route wrapper component
+  - [ ] 5.5 Implement user profile management
+  - [ ] 5.6 Add logout functionality and session management
+  - [ ] 5.7 Create authentication state management hooks
+
+- [ ] 6.0 Provider Dashboard and School List
+  - [ ] 6.1 Create provider dashboard layout and navigation
+  - [ ] 6.2 Implement school list component with assigned locations
+  - [ ] 6.3 Add school search and filtering functionality
+  - [ ] 6.4 Create school detail view with location information
+  - [ ] 6.5 Implement responsive design for mobile and desktop
+  - [ ] 6.6 Add current session status display
+
+- [ ] 7.0 Check-In/Check-Out Functionality
+  - [ ] 7.1 Create check-in button component with GPS validation
+  - [ ] 7.2 Implement check-in flow with location verification
+  - [ ] 7.3 Create check-out functionality with session completion
+  - [ ] 7.4 Add loading states and user feedback during GPS operations
+  - [ ] 7.5 Implement error handling for failed location checks
+  - [ ] 7.6 Create session timer and duration tracking
+  - [ ] 7.7 Add confirmation dialogs for check-in/out actions
+
+- [ ] 8.0 Session History and Management
+  - [ ] 8.1 Create session history component for providers
+  - [ ] 8.2 Implement pagination for session lists
+  - [ ] 8.3 Add session filtering by date range and school
+  - [ ] 8.4 Create session detail view with full information
+  - [ ] 8.5 Implement session duration calculations and display
+  - [ ] 8.6 Add session status indicators (active, completed, error)
+
+- [ ] 9.0 Admin Panel and School Management
+  - [ ] 9.1 Create admin dashboard with navigation and overview
+  - [ ] 9.2 Implement school creation and editing forms
+  - [ ] 9.3 Add school list management with CRUD operations
+  - [ ] 9.4 Create user management interface for role assignment
+  - [ ] 9.5 Implement school-to-provider assignment functionality
+  - [ ] 9.6 Add school location validation and GPS coordinate setting
+  - [ ] 9.7 Create bulk operations for school management
+
+- [ ] 10.0 Admin Reporting and Data Export
+  - [ ] 10.1 Create session reporting dashboard with filters
+  - [ ] 10.2 Implement date range, provider, and school filtering
+  - [ ] 10.3 Add CSV export functionality for session data
+  - [ ] 10.4 Create attendance summary reports
+  - [ ] 10.5 Implement session correction and force-close features
+  - [ ] 10.6 Add data visualization charts for session analytics
+  - [ ] 10.7 Create automated report scheduling (future enhancement)
+
+- [ ] 11.0 PWA Configuration and Offline Support
+  - [ ] 11.1 Configure Next.js PWA plugin and manifest
+  - [ ] 11.2 Create service worker for offline functionality
+  - [ ] 11.3 Implement offline data caching strategy
+  - [ ] 11.4 Add offline queue for check-in/out actions
+  - [ ] 11.5 Create sync mechanism for when connectivity returns
+  - [ ] 11.6 Add offline status indicators and user messaging
+  - [ ] 11.7 Test PWA installation and offline scenarios
+
+- [ ] 12.0 UI/UX Implementation and Styling
+  - [ ] 12.1 Apply brand colors and design system throughout app
+  - [ ] 12.2 Implement responsive layouts for all screen sizes
+  - [ ] 12.3 Create consistent component styling with Tailwind
+  - [ ] 12.4 Add loading states, skeletons, and micro-interactions
+  - [ ] 12.5 Implement accessibility features (WCAG 2.1 AA compliance)
+  - [ ] 12.6 Create error states and empty states for all components
+  - [ ] 12.7 Add brand asset integration when provided
+
+- [ ] 13.0 Testing Suite (Unit and E2E)
+  - [ ] 13.1 Write unit tests for all utility functions and services
+  - [ ] 13.2 Create component tests for all React components
+  - [ ] 13.3 Implement API route testing with mocked Firebase
+  - [ ] 13.4 Write E2E tests for provider check-in/out flow
+  - [ ] 13.5 Create E2E tests for admin management workflows
+  - [ ] 13.6 Add performance and accessibility testing
+  - [ ] 13.7 Set up CI/CD pipeline with automated testing
+
+- [ ] 14.0 Error Handling and Edge Cases
+  - [ ] 14.1 Implement comprehensive error boundaries
+  - [ ] 14.2 Add GPS permission denied handling
+  - [ ] 14.3 Handle network connectivity issues
+  - [ ] 14.4 Implement session timeout and cleanup logic
+  - [ ] 14.5 Add validation for edge cases (multiple sessions, location drift)
+  - [ ] 14.6 Create user-friendly error messages and recovery options
+  - [ ] 14.7 Add logging and monitoring for production issues
+
+- [ ] 15.0 Performance Optimization and Deployment
+  - [ ] 15.1 Optimize bundle size and implement code splitting
+  - [ ] 15.2 Add image optimization and lazy loading
+  - [ ] 15.3 Implement caching strategies for Firebase data
+  - [ ] 15.4 Configure production Firebase environment
+  - [ ] 15.5 Set up deployment pipeline (Vercel/Netlify)
+  - [ ] 15.6 Add performance monitoring and analytics
+  - [ ] 15.7 Conduct final testing and user acceptance testing

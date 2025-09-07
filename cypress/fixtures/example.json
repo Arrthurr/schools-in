@@ -1,0 +1,44 @@
+{
+  "users": {
+    "provider": {
+      "email": "provider@example.com",
+      "password": "testpassword123",
+      "role": "provider"
+    },
+    "admin": {
+      "email": "admin@example.com", 
+      "password": "adminpassword123",
+      "role": "admin"
+    }
+  },
+  "schools": [
+    {
+      "id": "school-1",
+      "name": "Lincoln Elementary",
+      "address": "123 Main St, Anytown, USA",
+      "coordinates": {
+        "lat": 40.7128,
+        "lng": -74.0060
+      }
+    },
+    {
+      "id": "school-2", 
+      "name": "Washington Middle School",
+      "address": "456 Oak Ave, Anytown, USA",
+      "coordinates": {
+        "lat": 40.7589,
+        "lng": -73.9851
+      }
+    }
+  ],
+  "sessions": [
+    {
+      "id": "session-1",
+      "providerId": "provider-1",
+      "schoolId": "school-1",
+      "checkInTime": "2024-01-15T09:00:00Z",
+      "checkOutTime": "2024-01-15T15:00:00Z",
+      "status": "completed"
+    }
+  ]
+}
