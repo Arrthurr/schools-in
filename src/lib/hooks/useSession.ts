@@ -170,10 +170,18 @@ export const useSession = (): UseSessionReturn => {
 
         // Ensure all completed sessions have duration calculated
         const sessionsWithDuration = convertedSessions.map((session) => {
-          if (session.status === "completed" && !session.duration && session.checkInTime && session.checkOutTime) {
+          if (
+            session.status === "completed" &&
+            !session.duration &&
+            session.checkInTime &&
+            session.checkOutTime
+          ) {
             return {
               ...session,
-              duration: calculateSessionDuration(session.checkInTime, session.checkOutTime),
+              duration: calculateSessionDuration(
+                session.checkInTime,
+                session.checkOutTime
+              ),
             };
           }
           return session;

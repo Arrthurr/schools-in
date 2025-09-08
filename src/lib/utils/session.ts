@@ -1,7 +1,7 @@
 // Session management utilities and business logic
 
-import { Timestamp } from 'firebase/firestore';
-import { Coordinates } from './location';
+import { Timestamp } from "firebase/firestore";
+import { Coordinates } from "./location";
 
 export interface SessionData {
   id?: string;
@@ -11,18 +11,21 @@ export interface SessionData {
   checkOutTime?: Timestamp;
   checkInLocation: Coordinates;
   checkOutLocation?: Coordinates;
-  status: 'active' | 'completed' | 'error';
+  status: "active" | "completed" | "error" | "paused" | "cancelled";
   duration?: number;
   notes?: string;
 }
 
 // Calculate session duration in minutes
-export const calculateSessionDuration = (checkInTime: Timestamp, checkOutTime?: Timestamp): number => {
+export const calculateSessionDuration = (
+  checkInTime: Timestamp,
+  checkOutTime?: Timestamp
+): number => {
   if (!checkOutTime) return 0;
-  
+
   const checkInMs = checkInTime.toMillis();
   const checkOutMs = checkOutTime.toMillis();
-  
+
   return Math.round((checkOutMs - checkInMs) / (1000 * 60)); // Convert to minutes
 };
 
@@ -53,17 +56,19 @@ export const formatDurationDetailed = (minutes: number): string => {
   }
 
   if (minutes < 60) {
-    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    return `${minutes} minute${minutes !== 1 ? "s" : ""}`;
   }
 
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
 
   if (remainingMinutes === 0) {
-    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    return `${hours} hour${hours !== 1 ? "s" : ""}`;
   }
 
-  return `${hours} hour${hours !== 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`;
+  return `${hours} hour${hours !== 1 ? "s" : ""} ${remainingMinutes} minute${
+    remainingMinutes !== 1 ? "s" : ""
+  }`;
 };
 
 // Format session time for display
@@ -74,51 +79,110 @@ export const formatSessionTime = (timestamp: Timestamp): string => {
 // Get session status color for UI
 export const getSessionStatusColor = (status: string): string => {
   switch (status) {
-    case 'active':
-      return 'bg-green-100 text-green-800';
-    case 'completed':
-      return 'bg-blue-100 text-blue-800';
-    case 'error':
-      return 'bg-red-100 text-red-800';
+    case "active":
+      return "bg-green-100 text-green-800 border-green-200";
+    case "completed":
+      return "bg-blue-100 text-blue-800 border-blue-200";
+    case "paused":
+      return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    case "error":
+      return "bg-red-100 text-red-800 border-red-200";
+    case "cancelled":
+      return "bg-gray-100 text-gray-800 border-gray-200";
     default:
-      return 'bg-gray-100 text-gray-800';
+      return "bg-gray-100 text-gray-800 border-gray-200";
+  }
+};
+
+// Get session status configuration
+export const getSessionStatusConfig = (status: string) => {
+  switch (status) {
+    case "active":
+      return {
+        label: "Active",
+        color: "bg-green-100 text-green-800 border-green-200",
+        icon: "Clock",
+        description: "Session is currently in progress"
+      };
+    case "completed":
+      return {
+        label: "Completed",
+        color: "bg-blue-100 text-blue-800 border-blue-200",
+        icon: "CheckCircle",
+        description: "Session has been completed successfully"
+      };
+    case "paused":
+      return {
+        label: "Paused",
+        color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+        icon: "Pause",
+        description: "Session is temporarily paused"
+      };
+    case "error":
+      return {
+        label: "Error",
+        color: "bg-red-100 text-red-800 border-red-200",
+        icon: "AlertCircle",
+        description: "Session encountered an error"
+      };
+    case "cancelled":
+      return {
+        label: "Cancelled",
+        color: "bg-gray-100 text-gray-800 border-gray-200",
+        icon: "X",
+        description: "Session was cancelled"
+      };
+    default:
+      return {
+        label: status,
+        color: "bg-gray-100 text-gray-800 border-gray-200",
+        icon: "HelpCircle",
+        description: "Unknown status"
+      };
   }
 };
 
 // Validate session data
-export const validateSessionData = (sessionData: Partial<SessionData>): string[] => {
+export const validateSessionData = (
+  sessionData: Partial<SessionData>
+): string[] => {
   const errors: string[] = [];
-  
+
   if (!sessionData.userId) {
-    errors.push('User ID is required');
+    errors.push("User ID is required");
   }
-  
+
   if (!sessionData.schoolId) {
-    errors.push('School ID is required');
+    errors.push("School ID is required");
   }
-  
+
   if (!sessionData.checkInLocation) {
-    errors.push('Check-in location is required');
+    errors.push("Check-in location is required");
   }
-  
+
   if (!sessionData.checkInTime) {
-    errors.push('Check-in time is required');
+    errors.push("Check-in time is required");
   }
-  
+
   return errors;
 };
 
 // Check if session is still active (within reasonable time limit)
-export const isSessionStillActive = (checkInTime: Timestamp, maxHours: number = 12): boolean => {
+export const isSessionStillActive = (
+  checkInTime: Timestamp,
+  maxHours: number = 12
+): boolean => {
   const now = Date.now();
   const checkInMs = checkInTime.toMillis();
   const maxDurationMs = maxHours * 60 * 60 * 1000; // Convert hours to milliseconds
-  
-  return (now - checkInMs) <= maxDurationMs;
+
+  return now - checkInMs <= maxDurationMs;
 };
 
 // Create session summary for reports
-export const createSessionSummary = (sessions: SessionData[]): {
+export const createSessionSummary = (
+  sessions: SessionData[]
+): {
   totalSessions: number;
   totalDuration: number;
   averageDuration: number;
@@ -126,20 +190,23 @@ export const createSessionSummary = (sessions: SessionData[]): {
   completedSessions: number;
 } => {
   const totalSessions = sessions.length;
-  const activeSessions = sessions.filter(s => s.status === 'active').length;
-  const completedSessions = sessions.filter(s => s.status === 'completed').length;
-  
+  const activeSessions = sessions.filter((s) => s.status === "active").length;
+  const completedSessions = sessions.filter(
+    (s) => s.status === "completed"
+  ).length;
+
   const totalDuration = sessions
-    .filter(s => s.duration)
+    .filter((s) => s.duration)
     .reduce((sum, s) => sum + (s.duration || 0), 0);
-  
-  const averageDuration = completedSessions > 0 ? Math.round(totalDuration / completedSessions) : 0;
-  
+
+  const averageDuration =
+    completedSessions > 0 ? Math.round(totalDuration / completedSessions) : 0;
+
   return {
     totalSessions,
     totalDuration,
     averageDuration,
     activeSessions,
-    completedSessions
+    completedSessions,
   };
 };

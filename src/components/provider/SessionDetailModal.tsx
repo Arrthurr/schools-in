@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,7 +28,12 @@ import {
   X,
 } from "lucide-react";
 import { SessionData } from "@/lib/utils/session";
-import { formatSessionTime, formatDuration, formatDurationDetailed, calculateSessionDuration } from "@/lib/utils/session";
+import {
+  formatSessionTime,
+  formatDuration,
+  formatDurationDetailed,
+  calculateSessionDuration,
+} from "@/lib/utils/session";
 
 interface SessionDetailModalProps {
   session: SessionData | null;
@@ -54,7 +60,9 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
     const updateDuration = () => {
       const now = new Date();
       const checkInTime = session.checkInTime.toDate();
-      const duration = Math.floor((now.getTime() - checkInTime.getTime()) / (1000 * 60));
+      const duration = Math.floor(
+        (now.getTime() - checkInTime.getTime()) / (1000 * 60)
+      );
       setRealTimeDuration(duration);
     };
 
@@ -68,34 +76,6 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
   }, [session]);
 
   if (!session) return null;
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Completed
-          </Badge>
-        );
-      case "active":
-        return (
-          <Badge variant="default" className="bg-blue-100 text-blue-800">
-            <Clock className="w-3 h-3 mr-1" />
-            Active
-          </Badge>
-        );
-      case "error":
-        return (
-          <Badge variant="destructive">
-            <AlertCircle className="w-3 h-3 mr-1" />
-            Error
-          </Badge>
-        );
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
 
   const formatCoordinates = (lat: number, lng: number) => {
     return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
@@ -136,7 +116,7 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
             <CardContent>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Status</span>
-                {getStatusBadge(session.status)}
+                <StatusBadge status={session.status} showDescription={true} />
               </div>
               {(() => {
                 if (session.status === "active") {

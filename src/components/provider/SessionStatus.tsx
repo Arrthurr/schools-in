@@ -12,6 +12,7 @@ import {
 } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { StatusBadge } from "../ui/status-badge";
 import {
   Clock,
   MapPin,
@@ -99,36 +100,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
     });
   };
 
-  // Get status badge
-  const getStatusBadge = () => {
-    if (!currentSession) return null;
-
-    switch (currentSession.status) {
-      case "active":
-        return (
-          <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-            <Play className="w-3 h-3 mr-1" />
-            Active
-          </Badge>
-        );
-      case "paused":
-        return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-200">
-            <Square className="w-3 h-3 mr-1" />
-            Paused
-          </Badge>
-        );
-      case "completed":
-        return (
-          <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Completed
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
+    // Format time for display
 
   // Handle session actions
   const handleEndSession = () => {
@@ -188,7 +160,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
               Started at {formatTime(new Date(currentSession.startTime))}
             </CardDescription>
           </div>
-          {getStatusBadge()}
+          {currentSession && <StatusBadge status={currentSession.status} />}
         </div>
       </CardHeader>
 

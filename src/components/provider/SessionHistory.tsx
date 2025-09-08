@@ -4,7 +4,11 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useSession } from "../../lib/hooks/useSession";
 import { SchoolService } from "../../lib/services/schoolService";
-import { formatDuration, formatSessionTime, calculateSessionDuration } from "../../lib/utils/session";
+import {
+  formatDuration,
+  formatSessionTime,
+  calculateSessionDuration,
+} from "../../lib/utils/session";
 import { SessionData } from "../../lib/utils/session";
 import {
   Card,
@@ -14,6 +18,7 @@ import {
   CardTitle,
 } from "../ui/card";
 import { Badge } from "../ui/badge";
+import { StatusBadge } from "../ui/status-badge";
 import {
   Table,
   TableBody,
@@ -62,9 +67,9 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
     null
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [realTimeDurations, setRealTimeDurations] = useState<Map<string, number>>(
-    new Map()
-  );
+  const [realTimeDurations, setRealTimeDurations] = useState<
+    Map<string, number>
+  >(new Map());
 
   // Create school options for filter dropdown
   const schoolOptions = useMemo((): SelectOption[] => {
@@ -148,7 +153,8 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
       sessions.forEach((session) => {
         if (session.status === "active" && session.checkInTime) {
           const duration = Math.floor(
-            (now.getTime() - session.checkInTime.toDate().getTime()) / (1000 * 60)
+            (now.getTime() - session.checkInTime.toDate().getTime()) /
+              (1000 * 60)
           );
           updates.set(session.id!, duration);
         }
@@ -159,35 +165,6 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
 
     return () => clearInterval(interval);
   }, [sessions]);
-
-  // Get status badge variant
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Completed
-          </Badge>
-        );
-      case "active":
-        return (
-          <Badge variant="default" className="bg-blue-100 text-blue-800">
-            <Clock className="w-3 h-3 mr-1" />
-            Active
-          </Badge>
-        );
-      case "error":
-        return (
-          <Badge variant="destructive">
-            <AlertCircle className="w-3 h-3 mr-1" />
-            Error
-          </Badge>
-        );
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
 
   // Filter out active sessions for history view
   const completedSessions = sessions.filter(
@@ -387,7 +364,9 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                       <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
                       {(() => {
                         if (session.status === "active") {
-                          const realTimeDuration = realTimeDurations.get(session.id!);
+                          const realTimeDuration = realTimeDurations.get(
+                            session.id!
+                          );
                           return realTimeDuration !== undefined
                             ? formatDuration(realTimeDuration)
                             : "Calculating...";
@@ -398,7 +377,9 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                       })()}
                     </div>
                   </TableCell>
-                  <TableCell>{getStatusBadge(session.status)}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={session.status} size="sm" />
+                  </TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
