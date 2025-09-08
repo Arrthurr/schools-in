@@ -21,14 +21,23 @@ interface UseSessionReturn {
   hasMore: boolean;
   checkIn: (schoolId: string, location: Coordinates) => Promise<void>;
   checkOut: (sessionId: string, location: Coordinates) => Promise<void>;
-  loadSessions: (userId?: string, page?: number, pageSize?: number) => Promise<void>;
+  loadSessions: (
+    userId?: string,
+    page?: number,
+    pageSize?: number,
+    filters?: {
+      schoolId?: string;
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ) => Promise<void>;
   clearError: () => void;
 }
 
 export const useSession = (): UseSessionReturn => {
   const { user } = useAuth();
   const [currentSession, setCurrentSession] = useState<SessionData | null>(
-    null,
+    null
   );
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,7 +68,7 @@ export const useSession = (): UseSessionReturn => {
 
         const sessionId = await createDocument(
           COLLECTIONS.SESSIONS,
-          sessionData,
+          sessionData
         );
 
         const newSession = {
@@ -75,7 +84,7 @@ export const useSession = (): UseSessionReturn => {
         setLoading(false);
       }
     },
-    [user],
+    [user]
   );
 
   const checkOut = useCallback(
@@ -85,16 +94,19 @@ export const useSession = (): UseSessionReturn => {
 
       try {
         const checkOutTime = Timestamp.now();
-        
+
         // Find the current session to get check-in time for duration calculation
-        const currentSessionData = currentSession || 
-          sessions.find(session => session.id === sessionId);
-        
+        const currentSessionData =
+          currentSession ||
+          sessions.find((session) => session.id === sessionId);
+
         let duration = 0;
         if (currentSessionData?.checkInTime) {
           // Calculate duration in minutes
           duration = Math.round(
-            (checkOutTime.toMillis() - currentSessionData.checkInTime.toMillis()) / (1000 * 60)
+            (checkOutTime.toMillis() -
+              currentSessionData.checkInTime.toMillis()) /
+              (1000 * 60)
           );
         }
 
@@ -111,8 +123,8 @@ export const useSession = (): UseSessionReturn => {
         setCurrentSession(null);
         setSessions((prev) =>
           prev.map((session) =>
-            session.id === sessionId ? { ...session, ...updateData } : session,
-          ),
+            session.id === sessionId ? { ...session, ...updateData } : session
+          )
         );
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to check out");
@@ -120,11 +132,20 @@ export const useSession = (): UseSessionReturn => {
         setLoading(false);
       }
     },
-    [currentSession, sessions],
+    [currentSession, sessions]
   );
 
   const loadSessions = useCallback(
-    async (userId?: string, page: number = 1, pageSize: number = 10) => {
+    async (
+      userId?: string,
+      page: number = 1,
+      pageSize: number = 10,
+      filters?: {
+        schoolId?: string;
+        startDate?: Date;
+        endDate?: Date;
+      }
+    ) => {
       const targetUserId = userId || user?.uid;
 
       if (!targetUserId) {
@@ -136,7 +157,12 @@ export const useSession = (): UseSessionReturn => {
       setError(null);
 
       try {
-        const result = await getSessionsByUser(targetUserId, page, pageSize);
+        const result = await getSessionsByUser(
+          targetUserId,
+          page,
+          pageSize,
+          filters
+        );
         let activeSession: SessionData | null = null;
 
         // Cast Session array to SessionData array via unknown
@@ -156,13 +182,13 @@ export const useSession = (): UseSessionReturn => {
         setHasMore(result.hasMore);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load sessions",
+          err instanceof Error ? err.message : "Failed to load sessions"
         );
       } finally {
         setLoading(false);
       }
     },
-    [user],
+    [user]
   );
 
   const clearError = useCallback(() => {

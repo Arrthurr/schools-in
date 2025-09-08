@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useSession } from "../../lib/hooks/useSession";
 import { SchoolService } from "../../lib/services/schoolService";
 import { formatDuration, formatSessionTime } from "../../lib/utils/session";
+import { SessionData } from "../../lib/utils/session";
 import {
   Card,
   CardContent,
@@ -22,6 +23,9 @@ import {
   TableRow,
 } from "../ui/table";
 import { Button } from "../ui/button";
+import { Select, SelectOption } from "../ui/select";
+import { DatePicker } from "../ui/date-picker";
+import { SessionDetailModal } from "./SessionDetailModal";
 import {
   Clock,
   MapPin,
@@ -29,6 +33,8 @@ import {
   AlertCircle,
   CheckCircle,
   Calendar,
+  Filter,
+  Eye,
 } from "lucide-react";
 
 interface SessionHistoryProps {
@@ -39,12 +45,43 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   className = "",
 }) => {
   const { user } = useAuth();
-  const { sessions, loading, error, loadSessions, totalSessions, hasMore } = useSession();
+  const { sessions, loading, error, loadSessions, totalSessions, hasMore } =
+    useSession();
   const [schoolNames, setSchoolNames] = useState<Map<string, string>>(
     new Map()
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+
+  // Filtering state
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>("");
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Modal state
+  const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Create school options for filter dropdown
+  const schoolOptions = useMemo((): SelectOption[] => {
+    const uniqueSchools = new Map<string, string>();
+
+    sessions.forEach((session) => {
+      if (!uniqueSchools.has(session.schoolId)) {
+        const schoolName =
+          schoolNames.get(session.schoolId) || "Unknown School";
+        uniqueSchools.set(session.schoolId, schoolName);
+      }
+    });
+
+    const options: SelectOption[] = [{ value: "", label: "All Schools" }];
+    uniqueSchools.forEach((name, id) => {
+      options.push({ value: id, label: name });
+    });
+
+    return options;
+  }, [sessions, schoolNames]);
 
   // Load school names for sessions
   useEffect(() => {
@@ -77,9 +114,27 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   // Load sessions on component mount and when page changes
   useEffect(() => {
     if (user?.uid) {
-      loadSessions(user.uid, currentPage, pageSize);
+      const filters = {
+        ...(selectedSchoolId && { schoolId: selectedSchoolId }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate }),
+      };
+      loadSessions(user.uid, currentPage, pageSize, filters);
     }
-  }, [user?.uid, loadSessions, currentPage, pageSize]);
+  }, [
+    user?.uid,
+    loadSessions,
+    currentPage,
+    pageSize,
+    selectedSchoolId,
+    startDate,
+    endDate,
+  ]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedSchoolId, startDate, endDate]);
 
   // Get status badge variant
   const getStatusBadge = (status: string) => {
@@ -174,21 +229,95 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
               Session History
             </CardTitle>
             <CardDescription>
-              View your past check-in sessions ({totalSessions} total, page {currentPage} of {Math.ceil(totalSessions / pageSize)})
+              View your past check-in sessions ({totalSessions} total, page{" "}
+              {currentPage} of {Math.ceil(totalSessions / pageSize)})
             </CardDescription>
           </div>
-          <Button
-            onClick={() => {
-              setCurrentPage(1);
-              user?.uid && loadSessions(user.uid, 1, pageSize);
-            }}
-            variant="outline"
-            size="sm"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={() => setShowFilters(!showFilters)}
+              variant="outline"
+              size="sm"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              {showFilters ? "Hide Filters" : "Show Filters"}
+            </Button>
+            <Button
+              onClick={() => {
+                setCurrentPage(1);
+                setSelectedSchoolId("");
+                setStartDate(undefined);
+                setEndDate(undefined);
+                user?.uid && loadSessions(user.uid, 1, pageSize);
+              }}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </div>
+
+        {/* Filtering Controls */}
+        {showFilters && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  School
+                </label>
+                <Select
+                  options={schoolOptions}
+                  value={selectedSchoolId}
+                  onValueChange={setSelectedSchoolId}
+                  placeholder="Select school..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Start Date
+                </label>
+                <DatePicker
+                  value={startDate}
+                  onChange={setStartDate}
+                  placeholder="Select start date..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  End Date
+                </label>
+                <DatePicker
+                  value={endDate}
+                  onChange={setEndDate}
+                  placeholder="Select end date..."
+                />
+              </div>
+            </div>
+            {(selectedSchoolId || startDate || endDate) && (
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Filters applied: {selectedSchoolId && "School, "}
+                  {startDate && "Start Date, "}
+                  {endDate && "End Date"}
+                </div>
+                <Button
+                  onClick={() => {
+                    setSelectedSchoolId("");
+                    setStartDate(undefined);
+                    setEndDate(undefined);
+                    setCurrentPage(1);
+                  }}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         {completedSessions.length === 0 ? (
@@ -209,6 +338,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 <TableHead>Check-out Time</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -237,6 +367,20 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(session.status)}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedSession(session);
+                        setIsModalOpen(true);
+                      }}
+                      className="h-8 px-2"
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -247,12 +391,14 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
         {completedSessions.length > 0 && (
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-muted-foreground">
-              Showing {Math.min((currentPage - 1) * pageSize + 1, totalSessions)} to{" "}
-              {Math.min(currentPage * pageSize, totalSessions)} of {totalSessions} sessions
+              Showing{" "}
+              {Math.min((currentPage - 1) * pageSize + 1, totalSessions)} to{" "}
+              {Math.min(currentPage * pageSize, totalSessions)} of{" "}
+              {totalSessions} sessions
             </div>
             <div className="flex items-center space-x-2">
               <Button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
                 variant="outline"
                 size="sm"
@@ -263,7 +409,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 Page {currentPage} of {Math.ceil(totalSessions / pageSize)}
               </span>
               <Button
-                onClick={() => setCurrentPage(prev => prev + 1)}
+                onClick={() => setCurrentPage((prev) => prev + 1)}
                 disabled={!hasMore}
                 variant="outline"
                 size="sm"
@@ -274,6 +420,17 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
           </div>
         )}
       </CardContent>
+
+      {/* Session Detail Modal */}
+      <SessionDetailModal
+        session={selectedSession}
+        schoolName={selectedSession ? schoolNames.get(selectedSession.schoolId) : undefined}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedSession(null);
+        }}
+      />
     </Card>
   );
 };

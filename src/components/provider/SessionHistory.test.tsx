@@ -204,7 +204,7 @@ describe("SessionHistory Component", () => {
   it("loads sessions on mount", () => {
     render(<SessionHistory />);
 
-    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 1, 10);
+    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 1, 10, {});
   });
 
   it("retries loading sessions when retry button is clicked", () => {
@@ -246,9 +246,9 @@ describe("SessionHistory Component", () => {
     render(<SessionHistory />);
 
     const refreshButton = screen.getByText("Refresh");
-    refreshButton.click();
+    fireEvent.click(refreshButton);
 
-    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 1, 10);
+    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 1, 10, {});
   });
 
   it("loads school names for sessions", async () => {
@@ -334,7 +334,9 @@ describe("SessionHistory Component", () => {
 
     render(<SessionHistory />);
 
-    expect(screen.getByText("Showing 1 to 10 of 25 sessions")).toBeInTheDocument();
+    expect(
+      screen.getByText("Showing 1 to 10 of 25 sessions")
+    ).toBeInTheDocument();
     expect(screen.getByText("Page 1 of 3")).toBeInTheDocument();
     expect(screen.getByText("Previous")).toBeInTheDocument();
     expect(screen.getByText("Next")).toBeInTheDocument();
@@ -420,7 +422,7 @@ describe("SessionHistory Component", () => {
     fireEvent.click(nextButton);
 
     await waitFor(() => {
-      expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 2, 10);
+      expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 2, 10, {});
     });
   });
 
@@ -441,8 +443,122 @@ describe("SessionHistory Component", () => {
     render(<SessionHistory />);
 
     const refreshButton = screen.getByText("Refresh");
-    refreshButton.click();
+    fireEvent.click(refreshButton);
 
-    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 1, 10);
+    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 1, 10, {});
+  });
+
+  it("shows filter controls when show filters button is clicked", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 1,
+      hasMore: false,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const showFiltersButton = screen.getByText("Show Filters");
+    fireEvent.click(showFiltersButton);
+
+    expect(
+      screen.getByText("School", { selector: "label" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Start Date")).toBeInTheDocument();
+    expect(screen.getByText("End Date")).toBeInTheDocument();
+  });
+
+  it("hides filter controls when hide filters button is clicked", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 1,
+      hasMore: false,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const showFiltersButton = screen.getByText("Show Filters");
+    fireEvent.click(showFiltersButton);
+
+    const hideFiltersButton = screen.getByText("Hide Filters");
+    fireEvent.click(hideFiltersButton);
+
+    expect(
+      screen.queryByText("School", { selector: "label" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows View Details button for each session", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 1,
+      hasMore: false,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    expect(screen.getByText("View")).toBeInTheDocument();
+  });
+
+  it("opens session detail modal when View Details is clicked", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 1,
+      hasMore: false,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const viewButton = screen.getByText("View");
+    fireEvent.click(viewButton);
+
+    expect(screen.getByText("Session Details")).toBeInTheDocument();
+    expect(screen.getByText("Session ID: session-123")).toBeInTheDocument();
+  });
+
+  it("includes Actions column in table header", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 1,
+      hasMore: false,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    expect(screen.getByText("Actions")).toBeInTheDocument();
   });
 });
