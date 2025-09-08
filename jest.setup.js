@@ -46,10 +46,17 @@ jest.mock("firebase/firestore", () => ({
   orderBy: jest.fn(),
   limit: jest.fn(),
   Timestamp: {
-    now: jest.fn(() => ({ seconds: Date.now() / 1000, nanoseconds: 0 })),
+    now: jest.fn(() => ({ 
+      seconds: Date.now() / 1000, 
+      nanoseconds: 0,
+      toDate: jest.fn(() => new Date()),
+      toMillis: jest.fn(() => Date.now()),
+    })),
     fromDate: jest.fn((date) => ({
       seconds: date.getTime() / 1000,
       nanoseconds: 0,
+      toDate: jest.fn(() => date),
+      toMillis: jest.fn(() => date.getTime()),
     })),
   },
   GeoPoint: jest.fn((lat, lng) => ({ latitude: lat, longitude: lng })),

@@ -81,10 +81,24 @@ export const useSession = (): UseSessionReturn => {
 
       try {
         const checkOutTime = Timestamp.now();
+        
+        // Find the current session to get check-in time for duration calculation
+        const currentSessionData = currentSession || 
+          sessions.find(session => session.id === sessionId);
+        
+        let duration = 0;
+        if (currentSessionData?.checkInTime) {
+          // Calculate duration in minutes
+          duration = Math.round(
+            (checkOutTime.toMillis() - currentSessionData.checkInTime.toMillis()) / (1000 * 60)
+          );
+        }
+
         const updateData = {
           checkOutTime,
           checkOutLocation: location,
           status: "completed" as const,
+          duration,
           updatedAt: checkOutTime,
         };
 
@@ -102,7 +116,7 @@ export const useSession = (): UseSessionReturn => {
         setLoading(false);
       }
     },
-    [],
+    [currentSession, sessions],
   );
 
   const loadSessions = useCallback(

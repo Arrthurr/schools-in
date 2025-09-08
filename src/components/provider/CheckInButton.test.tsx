@@ -88,10 +88,10 @@ describe("CheckInButton", () => {
     render(<CheckInButton school={mockSchool} />);
 
     expect(
-      screen.getByRole("button", { name: /check in/i }),
+      screen.getByRole("button", { name: /check in/i })
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Uses GPS for location verification"),
+      screen.getByText("Uses GPS for location verification")
     ).toBeInTheDocument();
   });
 
@@ -101,11 +101,11 @@ describe("CheckInButton", () => {
         school={mockSchool}
         isCheckedIn={true}
         currentSessionId="session-1"
-      />,
+      />
     );
 
     expect(
-      screen.getByRole("button", { name: /check out/i }),
+      screen.getByRole("button", { name: /check out/i })
     ).toBeInTheDocument();
   });
 
@@ -121,9 +121,9 @@ describe("CheckInButton", () => {
                 longitude: -74.006,
                 accuracy: 5,
               }),
-            100,
-          ),
-        ),
+            100
+          )
+        )
     );
 
     render(<CheckInButton school={mockSchool} />);
@@ -132,7 +132,7 @@ describe("CheckInButton", () => {
     fireEvent.click(checkInButton);
 
     expect(
-      screen.getByRole("button", { name: /getting location.*\(1\/3\)/i }),
+      screen.getByRole("button", { name: /getting location.*\(0\/3\)/i })
     ).toBeInTheDocument();
 
     await waitFor(() => {
@@ -156,8 +156,8 @@ describe("CheckInButton", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "Location access denied. Please enable location permissions and try again.",
-        ),
+          "Location access denied. Please enable location permissions in your browser settings and try again. Check your browser's location settings."
+        )
       ).toBeInTheDocument();
     });
   });
@@ -283,23 +283,50 @@ describe("CheckInButton", () => {
 
     // Should show warning message
     expect(
-      screen.getByText(/You are currently 120m from Test Elementary School/i),
+      screen.getByText(/You are currently 120m from Test Elementary School/i)
     ).toBeInTheDocument();
   });
 
   it("handles check-out process", async () => {
     const currentSessionId = "session-1";
+    const mockCurrentSession = {
+      id: currentSessionId,
+      userId: "user-1",
+      schoolId: "school-1",
+      checkInTime: { toMillis: () => Date.now() - 3600000 } as any, // 1 hour ago
+      checkInLocation: { latitude: 40.7128, longitude: -74.006, accuracy: 5 },
+      status: "active" as const,
+    };
+
+    // Update mock to include current session
+    mockUseSession.mockReturnValue({
+      ...mockSession,
+      currentSession: mockCurrentSession,
+    });
 
     render(
       <CheckInButton
         school={mockSchool}
         isCheckedIn={true}
         currentSessionId={currentSessionId}
-      />,
+      />
     );
 
     const checkOutButton = screen.getByRole("button", { name: /check out/i });
     fireEvent.click(checkOutButton);
+
+    // Wait for check-out confirmation dialog to appear
+    await waitFor(() => {
+      expect(screen.getAllByText(/confirm check-out/i).length).toBeGreaterThan(
+        0
+      );
+    });
+
+    // Click the confirm button in the dialog
+    const confirmButton = screen.getByRole("button", {
+      name: /confirm check-out/i,
+    });
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(mockSession.checkOut).toHaveBeenCalledWith(currentSessionId, {
@@ -328,7 +355,7 @@ describe("CheckInButton", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("You must be logged in to check in"),
+        screen.getByText("You must be logged in to check in")
       ).toBeInTheDocument();
     });
   });
@@ -340,7 +367,7 @@ describe("CheckInButton", () => {
     mockLocationService.getCurrentLocation.mockResolvedValue(mockLocation);
 
     render(
-      <CheckInButton school={mockSchool} onLocationUpdate={onLocationUpdate} />,
+      <CheckInButton school={mockSchool} onLocationUpdate={onLocationUpdate} />
     );
 
     const checkInButton = screen.getByRole("button", { name: /check in/i });
@@ -411,8 +438,8 @@ describe("CheckInButton", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          `Required within ${mockSchool.radius}m of ${mockSchool.name}`,
-        ),
+          `Required within ${mockSchool.radius}m of ${mockSchool.name}`
+        )
       ).toBeInTheDocument();
     });
   });
@@ -447,7 +474,9 @@ describe("CheckInButton", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Location timeout. Retrying with adjusted settings/),
+        screen.getByText(
+          /Location timeout \(attempt 1\/4\)\. Retrying with extended timeout/
+        )
       ).toBeInTheDocument();
     });
 
@@ -490,8 +519,8 @@ describe("CheckInButton", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          /Location verified! You are within the allowed check-in radius/,
-        ),
+          /Location verified! You are within the allowed check-in radius/
+        )
       ).toBeInTheDocument();
     });
   });

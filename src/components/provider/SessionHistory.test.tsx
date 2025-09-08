@@ -1,0 +1,282 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { SessionHistory } from "./SessionHistory";
+import * as useAuthModule from "../../lib/hooks/useAuth";
+import * as useSessionModule from "../../lib/hooks/useSession";
+import * as schoolServiceModule from "../../lib/services/schoolService";
+import { Timestamp } from "firebase/firestore";
+
+// Mock the modules
+jest.mock("../../lib/hooks/useAuth");
+jest.mock("../../lib/hooks/useSession");
+jest.mock("../../lib/services/schoolService");
+
+const mockUseAuth = jest.spyOn(useAuthModule, "useAuth");
+const mockUseSession = jest.spyOn(useSessionModule, "useSession");
+const mockSchoolService = jest.spyOn(schoolServiceModule.SchoolService, "getSchoolById");
+
+const mockUser = {
+  uid: "user-123",
+  email: "provider@test.com",
+  displayName: "Test Provider",
+  role: "provider" as const,
+  emailVerified: true,
+  isAnonymous: false,
+  metadata: {},
+  providerData: [],
+  refreshToken: "",
+  tenantId: null,
+  delete: jest.fn(),
+  getIdToken: jest.fn(),
+  getIdTokenResult: jest.fn(),
+  reload: jest.fn(),
+  toJSON: jest.fn(),
+  phoneNumber: null,
+  photoURL: null,
+  providerId: "firebase",
+};
+
+const mockCompletedSession = {
+  id: "session-123",
+  userId: "user-123",
+  schoolId: "school-1",
+  checkInTime: Timestamp.fromDate(new Date(Date.now() - 2 * 60 * 60 * 1000)), // 2 hours ago
+  checkOutTime: Timestamp.fromDate(new Date(Date.now() - 30 * 60 * 1000)), // 30 minutes ago
+  checkInLocation: { latitude: 41.90191443941818, longitude: -87.63472443763325 },
+  checkOutLocation: { latitude: 41.90191443941818, longitude: -87.63472443763325 },
+  status: "completed" as const,
+  duration: 90, // 1.5 hours
+};
+
+const mockActiveSession = {
+  id: "session-456",
+  userId: "user-123",
+  schoolId: "school-2",
+  checkInTime: Timestamp.fromDate(new Date(Date.now() - 30 * 60 * 1000)), // 30 minutes ago
+  checkInLocation: { latitude: 41.90191443941818, longitude: -87.63472443763325 },
+  status: "active" as const,
+};
+
+const mockSchool = {
+  id: "school-1",
+  name: "Walter Payton High School",
+  latitude: 41.90191443941818,
+  longitude: -87.63472443763325,
+  address: "1034 N Wells St, Chicago, IL 60610",
+  isAssigned: true,
+};
+
+const mockLoadSessions = jest.fn();
+
+describe("SessionHistory Component", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      loading: false,
+    });
+
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [],
+      loading: false,
+      error: null,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    mockSchoolService.mockResolvedValue(mockSchool);
+  });
+
+  it("renders loading state correctly", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [],
+      loading: true,
+      error: null,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    expect(screen.getByText("Session History")).toBeInTheDocument();
+    expect(screen.getByText("Loading session history...")).toBeInTheDocument();
+  });
+
+  it("renders error state correctly", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [],
+      loading: false,
+      error: "Failed to load sessions",
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    expect(screen.getByText("Session History")).toBeInTheDocument();
+    expect(screen.getByText("Error loading sessions: Failed to load sessions")).toBeInTheDocument();
+    expect(screen.getByText("Retry")).toBeInTheDocument();
+  });
+
+  it("renders empty state when no completed sessions", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockActiveSession], // Only active session
+      loading: false,
+      error: null,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    expect(screen.getByText("Session History")).toBeInTheDocument();
+    expect(screen.getByText("No completed sessions yet")).toBeInTheDocument();
+    expect(screen.getByText(/View your past check-in sessions/)).toBeInTheDocument();
+  });
+
+  it("renders completed sessions correctly", async () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession, mockActiveSession],
+      loading: false,
+      error: null,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    expect(screen.getByText("Session History")).toBeInTheDocument();
+    expect(screen.getByText(/View your past check-in sessions/)).toBeInTheDocument();
+
+    // Wait for school name to load
+    await waitFor(() => {
+      expect(screen.getByText("Walter Payton High School")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("1h 30m")).toBeInTheDocument();
+    expect(screen.getByText("Completed")).toBeInTheDocument();
+  });
+
+  it("loads sessions on mount", () => {
+    render(<SessionHistory />);
+
+    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid);
+  });
+
+  it("retries loading sessions when retry button is clicked", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [],
+      loading: false,
+      error: "Network error",
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const retryButton = screen.getByText("Retry");
+    retryButton.click();
+
+    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid);
+  });
+
+  it("refreshes sessions when refresh button is clicked", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const refreshButton = screen.getByText("Refresh");
+    refreshButton.click();
+
+    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid);
+  });
+
+  it("loads school names for sessions", async () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    await waitFor(() => {
+      expect(mockSchoolService).toHaveBeenCalledWith("school-1");
+    });
+  });
+
+  it("handles unknown school gracefully", async () => {
+    mockSchoolService.mockResolvedValue(null);
+
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Unknown School")).toBeInTheDocument();
+    });
+  });
+
+  it("handles school service error gracefully", async () => {
+    mockSchoolService.mockRejectedValue(new Error("Service error"));
+
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Unknown School")).toBeInTheDocument();
+    });
+  });
+});

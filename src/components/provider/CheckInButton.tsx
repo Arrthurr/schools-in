@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -19,6 +19,9 @@ import {
   CheckCircle,
   Clock,
   Navigation,
+  Wifi,
+  WifiOff,
+  Target,
 } from "lucide-react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useSession } from "../../lib/hooks/useSession";
@@ -28,6 +31,8 @@ import {
   calculateDistance,
   Coordinates,
 } from "../../lib/utils/location";
+import { formatDuration } from "../../lib/utils/session";
+import { SessionTimerDisplay } from "./SessionTimerDisplay";
 
 interface School {
   id: string;
@@ -56,24 +61,203 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   className = "",
 }) => {
   const { user } = useAuth();
-  const { checkIn, checkOut, loading: sessionLoading } = useSession();
+  const {
+    checkIn,
+    checkOut,
+    loading: sessionLoading,
+    currentSession,
+  } = useSession();
 
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showCheckOutDialog, setShowCheckOutDialog] = useState(false);
   const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [locationAttempts, setLocationAttempts] = useState(0);
   const [isVerifyingLocation, setIsVerifyingLocation] = useState(false);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [sessionDuration, setSessionDuration] = useState<number | null>(null);
+
+  // Enhanced loading states for GPS operations
+  const [gpsOperationPhase, setGpsOperationPhase] = useState<
+    | "idle"
+    | "requesting-permission"
+    | "getting-location"
+    | "validating"
+    | "complete"
+  >("idle");
+  const [gpsProgress, setGpsProgress] = useState(0);
+  const [locationStatusMessage, setLocationStatusMessage] =
+    useState<string>("");
+
+  // Enhanced error handling with comprehensive failure scenarios
+  const [locationErrorType, setLocationErrorType] = useState<
+    | "permission-denied"
+    | "unavailable"
+    | "timeout"
+    | "accuracy"
+    | "network"
+    | "hardware"
+    | "unsupported"
+    | "drift"
+    | "spoofing"
+    | null
+  >(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [maxRetries] = useState(3);
+  const [lastErrorTime, setLastErrorTime] = useState<number | null>(null);
+
+  // Cleanup GPS states after operation completes
+  useEffect(() => {
+    if (gpsOperationPhase === "complete") {
+      const timer = setTimeout(() => {
+        setGpsOperationPhase("idle");
+        setGpsProgress(0);
+        setLocationStatusMessage("");
+      }, 3000); // Clear status after 3 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [gpsOperationPhase]);
+
+  // Enhanced error classification and recovery
+  const classifyLocationError = useCallback(
+    (
+      error: GeolocationPositionError | { code?: number; message?: string },
+      retryAttempt: number
+    ) => {
+      const now = Date.now();
+
+      // Reset error type if it's been more than 30 seconds since last error
+      if (lastErrorTime && now - lastErrorTime > 30000) {
+        setLocationErrorType(null);
+        setRetryCount(0);
+      }
+
+      setLastErrorTime(now);
+
+      if (error.code === 1) {
+        return {
+          type: "permission-denied" as const,
+          message:
+            "Location access denied. Please enable location permissions in your browser settings and try again.",
+          canRetry: false,
+          showSettingsLink: true,
+        };
+      }
+
+      if (error.code === 2) {
+        // Check if this might be a hardware/network issue
+        if (retryAttempt >= maxRetries - 1) {
+          return {
+            type: "hardware" as const,
+            message:
+              "GPS hardware appears unavailable. Please check your device's location settings and ensure GPS is enabled.",
+            canRetry: false,
+            showTroubleshooting: true,
+          };
+        }
+        return {
+          type: "unavailable" as const,
+          message:
+            "Location temporarily unavailable. This may be due to poor GPS signal or network issues.",
+          canRetry: true,
+          delay: 2000,
+        };
+      }
+
+      if (error.code === 3 || error.message?.includes("timeout")) {
+        if (retryAttempt >= maxRetries) {
+          return {
+            type: "timeout" as const,
+            message:
+              "Location request timed out after multiple attempts. You may be in an area with poor GPS coverage.",
+            canRetry: false,
+            allowManualOverride: true,
+          };
+        }
+        return {
+          type: "timeout" as const,
+          message: `Location timeout (attempt ${retryAttempt + 1}/${
+            maxRetries + 1
+          }). Retrying with extended timeout...`,
+          canRetry: true,
+          delay: 1000 * (retryAttempt + 1), // Progressive delay
+        };
+      }
+
+      // Handle network-related errors
+      if (error.message?.includes("network") || !navigator.onLine) {
+        return {
+          type: "network" as const,
+          message:
+            "Network connection issue detected. Location services require internet connectivity.",
+          canRetry: true,
+          delay: 3000,
+        };
+      }
+
+      // Handle unsupported browser
+      if (!navigator.geolocation) {
+        return {
+          type: "unsupported" as const,
+          message:
+            "Geolocation is not supported by this browser. Please use a modern browser with location support.",
+          canRetry: false,
+          showBrowserInfo: true,
+        };
+      }
+
+      return {
+        type: "unavailable" as const,
+        message: error.message || "An unexpected location error occurred.",
+        canRetry: retryAttempt < maxRetries,
+        delay: 1000,
+      };
+    },
+    [lastErrorTime, maxRetries]
+  );
+
+  // Enhanced location validation with drift detection
+  const detectLocationAnomalies = useCallback(
+    (newLocation: Coordinates, previousLocation?: Coordinates) => {
+      if (!previousLocation) return { isAnomalous: false };
+
+      const distanceMoved = calculateDistance(newLocation, previousLocation);
+      const timeDiff = lastErrorTime ? Date.now() - lastErrorTime : 1000;
+
+      // Detect unrealistic movement speeds (> 100 m/s or sudden jumps)
+      const speedMps = distanceMoved / (timeDiff / 1000);
+      if (speedMps > 100) {
+        return {
+          isAnomalous: true,
+          type: "drift" as const,
+          reason: "Unrealistic movement speed detected",
+        };
+      }
+
+      // Detect suspiciously perfect accuracy (potential spoofing)
+      if (newLocation.accuracy && newLocation.accuracy < 1) {
+        return {
+          isAnomalous: true,
+          type: "spoofing" as const,
+          reason: "Unusually perfect GPS accuracy detected",
+        };
+      }
+
+      return { isAnomalous: false };
+    },
+    [lastErrorTime]
+  );
 
   // Enhanced location validation with accuracy checks
   const validateLocation = useCallback(
     (userLoc: Coordinates, schoolLoc: Coordinates, accuracy?: number) => {
       // Use the utility functions for consistency
       const calculatedDistance = Math.round(
-        calculateDistance(userLoc, schoolLoc),
+        calculateDistance(userLoc, schoolLoc)
       );
       const withinRange = isWithinRadius(userLoc, schoolLoc, school.radius);
 
@@ -94,26 +278,61 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         isValidForCheckIn: withinRange && isHighAccuracy,
       };
     },
-    [school.radius],
+    [school.radius]
   );
 
-  // Enhanced location acquisition with retry logic
+  // Enhanced location acquisition with comprehensive error handling and recovery
   const getCurrentLocation = useCallback(
     async (retryAttempt = 0) => {
       setIsGettingLocation(true);
-      setLocationError(null);
-      setLocationAttempts(retryAttempt + 1);
+      setGpsOperationPhase("requesting-permission");
+      setGpsProgress(10);
+      setLocationStatusMessage("Requesting location permission...");
+      setLocationErrorType(null);
 
       try {
-        // Enhanced location options for better accuracy
+        // Enhanced location options based on retry attempt and error history
         const locationOptions = {
           enableHighAccuracy: true,
-          timeout: retryAttempt > 0 ? 15000 : 10000, // Longer timeout on retries
-          maximumAge: retryAttempt > 0 ? 30000 : 60000, // Allow cached location on retries
+          timeout:
+            retryAttempt > 0
+              ? Math.min(20000, 10000 + retryAttempt * 5000)
+              : 10000,
+          maximumAge:
+            retryAttempt > 0
+              ? Math.max(10000, 60000 - retryAttempt * 10000)
+              : 60000,
         };
 
-        const location =
-          await locationService.getCurrentLocation(locationOptions);
+        setGpsOperationPhase("getting-location");
+        setGpsProgress(30);
+        setLocationStatusMessage("Getting your current location...");
+
+        const location = await locationService.getCurrentLocation(
+          locationOptions
+        );
+
+        // Detect location anomalies
+        const anomalyCheck = detectLocationAnomalies(
+          location,
+          userLocation || undefined
+        );
+        if (anomalyCheck.isAnomalous && anomalyCheck.type) {
+          setLocationErrorType(anomalyCheck.type);
+          if (anomalyCheck.type === "drift") {
+            setLocationError(
+              "Location appears unstable. Please stay still and try again."
+            );
+          } else if (anomalyCheck.type === "spoofing") {
+            setLocationError(
+              "Location data appears suspicious. Please ensure GPS is enabled and not simulated."
+            );
+          }
+          throw new Error("Location anomaly detected");
+        }
+
+        setGpsProgress(60);
+        setLocationStatusMessage("Validating location accuracy...");
         setUserLocation(location);
 
         // Validate location against school coordinates
@@ -122,18 +341,32 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
           longitude: school.gpsCoordinates.longitude,
         };
 
+        setGpsOperationPhase("validating");
+        setGpsProgress(80);
+
         const validation = validateLocation(
           location,
           schoolCoords,
-          location.accuracy,
+          location.accuracy
         );
+
+        setGpsProgress(100);
+        setGpsOperationPhase("complete");
+        setLocationStatusMessage("Location verified successfully!");
+
+        // Reset error tracking on success
+        setRetryCount(0);
+        setLocationErrorType(null);
 
         // If location is not accurate enough and we haven't retried much, try again
         if (!validation.isHighAccuracy && retryAttempt < 2) {
           setLocationError(
-            "Location accuracy is low. Trying to get a more accurate position...",
+            "Location accuracy is low. Trying to get a more accurate position..."
           );
-          await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
+          setGpsOperationPhase("getting-location");
+          setGpsProgress(20);
+          setLocationStatusMessage("Retrying for better accuracy...");
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           return getCurrentLocation(retryAttempt + 1);
         }
 
@@ -142,53 +375,90 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         }
 
         return location;
-      } catch (error: any) {
-        // Enhanced error handling with retry logic
-        if (
-          (error.code === 3 || error.message?.includes("timeout")) &&
-          retryAttempt < 2
-        ) {
-          setLocationError(
-            "Location timeout. Retrying with adjusted settings...",
+      } catch (error: unknown) {
+        const err = error as GeolocationPositionError;
+        const errorClassification = classifyLocationError(err, retryAttempt);
+
+        setLocationErrorType(errorClassification.type);
+        setRetryCount(retryAttempt + 1);
+
+        // Enhanced error handling with recovery options
+        if (errorClassification.canRetry && retryAttempt < maxRetries) {
+          setLocationError(errorClassification.message);
+          setGpsOperationPhase("getting-location");
+          setGpsProgress(20);
+          setLocationStatusMessage(
+            `Retrying... (${retryAttempt + 1}/${maxRetries})`
           );
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          if (errorClassification.delay) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, errorClassification.delay)
+            );
+          }
+
           return getCurrentLocation(retryAttempt + 1);
         }
 
-        let errorMessage = "Failed to get your location";
-        if (error.code === 1) {
-          errorMessage =
-            "Location access denied. Please enable location permissions and try again.";
-        } else if (error.code === 2) {
-          errorMessage =
-            "Location unavailable. Please check your device's location settings.";
-        } else if (error.code === 3) {
-          errorMessage =
-            "Location timeout. Please ensure you have a clear view of the sky if outdoors.";
+        // Final error after all retries exhausted
+        let finalErrorMessage = errorClassification.message;
+
+        if (errorClassification.allowManualOverride) {
+          finalErrorMessage +=
+            " Would you like to proceed with check-in anyway?";
         }
 
-        setLocationError(errorMessage);
+        if (errorClassification.showSettingsLink) {
+          finalErrorMessage += " Check your browser's location settings.";
+        }
+
+        if (errorClassification.showTroubleshooting) {
+          finalErrorMessage +=
+            " Try restarting your device or checking for software updates.";
+        }
+
+        if (errorClassification.showBrowserInfo) {
+          finalErrorMessage += " Consider using Chrome, Firefox, or Safari.";
+        }
+
+        setLocationError(finalErrorMessage);
         setUserLocation(null);
         setIsWithinRange(null);
         setDistance(null);
         setLocationAccuracy(null);
+        setGpsOperationPhase("idle");
+        setGpsProgress(0);
+        setLocationStatusMessage("");
         throw error;
       } finally {
         setIsGettingLocation(false);
       }
     },
-    [school.gpsCoordinates, validateLocation, onLocationUpdate],
+    [
+      school.gpsCoordinates,
+      validateLocation,
+      onLocationUpdate,
+      detectLocationAnomalies,
+      userLocation,
+      classifyLocationError,
+      maxRetries,
+    ]
   );
 
   // Enhanced check-in process with location verification
   const handleCheckIn = useCallback(async () => {
     if (!user) {
       setLocationError("You must be logged in to check in");
+      setLocationErrorType("permission-denied"); // Use permission-denied for auth errors
       return;
     }
 
     setIsVerifyingLocation(true);
     setLocationAttempts(0);
+    setLocationError(null);
+    setGpsOperationPhase("idle");
+    setGpsProgress(0);
+    setLocationStatusMessage("");
 
     try {
       // Get location with enhanced validation
@@ -203,20 +473,20 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       const validation = validateLocation(
         location,
         schoolCoords,
-        location.accuracy,
+        location.accuracy
       );
 
       if (!validation.isReasonableDistance) {
         setLocationError(
           `You appear to be ${validation.distance}m from ${school.name}. ` +
-            "Please ensure you are at the correct school location.",
+            "Please ensure you are at the correct school location."
         );
         return;
       }
 
       // Show confirmation dialog with all validation info
       setShowConfirmDialog(true);
-    } catch (error) {
+    } catch {
       // Location error already set in getCurrentLocation
     } finally {
       setIsVerifyingLocation(false);
@@ -243,12 +513,12 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       const finalValidation = validateLocation(
         userLocation,
         schoolCoords,
-        userLocation.accuracy,
+        userLocation.accuracy
       );
 
       if (!finalValidation.withinRange) {
         setLocationError(
-          "Location verification failed. You must be within the school's check-in radius.",
+          "Location verification failed. You must be within the school's check-in radius."
         );
         return;
       }
@@ -273,8 +543,14 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       setLocationAccuracy(null);
       setLocationAttempts(0);
       setLocationError(null);
-    } catch (error: any) {
-      setLocationError(error.message || "Failed to check in");
+      setGpsOperationPhase("idle");
+      setGpsProgress(0);
+      setLocationStatusMessage("");
+    } catch (error: unknown) {
+      setLocationError(
+        error instanceof Error ? error.message : "Failed to check in"
+      );
+      setLocationErrorType("unavailable");
     }
   }, [
     user,
@@ -288,14 +564,20 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     validateLocation,
   ]);
 
-  // Enhanced check-out process with location verification
+  // Enhanced check-out process with location verification and confirmation
   const handleCheckOut = useCallback(async () => {
     if (!user || !currentSessionId) {
       setLocationError("Invalid session for check out");
+      setLocationErrorType("permission-denied"); // Use permission-denied for auth/session errors
       return;
     }
 
     setIsVerifyingLocation(true);
+    setLocationAttempts(0);
+    setLocationError(null);
+    setGpsOperationPhase("idle");
+    setGpsProgress(0);
+    setLocationStatusMessage("");
 
     try {
       const location = await getCurrentLocation();
@@ -306,38 +588,32 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         longitude: school.gpsCoordinates.longitude,
       };
 
-      const validation = validateLocation(
+      const _validation = validateLocation(
         location,
         schoolCoords,
-        location.accuracy,
+        location.accuracy
       );
 
-      // Allow check-out even if slightly outside radius (within 2x radius)
-      const checkOutRadius = school.radius * 2;
-      const isValidForCheckOut = validation.distance <= checkOutRadius;
-
-      if (!isValidForCheckOut) {
-        const confirmCheckOut = window.confirm(
-          `You are ${validation.distance}m from ${school.name}, which is outside the usual check-out area. ` +
-            "Do you want to proceed with check-out anyway?",
-        );
-
-        if (!confirmCheckOut) {
-          return;
-        }
+      // Calculate session duration if we have a current session
+      if (currentSession?.checkInTime) {
+        const now = new Date();
+        const checkInMs = currentSession.checkInTime.toMillis();
+        const duration = Math.round((now.getTime() - checkInMs) / (1000 * 60)); // in minutes
+        setSessionDuration(duration);
       }
 
-      await checkOut(currentSessionId, location);
+      // Show check-out confirmation dialog
+      setShowCheckOutDialog(true);
+    } catch {
+      // Allow check-out even if location fails (user might be in a building)
+      const confirmCheckOut = window.confirm(
+        "Unable to verify your location. This might happen if you're indoors or GPS signal is poor. " +
+          "Do you want to proceed with check-out anyway?"
+      );
 
-      // Reset state after successful check-out
-      setUserLocation(null);
-      setIsWithinRange(null);
-      setDistance(null);
-      setLocationAccuracy(null);
-      setLocationAttempts(0);
-      setLocationError(null);
-    } catch (error: any) {
-      setLocationError(error.message || "Failed to check out");
+      if (confirmCheckOut) {
+        setShowCheckOutDialog(true);
+      }
     } finally {
       setIsVerifyingLocation(false);
     }
@@ -345,12 +621,45 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     user,
     currentSessionId,
     getCurrentLocation,
-    checkOut,
     school.gpsCoordinates,
     school.name,
     school.radius,
     validateLocation,
   ]);
+
+  // Confirm check-out with session completion
+  const confirmCheckOut = useCallback(async () => {
+    if (!user || !currentSessionId) return;
+
+    try {
+      // Use current location if available, or allow check-out without location
+      const location = userLocation || {
+        latitude: school.gpsCoordinates.latitude,
+        longitude: school.gpsCoordinates.longitude,
+        accuracy: undefined,
+      };
+
+      await checkOut(currentSessionId, location);
+
+      // Reset all state after successful check-out
+      setShowCheckOutDialog(false);
+      setUserLocation(null);
+      setIsWithinRange(null);
+      setDistance(null);
+      setLocationAccuracy(null);
+      setLocationAttempts(0);
+      setLocationError(null);
+      setSessionDuration(null);
+      setGpsOperationPhase("idle");
+      setGpsProgress(0);
+      setLocationStatusMessage("");
+    } catch (error: unknown) {
+      setLocationError(
+        error instanceof Error ? error.message : "Failed to check out"
+      );
+      setLocationErrorType("unavailable");
+    }
+  }, [user, currentSessionId, userLocation, school.gpsCoordinates, checkOut]);
 
   // Format distance for display
   const formatDistance = (distanceInMeters: number): string => {
@@ -379,19 +688,235 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     }
   };
 
+  // Error recovery component
+  const ErrorRecoveryOptions = () => {
+    if (!locationError || !locationErrorType) return null;
+
+    const getRecoveryActions = () => {
+      switch (locationErrorType) {
+        case "permission-denied":
+          return (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm text-muted-foreground">
+                To enable location access:
+              </p>
+              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                <li>Click the location icon in your browser's address bar</li>
+                <li>Select "Allow" or "Always allow" for this site</li>
+                <li>Refresh the page and try again</li>
+              </ul>
+            </div>
+          );
+
+        case "timeout":
+          return (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Try these solutions:
+              </p>
+              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                <li>Move to an open area with clear sky view</li>
+                <li>Ensure GPS is enabled on your device</li>
+                <li>Disable VPN if you're using one</li>
+                <li>Try using a different device or browser</li>
+              </ul>
+              {retryCount >= maxRetries && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setLocationError(null);
+                    setLocationErrorType(null);
+                    setRetryCount(0);
+                    handleCheckIn();
+                  }}
+                  className="mt-2"
+                >
+                  Try Again
+                </Button>
+              )}
+            </div>
+          );
+
+        case "hardware":
+        case "unavailable":
+          return (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Troubleshooting steps:
+              </p>
+              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                <li>Enable location services in your device settings</li>
+                <li>Ensure GPS is turned on</li>
+                <li>Check if airplane mode is disabled</li>
+                <li>Restart your device if the problem persists</li>
+              </ul>
+            </div>
+          );
+
+        case "network":
+          return (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Network troubleshooting:
+              </p>
+              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                <li>Check your internet connection</li>
+                <li>Try switching between Wi-Fi and mobile data</li>
+                <li>Disable VPN or proxy settings</li>
+                <li>Contact your network administrator</li>
+              </ul>
+            </div>
+          );
+
+        case "drift":
+          return (
+            <div className="mt-3">
+              <p className="text-sm text-muted-foreground">
+                GPS signal appears unstable. Please stay in one location and try
+                again.
+              </p>
+            </div>
+          );
+
+        case "spoofing":
+          return (
+            <div className="mt-3">
+              <p className="text-sm text-muted-foreground">
+                Location data appears suspicious. Please ensure you're using
+                real GPS and not location simulation.
+              </p>
+            </div>
+          );
+
+        default:
+          return (
+            <div className="mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setLocationError(null);
+                  setLocationErrorType(null);
+                  setRetryCount(0);
+                  handleCheckIn();
+                }}
+              >
+                Retry Location Check
+              </Button>
+            </div>
+          );
+      }
+    };
+
+    return (
+      <div className="mt-4 p-4 bg-muted rounded-lg">
+        <div className="flex items-start space-x-2">
+          <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <h4 className="font-medium text-destructive">Location Error</h4>
+            <p className="text-sm text-muted-foreground mt-1">
+              {locationError}
+            </p>
+            {getRecoveryActions()}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const locationStatus = getLocationStatus();
   const isLoading = isGettingLocation || sessionLoading || isVerifyingLocation;
+
+  // Session Timer Component
+  const SessionTimer = () => {
+    if (!isCheckedIn || !currentSession?.checkInTime) return null;
+
+    return (
+      <SessionTimerDisplay
+        checkInTime={currentSession.checkInTime}
+        isActive={true}
+        className="w-full"
+      />
+    );
+  };
+
+  // GPS Status Indicator Component
+  const GpsStatusIndicator = () => {
+    if (gpsOperationPhase === "idle") return null;
+
+    const getPhaseIcon = () => {
+      switch (gpsOperationPhase) {
+        case "requesting-permission":
+          return <Wifi className="h-4 w-4 text-blue-500" />;
+        case "getting-location":
+          return <Navigation className="h-4 w-4 text-blue-500 animate-pulse" />;
+        case "validating":
+          return <Target className="h-4 w-4 text-yellow-500" />;
+        case "complete":
+          return <CheckCircle className="h-4 w-4 text-green-500" />;
+        default:
+          return <WifiOff className="h-4 w-4 text-gray-400" />;
+      }
+    };
+
+    const getPhaseColor = () => {
+      switch (gpsOperationPhase) {
+        case "requesting-permission":
+          return "bg-blue-100 border-blue-200";
+        case "getting-location":
+          return "bg-blue-100 border-blue-200";
+        case "validating":
+          return "bg-yellow-100 border-yellow-200";
+        case "complete":
+          return "bg-green-100 border-green-200";
+        default:
+          return "bg-gray-100 border-gray-200";
+      }
+    };
+
+    return (
+      <div className={`p-3 rounded-lg border ${getPhaseColor()}`}>
+        <div className="flex items-center gap-2 mb-2">
+          {getPhaseIcon()}
+          <span className="font-medium text-sm">
+            {locationStatusMessage || "GPS Operation in Progress"}
+          </span>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+          <div
+            className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-in-out"
+            style={{ width: `${gpsProgress}%` }}
+          />
+        </div>
+
+        {/* Progress Text */}
+        <div className="text-xs text-gray-600 text-center">
+          {gpsProgress}% complete
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
       <div className={`space-y-3 ${className}`}>
-        {/* Location Error Alert */}
-        {locationError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{locationError}</AlertDescription>
-          </Alert>
-        )}
+        {/* Location Error Alert - Replaced with enhanced ErrorRecoveryOptions */}
+        {/* <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{locationError}</AlertDescription>
+        </Alert> */}
+
+        {/* Enhanced Error Recovery Options */}
+        <ErrorRecoveryOptions />
+
+        {/* GPS Status Indicator */}
+        <GpsStatusIndicator />
+
+        {/* Live Session Timer */}
+        <SessionTimer />
 
         {/* Check In/Out Button */}
         <Button
@@ -415,14 +940,23 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
           {isGettingLocation
             ? `Getting location... (${locationAttempts}/3)`
             : isVerifyingLocation
-              ? "Verifying location..."
-              : sessionLoading
-                ? isCheckedIn
-                  ? "Checking out..."
-                  : "Checking in..."
-                : isCheckedIn
-                  ? "Check Out"
-                  : "Check In"}
+            ? "Verifying location..."
+            : sessionLoading
+            ? isCheckedIn
+              ? "Checking out..."
+              : "Checking in..."
+            : isCheckedIn
+            ? `Check Out (${
+                currentSession?.checkInTime
+                  ? formatDuration(
+                      Math.floor(
+                        (Date.now() - currentSession.checkInTime.toMillis()) /
+                          (1000 * 60)
+                      )
+                    )
+                  : "0m"
+              })`
+            : "Check In"}
         </Button>
 
         {/* Enhanced Location Status Display */}
@@ -445,8 +979,8 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
                     locationAccuracy <= 10
                       ? "bg-green-100 text-green-800"
                       : locationAccuracy <= 20
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
                   }`}
                 >
                   GPS Accuracy: ±{Math.round(locationAccuracy)}m
@@ -464,7 +998,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         <div className="flex items-center justify-center text-xs text-gray-500 gap-1">
           <Navigation className="h-3 w-3" />
           <span>
-            Uses GPS for location verification
+            {gpsOperationPhase !== "idle"
+              ? locationStatusMessage
+              : "Uses GPS for location verification"}
             {locationAttempts > 0 && ` (Attempt ${locationAttempts}/3)`}
           </span>
         </div>
@@ -574,9 +1110,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
             <Button
               onClick={confirmCheckIn}
               disabled={
-                !isWithinRange ||
+                isWithinRange !== true ||
                 sessionLoading ||
-                (locationAccuracy && locationAccuracy > 100)
+                (locationAccuracy !== null && locationAccuracy > 100)
               }
               className="bg-[#154690] hover:bg-[#0f3a7a]"
             >
@@ -586,6 +1122,139 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
                 <CheckCircle className="h-4 w-4 mr-2" />
               )}
               {sessionLoading ? "Checking In..." : "Confirm Check-In"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Check-out Confirmation Dialog */}
+      <Dialog open={showCheckOutDialog} onOpenChange={setShowCheckOutDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-red-600" />
+              Confirm Check-Out
+            </DialogTitle>
+            <DialogDescription>
+              Please confirm your check-out from {school.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* School Information */}
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <div className="font-medium text-gray-900">{school.name}</div>
+              <div className="text-sm text-gray-600 mt-1">{school.address}</div>
+            </div>
+
+            {/* Session Summary */}
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-4 w-4 text-blue-600" />
+                <span className="font-medium text-blue-900">
+                  Session Summary
+                </span>
+              </div>
+              <div className="text-sm text-blue-800">
+                <div>You are about to end your session at {school.name}.</div>
+                {sessionDuration ? (
+                  <div className="mt-1">
+                    Session duration: {formatDuration(sessionDuration)}
+                  </div>
+                ) : currentSession?.checkInTime ? (
+                  <div className="mt-1">
+                    Current session:{" "}
+                    {formatDuration(
+                      Math.floor(
+                        (Date.now() - currentSession.checkInTime.toMillis()) /
+                          (1000 * 60)
+                      )
+                    )}
+                  </div>
+                ) : null}
+                {currentSession?.checkInTime && (
+                  <div className="mt-1 text-xs">
+                    Started:{" "}
+                    {new Date(
+                      currentSession.checkInTime.toMillis()
+                    ).toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Location Status for Check-out */}
+            {userLocation && (
+              <div className="space-y-2">
+                {distance !== null && (
+                  <div className="text-sm text-center text-gray-600">
+                    Current distance from {school.name}:{" "}
+                    {formatDistance(distance)}
+                  </div>
+                )}
+
+                {/* Check-out location validation - more lenient */}
+                {distance !== null && distance <= school.radius * 2 ? (
+                  <div className="p-2 bg-green-50 rounded border border-green-200">
+                    <div className="flex items-center gap-2 text-green-800">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm">Valid check-out location</span>
+                    </div>
+                  </div>
+                ) : distance !== null && distance > school.radius * 2 ? (
+                  <div className="p-2 bg-yellow-50 rounded border border-yellow-200">
+                    <div className="flex items-center gap-2 text-yellow-800">
+                      <AlertCircle className="h-4 w-4" />
+                      <span className="text-sm">
+                        You're outside the typical check-out area, but check-out
+                        is still allowed
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* No location warning */}
+            {!userLocation && (
+              <div className="p-3 bg-yellow-50 rounded border border-yellow-200">
+                <div className="flex items-center gap-2 text-yellow-800">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm">
+                    Location verification failed, but you can still check out.
+                    Your last known location will be used.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Current coordinates display if available */}
+            {userLocation && (
+              <div className="text-xs text-gray-500 text-center">
+                Check-out location: {userLocation.latitude.toFixed(6)},{" "}
+                {userLocation.longitude.toFixed(6)}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowCheckOutDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmCheckOut}
+              disabled={sessionLoading}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {sessionLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              {sessionLoading ? "Checking Out..." : "Confirm Check-Out"}
             </Button>
           </DialogFooter>
         </DialogContent>

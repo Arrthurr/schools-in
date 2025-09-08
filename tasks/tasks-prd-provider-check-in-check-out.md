@@ -54,17 +54,18 @@
 - `src/components/provider/SchoolList.test.tsx` - Unit tests for SchoolList component
 - `src/components/provider/SchoolDetailView.tsx` - Detailed school information view with location data, GPS coordinates, and check-in options
 - `src/components/provider/SchoolDetailView.test.tsx` - Unit tests for SchoolDetailView component
+- `src/components/provider/CheckInButton.tsx` - Enhanced check-in/check-out component with GPS validation, comprehensive error handling, session timer integration, and confirmation dialogs for check-in/out actions with location verification and session summary display
 - `src/components/provider/SessionStatus.tsx` - Current session status display component with timer, controls, and session information
 - `src/components/provider/SessionStatus.test.tsx` - Unit tests for SessionStatus component
 - `src/lib/services/schoolService.ts` - Service layer for school data operations, distance calculations, and assignments
 - `src/app/dashboard/schools/page.tsx` - Dedicated schools management page showcasing list and detail views
-- `src/components/provider/CheckInButton.tsx` - Enhanced check-in functionality component with GPS validation, location verification, retry logic, and confirmation dialog
-- `src/components/provider/CheckInButton.test.tsx` - Comprehensive unit tests for CheckInButton component covering enhanced location verification
+- `src/components/provider/SessionTimerDisplay.tsx` - Reusable session timer component that displays live session duration with real-time updates, supports both active and completed sessions, and provides compact and full display modes
+- `src/components/provider/SessionTimerDisplay.test.tsx` - Unit tests for the SessionTimerDisplay component covering basic rendering, compact mode, and completed session handling
 - `src/lib/utils/location.ts` - Enhanced GPS utilities with accuracy support and improved location validation functions
 - `src/lib/utils/location.test.ts` - Unit tests for enhanced location utilities and GPS functions
-- `src/lib/hooks/useSession.ts` - Enhanced session management hook with improved user authentication and auto-loading
-- `components/provider/SessionHistory.tsx` - Provider session history display
-- `components/provider/SessionHistory.test.tsx` - Unit tests for SessionHistory component
+- `src/lib/hooks/useSession.ts` - Enhanced session management hook with improved user authentication, auto-loading, and duration calculation for session completion
+- `src/components/provider/SessionHistory.tsx` - Provider session history display component with table view, school name resolution, and session details
+- `src/components/provider/SessionHistory.test.tsx` - Unit tests for SessionHistory component covering loading, error, empty states, and data display
 - `components/admin/SchoolManager.tsx` - Admin school management interface
 - `components/admin/SchoolManager.test.tsx` - Unit tests for SchoolManager component
 - `components/admin/SessionReports.tsx` - Admin reporting and export interface
@@ -95,6 +96,7 @@
 ## Tasks
 
 - [x] 1.0 Project Setup and Infrastructure
+
   - [x] 1.1 Initialize Next.js 14+ project with TypeScript and App Router
   - [x] 1.2 Install and configure Tailwind CSS v4 with brand colors (#154690)
   - [x] 1.3 Set up shadcn/ui component library
@@ -105,6 +107,7 @@
   - [x] 1.8 Create basic project structure and folder organization
 
 - [x] 2.0 Firebase Configuration and Authentication
+
   - [x] 2.1 Set up Firebase project and obtain configuration keys
   - [x] 2.2 Install Firebase SDK and configure initialization
   - [x] 2.3 Set up Firebase Authentication with Google OAuth provider
@@ -114,6 +117,7 @@
   - [x] 2.7 Configure Firebase security rules for Authentication
 
 - [x] 3.0 Database Schema and Firestore Setup
+
   - [x] 3.1 Design and implement Firestore collections structure (locations, users, sessions)
   - [x] 3.2 Create Firestore service layer with CRUD operations
   - [x] 3.3 Set up Firestore security rules for role-based access
@@ -122,6 +126,7 @@
   - [x] 3.6 Set up Firestore indexes for query optimization
 
 - [x] 4.0 Core Location Services and GPS Utilities
+
   - [x] 4.1 Implement GPS coordinate fetching with browser Geolocation API
   - [x] 4.2 Create distance calculation utilities (Haversine formula)
   - [x] 4.3 Build location validation logic for school radius checking
@@ -130,6 +135,7 @@
   - [x] 4.6 Create location service abstraction for testing
 
 - [x] 5.0 User Authentication and Role Management
+
   - [x] 5.1 Create login form component with Google OAuth and email/password
   - [x] 5.2 Implement user registration flow
   - [x] 5.3 Build role-based access control system (Provider/Admin)
@@ -139,6 +145,7 @@
   - [x] 5.7 Create authentication state management hooks
 
 - [x] 6.0 Provider Dashboard and School List
+
   - [x] 6.1 Create provider dashboard layout and navigation
   - [x] 6.2 Implement school list component with assigned locations
   - [x] 6.3 Add school search and filtering functionality
@@ -146,17 +153,19 @@
   - [x] 6.5 Implement responsive design for mobile and desktop
   - [x] 6.6 Add current session status display
 
-- [ ] 7.0 Check-In/Check-Out Functionality
+- [x] 7.0 Check-In/Check-Out Functionality
+
   - [x] 7.1 Create check-in button component with GPS validation
   - [x] 7.2 Implement check-in flow with location verification
-  - [ ] 7.3 Create check-out functionality with session completion
-  - [ ] 7.4 Add loading states and user feedback during GPS operations
-  - [ ] 7.5 Implement error handling for failed location checks
-  - [ ] 7.6 Create session timer and duration tracking
-  - [ ] 7.7 Add confirmation dialogs for check-in/out actions
+  - [x] 7.3 Create check-out functionality with session completion
+  - [x] 7.4 Add loading states and user feedback during GPS operations
+  - [x] 7.5 Implement error handling for failed location checks
+  - [x] 7.6 Create session timer and duration tracking
+  - [x] 7.7 Add confirmation dialogs for check-in/out actions
 
 - [ ] 8.0 Session History and Management
-  - [ ] 8.1 Create session history component for providers
+
+  - [x] 8.1 Create session history component for providers
   - [ ] 8.2 Implement pagination for session lists
   - [ ] 8.3 Add session filtering by date range and school
   - [ ] 8.4 Create session detail view with full information
@@ -164,6 +173,7 @@
   - [ ] 8.6 Add session status indicators (active, completed, error)
 
 - [ ] 9.0 Admin Panel and School Management
+
   - [ ] 9.1 Create admin dashboard with navigation and overview
   - [ ] 9.2 Implement school creation and editing forms
   - [ ] 9.3 Add school list management with CRUD operations
@@ -173,6 +183,7 @@
   - [ ] 9.7 Create bulk operations for school management
 
 - [ ] 10.0 Admin Reporting and Data Export
+
   - [ ] 10.1 Create session reporting dashboard with filters
   - [ ] 10.2 Implement date range, provider, and school filtering
   - [ ] 10.3 Add CSV export functionality for session data
@@ -182,6 +193,7 @@
   - [ ] 10.7 Create automated report scheduling (future enhancement)
 
 - [ ] 11.0 PWA Configuration and Offline Support
+
   - [ ] 11.1 Configure Next.js PWA plugin and manifest
   - [ ] 11.2 Create service worker for offline functionality
   - [ ] 11.3 Implement offline data caching strategy
@@ -191,6 +203,7 @@
   - [ ] 11.7 Test PWA installation and offline scenarios
 
 - [ ] 12.0 UI/UX Implementation and Styling
+
   - [ ] 12.1 Apply brand colors and design system throughout app
   - [ ] 12.2 Implement responsive layouts for all screen sizes
   - [ ] 12.3 Create consistent component styling with Tailwind
@@ -200,6 +213,7 @@
   - [ ] 12.7 Add brand asset integration when provided
 
 - [ ] 13.0 Testing Suite (Unit and E2E)
+
   - [ ] 13.1 Write unit tests for all utility functions and services
   - [ ] 13.2 Create component tests for all React components
   - [ ] 13.3 Implement API route testing with mocked Firebase
@@ -209,6 +223,7 @@
   - [ ] 13.7 Set up CI/CD pipeline with automated testing
 
 - [ ] 14.0 Error Handling and Edge Cases
+
   - [ ] 14.1 Implement comprehensive error boundaries
   - [ ] 14.2 Add GPS permission denied handling
   - [ ] 14.3 Handle network connectivity issues
