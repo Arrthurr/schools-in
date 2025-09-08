@@ -8,7 +8,7 @@ import {
   getSessionsByUser,
   COLLECTIONS,
 } from "../firebase/firestore";
-import { SessionData } from "../utils/session";
+import { SessionData, calculateSessionDuration } from "../utils/session";
 import { Coordinates } from "../utils/location";
 import { useAuth } from "./useAuth";
 
@@ -168,15 +168,26 @@ export const useSession = (): UseSessionReturn => {
         // Cast Session array to SessionData array via unknown
         const convertedSessions = result.sessions as unknown as SessionData[];
 
+        // Ensure all completed sessions have duration calculated
+        const sessionsWithDuration = convertedSessions.map((session) => {
+          if (session.status === "completed" && !session.duration && session.checkInTime && session.checkOutTime) {
+            return {
+              ...session,
+              duration: calculateSessionDuration(session.checkInTime, session.checkOutTime),
+            };
+          }
+          return session;
+        });
+
         // Find active session
-        for (const session of convertedSessions) {
+        for (const session of sessionsWithDuration) {
           if (session.status === "active") {
             activeSession = session;
             break;
           }
         }
 
-        setSessions(convertedSessions);
+        setSessions(sessionsWithDuration);
         setCurrentSession(activeSession);
         setTotalSessions(result.total);
         setHasMore(result.hasMore);

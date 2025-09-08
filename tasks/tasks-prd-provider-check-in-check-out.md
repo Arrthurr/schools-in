@@ -171,7 +171,7 @@
   - [x] 8.2 Implement pagination for session lists
   - [x] 8.3 Add session filtering by date range and school
   - [x] 8.4 Create session detail view with full information
-  - [ ] 8.5 Implement session duration calculations and display
+  - [x] 8.5 Implement session duration calculations and display
   - [ ] 8.6 Add session status indicators (active, completed, error)
 
 - [ ] 9.0 Admin Panel and School Management

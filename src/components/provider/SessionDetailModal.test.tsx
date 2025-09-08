@@ -64,8 +64,10 @@ describe("SessionDetailModal Component", () => {
     expect(screen.getByText("Session ID: session-123")).toBeInTheDocument();
     expect(screen.getByText("Walter Payton HS")).toBeInTheDocument();
     expect(screen.getByText("Completed")).toBeInTheDocument();
-    expect(screen.getByText("8h")).toBeInTheDocument();
-    expect(screen.getByText("Great session with the students")).toBeInTheDocument();
+    expect(screen.getByText("8 hours")).toBeInTheDocument();
+    expect(
+      screen.getByText("Great session with the students")
+    ).toBeInTheDocument();
   });
 
   it("renders modal with active session details", () => {
@@ -80,7 +82,9 @@ describe("SessionDetailModal Component", () => {
 
     expect(screen.getByText("Session Details")).toBeInTheDocument();
     expect(screen.getByText("Session ID: session-456")).toBeInTheDocument();
-    expect(screen.getByText("Bethesda International Academy")).toBeInTheDocument();
+    expect(
+      screen.getByText("Bethesda International Academy")
+    ).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.queryByText("Check-out Time")).not.toBeInTheDocument();
   });
@@ -135,7 +139,9 @@ describe("SessionDetailModal Component", () => {
     );
 
     expect(screen.queryByText("Notes")).not.toBeInTheDocument();
-    expect(screen.queryByText("Great session with the students")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Great session with the students")
+    ).not.toBeInTheDocument();
   });
 
   it("calls onClose when close button is clicked", () => {

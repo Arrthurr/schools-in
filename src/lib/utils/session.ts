@@ -28,18 +28,42 @@ export const calculateSessionDuration = (checkInTime: Timestamp, checkOutTime?: 
 
 // Format duration for display
 export const formatDuration = (minutes: number): string => {
+  if (minutes <= 0) {
+    return "0m";
+  }
+
   if (minutes < 60) {
     return `${minutes}m`;
   }
-  
+
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  
+
   if (remainingMinutes === 0) {
     return `${hours}h`;
   }
-  
+
   return `${hours}h ${remainingMinutes}m`;
+};
+
+// Format duration in a more detailed way for modals/details
+export const formatDurationDetailed = (minutes: number): string => {
+  if (minutes <= 0) {
+    return "0 minutes";
+  }
+
+  if (minutes < 60) {
+    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes === 0) {
+    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+  }
+
+  return `${hours} hour${hours !== 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`;
 };
 
 // Format session time for display

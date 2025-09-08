@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useSession } from "../../lib/hooks/useSession";
 import { SchoolService } from "../../lib/services/schoolService";
-import { formatDuration, formatSessionTime } from "../../lib/utils/session";
+import { formatDuration, formatSessionTime, calculateSessionDuration } from "../../lib/utils/session";
 import { SessionData } from "../../lib/utils/session";
 import {
   Card,
@@ -58,10 +58,13 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [showFilters, setShowFilters] = useState(false);
-
-  // Modal state
-  const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
+  const [selectedSession, setSelectedSession] = useState<SessionData | null>(
+    null
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [realTimeDurations, setRealTimeDurations] = useState<Map<string, number>>(
+    new Map()
+  );
 
   // Create school options for filter dropdown
   const schoolOptions = useMemo((): SelectOption[] => {
@@ -135,6 +138,27 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedSchoolId, startDate, endDate]);
+
+  // Update real-time durations for active sessions
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const updates = new Map<string, number>();
+
+      sessions.forEach((session) => {
+        if (session.status === "active" && session.checkInTime) {
+          const duration = Math.floor(
+            (now.getTime() - session.checkInTime.toDate().getTime()) / (1000 * 60)
+          );
+          updates.set(session.id!, duration);
+        }
+      });
+
+      setRealTimeDurations(updates);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [sessions]);
 
   // Get status badge variant
   const getStatusBadge = (status: string) => {
@@ -361,9 +385,17 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   <TableCell>
                     <div className="flex items-center">
                       <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {session.duration
-                        ? formatDuration(session.duration)
-                        : "N/A"}
+                      {(() => {
+                        if (session.status === "active") {
+                          const realTimeDuration = realTimeDurations.get(session.id!);
+                          return realTimeDuration !== undefined
+                            ? formatDuration(realTimeDuration)
+                            : "Calculating...";
+                        }
+                        return session.duration
+                          ? formatDuration(session.duration)
+                          : "N/A";
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(session.status)}</TableCell>
@@ -424,7 +456,11 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
       {/* Session Detail Modal */}
       <SessionDetailModal
         session={selectedSession}
-        schoolName={selectedSession ? schoolNames.get(selectedSession.schoolId) : undefined}
+        schoolName={
+          selectedSession
+            ? schoolNames.get(selectedSession.schoolId)
+            : undefined
+        }
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
