@@ -10,8 +10,9 @@ service cloud.firestore {
 
     // Users collection rules
     match /users/{userId} {
+      allow create: if request.auth.uid == userId;
       allow read, update: if request.auth.uid == userId || isAdmin();
-      allow create, delete: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // Locations collection rules
