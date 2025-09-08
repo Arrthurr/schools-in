@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { SessionHistory } from "./SessionHistory";
 import * as useAuthModule from "../../lib/hooks/useAuth";
@@ -13,7 +13,10 @@ jest.mock("../../lib/services/schoolService");
 
 const mockUseAuth = jest.spyOn(useAuthModule, "useAuth");
 const mockUseSession = jest.spyOn(useSessionModule, "useSession");
-const mockSchoolService = jest.spyOn(schoolServiceModule.SchoolService, "getSchoolById");
+const mockSchoolService = jest.spyOn(
+  schoolServiceModule.SchoolService,
+  "getSchoolById"
+);
 
 const mockUser = {
   uid: "user-123",
@@ -42,8 +45,14 @@ const mockCompletedSession = {
   schoolId: "school-1",
   checkInTime: Timestamp.fromDate(new Date(Date.now() - 2 * 60 * 60 * 1000)), // 2 hours ago
   checkOutTime: Timestamp.fromDate(new Date(Date.now() - 30 * 60 * 1000)), // 30 minutes ago
-  checkInLocation: { latitude: 41.90191443941818, longitude: -87.63472443763325 },
-  checkOutLocation: { latitude: 41.90191443941818, longitude: -87.63472443763325 },
+  checkInLocation: {
+    latitude: 41.90191443941818,
+    longitude: -87.63472443763325,
+  },
+  checkOutLocation: {
+    latitude: 41.90191443941818,
+    longitude: -87.63472443763325,
+  },
   status: "completed" as const,
   duration: 90, // 1.5 hours
 };
@@ -53,7 +62,10 @@ const mockActiveSession = {
   userId: "user-123",
   schoolId: "school-2",
   checkInTime: Timestamp.fromDate(new Date(Date.now() - 30 * 60 * 1000)), // 30 minutes ago
-  checkInLocation: { latitude: 41.90191443941818, longitude: -87.63472443763325 },
+  checkInLocation: {
+    latitude: 41.90191443941818,
+    longitude: -87.63472443763325,
+  },
   status: "active" as const,
 };
 
@@ -82,6 +94,8 @@ describe("SessionHistory Component", () => {
       sessions: [],
       loading: false,
       error: null,
+      totalSessions: 0,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -97,6 +111,8 @@ describe("SessionHistory Component", () => {
       sessions: [],
       loading: true,
       error: null,
+      totalSessions: 0,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -115,6 +131,8 @@ describe("SessionHistory Component", () => {
       sessions: [],
       loading: false,
       error: "Failed to load sessions",
+      totalSessions: 0,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -124,7 +142,9 @@ describe("SessionHistory Component", () => {
     render(<SessionHistory />);
 
     expect(screen.getByText("Session History")).toBeInTheDocument();
-    expect(screen.getByText("Error loading sessions: Failed to load sessions")).toBeInTheDocument();
+    expect(
+      screen.getByText("Error loading sessions: Failed to load sessions")
+    ).toBeInTheDocument();
     expect(screen.getByText("Retry")).toBeInTheDocument();
   });
 
@@ -134,6 +154,8 @@ describe("SessionHistory Component", () => {
       sessions: [mockActiveSession], // Only active session
       loading: false,
       error: null,
+      totalSessions: 1,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -144,7 +166,9 @@ describe("SessionHistory Component", () => {
 
     expect(screen.getByText("Session History")).toBeInTheDocument();
     expect(screen.getByText("No completed sessions yet")).toBeInTheDocument();
-    expect(screen.getByText(/View your past check-in sessions/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/View your past check-in sessions/)
+    ).toBeInTheDocument();
   });
 
   it("renders completed sessions correctly", async () => {
@@ -153,6 +177,8 @@ describe("SessionHistory Component", () => {
       sessions: [mockCompletedSession, mockActiveSession],
       loading: false,
       error: null,
+      totalSessions: 2,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -162,7 +188,9 @@ describe("SessionHistory Component", () => {
     render(<SessionHistory />);
 
     expect(screen.getByText("Session History")).toBeInTheDocument();
-    expect(screen.getByText(/View your past check-in sessions/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/View your past check-in sessions/)
+    ).toBeInTheDocument();
 
     // Wait for school name to load
     await waitFor(() => {
@@ -176,7 +204,7 @@ describe("SessionHistory Component", () => {
   it("loads sessions on mount", () => {
     render(<SessionHistory />);
 
-    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid);
+    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 1, 10);
   });
 
   it("retries loading sessions when retry button is clicked", () => {
@@ -185,6 +213,8 @@ describe("SessionHistory Component", () => {
       sessions: [],
       loading: false,
       error: "Network error",
+      totalSessions: 0,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -205,6 +235,8 @@ describe("SessionHistory Component", () => {
       sessions: [mockCompletedSession],
       loading: false,
       error: null,
+      totalSessions: 1,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -216,7 +248,7 @@ describe("SessionHistory Component", () => {
     const refreshButton = screen.getByText("Refresh");
     refreshButton.click();
 
-    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid);
+    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 1, 10);
   });
 
   it("loads school names for sessions", async () => {
@@ -225,6 +257,8 @@ describe("SessionHistory Component", () => {
       sessions: [mockCompletedSession],
       loading: false,
       error: null,
+      totalSessions: 1,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -246,6 +280,8 @@ describe("SessionHistory Component", () => {
       sessions: [mockCompletedSession],
       loading: false,
       error: null,
+      totalSessions: 1,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -267,6 +303,8 @@ describe("SessionHistory Component", () => {
       sessions: [mockCompletedSession],
       loading: false,
       error: null,
+      totalSessions: 1,
+      hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
       loadSessions: mockLoadSessions,
@@ -278,5 +316,133 @@ describe("SessionHistory Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Unknown School")).toBeInTheDocument();
     });
+  });
+
+  it("displays pagination controls when there are sessions", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 25,
+      hasMore: true,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    expect(screen.getByText("Showing 1 to 10 of 25 sessions")).toBeInTheDocument();
+    expect(screen.getByText("Page 1 of 3")).toBeInTheDocument();
+    expect(screen.getByText("Previous")).toBeInTheDocument();
+    expect(screen.getByText("Next")).toBeInTheDocument();
+  });
+
+  it("disables previous button on first page", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 25,
+      hasMore: true,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const previousButton = screen.getByText("Previous");
+    expect(previousButton).toBeDisabled();
+  });
+
+  it("enables next button when there are more sessions", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 25,
+      hasMore: true,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const nextButton = screen.getByText("Next");
+    expect(nextButton).not.toBeDisabled();
+  });
+
+  it("disables next button when there are no more sessions", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 1,
+      hasMore: false,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const nextButton = screen.getByText("Next");
+    expect(nextButton).toBeDisabled();
+  });
+
+  it("calls loadSessions with pagination parameters when navigating", async () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 25,
+      hasMore: true,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const nextButton = screen.getByText("Next");
+    fireEvent.click(nextButton);
+
+    await waitFor(() => {
+      expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 2, 10);
+    });
+  });
+
+  it("resets to page 1 when refresh button is clicked", () => {
+    mockUseSession.mockReturnValue({
+      currentSession: null,
+      sessions: [mockCompletedSession],
+      loading: false,
+      error: null,
+      totalSessions: 25,
+      hasMore: true,
+      checkIn: jest.fn(),
+      checkOut: jest.fn(),
+      loadSessions: mockLoadSessions,
+      clearError: jest.fn(),
+    });
+
+    render(<SessionHistory />);
+
+    const refreshButton = screen.getByText("Refresh");
+    refreshButton.click();
+
+    expect(mockLoadSessions).toHaveBeenCalledWith(mockUser.uid, 1, 10);
   });
 });

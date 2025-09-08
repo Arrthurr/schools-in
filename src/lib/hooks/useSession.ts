@@ -17,9 +17,11 @@ interface UseSessionReturn {
   sessions: SessionData[];
   loading: boolean;
   error: string | null;
+  totalSessions: number;
+  hasMore: boolean;
   checkIn: (schoolId: string, location: Coordinates) => Promise<void>;
   checkOut: (sessionId: string, location: Coordinates) => Promise<void>;
-  loadSessions: (userId?: string) => Promise<void>;
+  loadSessions: (userId?: string, page?: number, pageSize?: number) => Promise<void>;
   clearError: () => void;
 }
 
@@ -31,6 +33,8 @@ export const useSession = (): UseSessionReturn => {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const checkIn = useCallback(
     async (schoolId: string, location: Coordinates) => {
@@ -120,7 +124,7 @@ export const useSession = (): UseSessionReturn => {
   );
 
   const loadSessions = useCallback(
-    async (userId?: string) => {
+    async (userId?: string, page: number = 1, pageSize: number = 10) => {
       const targetUserId = userId || user?.uid;
 
       if (!targetUserId) {
@@ -132,11 +136,11 @@ export const useSession = (): UseSessionReturn => {
       setError(null);
 
       try {
-        const sessionsData = await getSessionsByUser(targetUserId);
+        const result = await getSessionsByUser(targetUserId, page, pageSize);
         let activeSession: SessionData | null = null;
 
         // Cast Session array to SessionData array via unknown
-        const convertedSessions = sessionsData as unknown as SessionData[];
+        const convertedSessions = result.sessions as unknown as SessionData[];
 
         // Find active session
         for (const session of convertedSessions) {
@@ -148,6 +152,8 @@ export const useSession = (): UseSessionReturn => {
 
         setSessions(convertedSessions);
         setCurrentSession(activeSession);
+        setTotalSessions(result.total);
+        setHasMore(result.hasMore);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load sessions",
@@ -178,6 +184,8 @@ export const useSession = (): UseSessionReturn => {
     sessions,
     loading,
     error,
+    totalSessions,
+    hasMore,
     checkIn,
     checkOut,
     loadSessions,

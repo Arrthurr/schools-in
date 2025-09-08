@@ -39,8 +39,12 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   className = "",
 }) => {
   const { user } = useAuth();
-  const { sessions, loading, error, loadSessions } = useSession();
-  const [schoolNames, setSchoolNames] = useState<Map<string, string>>(new Map());
+  const { sessions, loading, error, loadSessions, totalSessions, hasMore } = useSession();
+  const [schoolNames, setSchoolNames] = useState<Map<string, string>>(
+    new Map()
+  );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
 
   // Load school names for sessions
   useEffect(() => {
@@ -70,29 +74,46 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
     }
   }, [sessions]);
 
-  // Load sessions on component mount
+  // Load sessions on component mount and when page changes
   useEffect(() => {
     if (user?.uid) {
-      loadSessions(user.uid);
+      loadSessions(user.uid, currentPage, pageSize);
     }
-  }, [user?.uid, loadSessions]);
+  }, [user?.uid, loadSessions, currentPage, pageSize]);
 
   // Get status badge variant
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>;
+        return (
+          <Badge variant="default" className="bg-green-100 text-green-800">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Completed
+          </Badge>
+        );
       case "active":
-        return <Badge variant="default" className="bg-blue-100 text-blue-800"><Clock className="w-3 h-3 mr-1" />Active</Badge>;
+        return (
+          <Badge variant="default" className="bg-blue-100 text-blue-800">
+            <Clock className="w-3 h-3 mr-1" />
+            Active
+          </Badge>
+        );
       case "error":
-        return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />Error</Badge>;
+        return (
+          <Badge variant="destructive">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            Error
+          </Badge>
+        );
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
   // Filter out active sessions for history view
-  const completedSessions = sessions.filter(session => session.status === "completed");
+  const completedSessions = sessions.filter(
+    (session) => session.status === "completed"
+  );
 
   if (loading) {
     return (
@@ -102,9 +123,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             <Calendar className="w-5 h-5 mr-2" />
             Session History
           </CardTitle>
-          <CardDescription>
-            View your past check-in sessions
-          </CardDescription>
+          <CardDescription>View your past check-in sessions</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -124,9 +143,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             <Calendar className="w-5 h-5 mr-2" />
             Session History
           </CardTitle>
-          <CardDescription>
-            View your past check-in sessions
-          </CardDescription>
+          <CardDescription>View your past check-in sessions</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8 text-red-600">
@@ -134,7 +151,10 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             Error loading sessions: {error}
           </div>
           <div className="flex justify-center mt-4">
-            <Button onClick={() => user?.uid && loadSessions(user.uid)} variant="outline">
+            <Button
+              onClick={() => user?.uid && loadSessions(user.uid)}
+              variant="outline"
+            >
               <RefreshCw className="w-4 h-4 mr-2" />
               Retry
             </Button>
@@ -154,11 +174,14 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
               Session History
             </CardTitle>
             <CardDescription>
-              View your past check-in sessions ({completedSessions.length} total)
+              View your past check-in sessions ({totalSessions} total, page {currentPage} of {Math.ceil(totalSessions / pageSize)})
             </CardDescription>
           </div>
           <Button
-            onClick={() => user?.uid && loadSessions(user.uid)}
+            onClick={() => {
+              setCurrentPage(1);
+              user?.uid && loadSessions(user.uid, 1, pageSize);
+            }}
             variant="outline"
             size="sm"
           >
@@ -172,7 +195,10 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
           <div className="text-center py-8 text-muted-foreground">
             <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No completed sessions yet</p>
-            <p className="text-sm">Your session history will appear here after you check out from schools</p>
+            <p className="text-sm">
+              Your session history will appear here after you check out from
+              schools
+            </p>
           </div>
         ) : (
           <Table>
@@ -198,21 +224,54 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                     {formatSessionTime(session.checkInTime)}
                   </TableCell>
                   <TableCell>
-                    {session.checkOutTime ? formatSessionTime(session.checkOutTime) : "N/A"}
+                    {session.checkOutTime
+                      ? formatSessionTime(session.checkOutTime)
+                      : "N/A"}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
                       <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {session.duration ? formatDuration(session.duration) : "N/A"}
+                      {session.duration
+                        ? formatDuration(session.duration)
+                        : "N/A"}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    {getStatusBadge(session.status)}
-                  </TableCell>
+                  <TableCell>{getStatusBadge(session.status)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        )}
+
+        {/* Pagination Controls */}
+        {completedSessions.length > 0 && (
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {Math.min((currentPage - 1) * pageSize + 1, totalSessions)} to{" "}
+              {Math.min(currentPage * pageSize, totalSessions)} of {totalSessions} sessions
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                variant="outline"
+                size="sm"
+              >
+                Previous
+              </Button>
+              <span className="text-sm">
+                Page {currentPage} of {Math.ceil(totalSessions / pageSize)}
+              </span>
+              <Button
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                disabled={!hasMore}
+                variant="outline"
+                size="sm"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

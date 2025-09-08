@@ -98,18 +98,39 @@ export const getLocationsByProvider = async (
 
 export const getSessionsByUser = async (
   userId: string,
-  limitCount: number = 50,
-): Promise<Session[]> => {
+  page: number = 1,
+  pageSize: number = 10,
+): Promise<{ sessions: Session[]; total: number; hasMore: boolean }> => {
+  // First, get total count
+  const countQuery = query(
+    collection(db, COLLECTIONS.SESSIONS),
+    where("userId", "==", userId),
+  );
+  const countSnapshot = await getDocs(countQuery);
+  const total = countSnapshot.size;
+
+  // Calculate offset for pagination
+  const offset = (page - 1) * pageSize;
+
+  // Get paginated results
   const q = query(
     collection(db, COLLECTIONS.SESSIONS),
     where("userId", "==", userId),
     orderBy("checkInTime", "desc"),
-    limit(limitCount),
+    limit(pageSize + offset + 1), // Get one extra to check if there are more
   );
+
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(
+  const allDocs = querySnapshot.docs;
+
+  // Apply offset and limit
+  const sessions = allDocs.slice(offset, offset + pageSize).map(
     (doc) => ({ id: doc.id, ...doc.data() }) as Session,
   );
+
+  const hasMore = allDocs.length > offset + pageSize;
+
+  return { sessions, total, hasMore };
 };
 
 export const getActiveSessions = async (): Promise<Session[]> => {
