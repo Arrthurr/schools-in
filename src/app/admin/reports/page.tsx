@@ -9,13 +9,14 @@ import { AdminNavigation } from "@/components/admin/AdminNavigation";
 import { SessionReports } from "@/components/admin/SessionReports";
 import { AttendanceSummary } from "@/components/admin/AttendanceSummary";
 import { SessionManagement } from "@/components/admin/SessionManagement";
+import { SessionAnalytics } from "@/components/admin/SessionAnalytics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BarChart3, UserCheck, Edit } from "lucide-react";
+import { BarChart3, UserCheck, Edit, TrendingUp } from "lucide-react";
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<
-    "sessions" | "attendance" | "management"
+    "sessions" | "attendance" | "management" | "analytics"
   >("sessions");
 
   return (
@@ -54,6 +55,14 @@ export default function ReportsPage() {
                   <Edit className="h-4 w-4" />
                   Session Management
                 </Button>
+                <Button
+                  variant={activeTab === "analytics" ? "default" : "outline"}
+                  onClick={() => setActiveTab("analytics")}
+                  className="flex items-center gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Analytics
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -62,6 +71,7 @@ export default function ReportsPage() {
           {activeTab === "sessions" && <SessionReports />}
           {activeTab === "attendance" && <AttendanceSummary />}
           {activeTab === "management" && <SessionManagement />}
+          {activeTab === "analytics" && <SessionAnalytics />}
         </div>
       </AdminNavigation>
     </ProtectedRoute>
