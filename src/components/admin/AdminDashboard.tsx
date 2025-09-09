@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,7 +21,7 @@ import {
   MapPin,
   Activity,
   Calendar,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -30,7 +36,7 @@ interface DashboardStats {
 
 interface RecentActivity {
   id: string;
-  type: 'check-in' | 'check-out' | 'school-added' | 'provider-assigned';
+  type: "check-in" | "check-out" | "school-added" | "provider-assigned";
   message: string;
   timestamp: Date;
   providerName?: string;
@@ -58,8 +64,8 @@ export function AdminDashboard() {
     try {
       // TODO: Replace with actual Firestore queries
       // Mock data for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       setStats({
         totalSchools: 15,
         activeProviders: 8,
@@ -71,31 +77,31 @@ export function AdminDashboard() {
 
       setRecentActivity([
         {
-          id: '1',
-          type: 'check-in',
-          message: 'John Doe checked in at Walter Payton HS',
+          id: "1",
+          type: "check-in",
+          message: "John Doe checked in at Walter Payton HS",
           timestamp: new Date(Date.now() - 15 * 60 * 1000),
-          providerName: 'John Doe',
-          schoolName: 'Walter Payton HS'
+          providerName: "John Doe",
+          schoolName: "Walter Payton HS",
         },
         {
-          id: '2',
-          type: 'check-out',
-          message: 'Jane Smith checked out from Estrella Foothills HS',
+          id: "2",
+          type: "check-out",
+          message: "Jane Smith checked out from Estrella Foothills HS",
           timestamp: new Date(Date.now() - 45 * 60 * 1000),
-          providerName: 'Jane Smith',
-          schoolName: 'Estrella Foothills HS'
+          providerName: "Jane Smith",
+          schoolName: "Estrella Foothills HS",
         },
         {
-          id: '3',
-          type: 'school-added',
-          message: 'New school added: Cambridge School',
+          id: "3",
+          type: "school-added",
+          message: "New school added: Cambridge School",
           timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          schoolName: 'Cambridge School'
-        }
+          schoolName: "Cambridge School",
+        },
       ]);
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error("Error loading dashboard data:", error);
     } finally {
       setLoading(false);
     }
@@ -103,27 +109,29 @@ export function AdminDashboard() {
 
   const formatRelativeTime = (date: Date) => {
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
+    const diffInMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60)
+    );
+
+    if (diffInMinutes < 1) return "Just now";
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    
+
     const diffInHours = Math.floor(diffInMinutes / 60);
     if (diffInHours < 24) return `${diffInHours}h ago`;
-    
+
     const diffInDays = Math.floor(diffInHours / 24);
     return `${diffInDays}d ago`;
   };
 
-  const getActivityIcon = (type: RecentActivity['type']) => {
+  const getActivityIcon = (type: RecentActivity["type"]) => {
     switch (type) {
-      case 'check-in':
+      case "check-in":
         return <MapPin className="h-4 w-4 text-green-600" />;
-      case 'check-out':
+      case "check-out":
         return <Clock className="h-4 w-4 text-blue-600" />;
-      case 'school-added':
+      case "school-added":
         return <School className="h-4 w-4 text-purple-600" />;
-      case 'provider-assigned':
+      case "provider-assigned":
         return <Users className="h-4 w-4 text-orange-600" />;
       default:
         return <Activity className="h-4 w-4 text-gray-600" />;
@@ -182,15 +190,15 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalSchools}</div>
-            <p className="text-xs text-muted-foreground">
-              +2 from last month
-            </p>
+            <p className="text-xs text-muted-foreground">+2 from last month</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Providers</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Providers
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -203,24 +211,28 @@ export function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Check-ins</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Today's Check-ins
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.todayCheckIns}</div>
-            <p className="text-xs text-muted-foreground">
-              +15% from yesterday
-            </p>
+            <p className="text-xs text-muted-foreground">+15% from yesterday</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Session Duration</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Avg Session Duration
+            </CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.avgSessionDuration}h</div>
+            <div className="text-2xl font-bold">
+              {stats.avgSessionDuration}h
+            </div>
             <p className="text-xs text-muted-foreground">
               From {stats.totalSessions} total sessions
             </p>
@@ -302,11 +314,17 @@ export function AdminDashboard() {
           <CardHeader>
             <CardTitle className="text-orange-800">Active Sessions</CardTitle>
             <CardDescription className="text-orange-700">
-              {stats.activeSessions} provider{stats.activeSessions !== 1 ? 's are' : ' is'} currently checked in
+              {stats.activeSessions} provider
+              {stats.activeSessions !== 1 ? "s are" : " is"} currently checked
+              in
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" size="sm" className="text-orange-800 border-orange-300">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-orange-800 border-orange-300"
+            >
               View Active Sessions
             </Button>
           </CardContent>

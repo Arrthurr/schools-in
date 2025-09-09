@@ -23,7 +23,7 @@ import {
   LogOut,
   Bell,
   ChevronDown,
-  Activity
+  Activity,
 } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { logOut } from "@/lib/firebase/auth";
@@ -46,32 +46,32 @@ const navigationItems: NavItem[] = [
     href: "/admin",
     label: "Dashboard",
     icon: LayoutDashboard,
-    description: "Overview and statistics"
+    description: "Overview and statistics",
   },
   {
     href: "/admin/schools",
     label: "Schools",
     icon: School,
-    description: "Manage school locations"
+    description: "Manage school locations",
   },
   {
     href: "/admin/reports",
     label: "Reports",
     icon: FileText,
-    description: "Session reports and exports"
+    description: "Session reports and exports",
   },
   {
     href: "/admin/users",
     label: "Users",
     icon: Users,
-    description: "Manage providers and admins"
+    description: "Manage providers and admins",
   },
   {
     href: "/admin/settings",
     label: "Settings",
     icon: Settings,
-    description: "System configuration"
-  }
+    description: "System configuration",
+  },
 ];
 
 export function AdminNavigation({ children }: AdminNavigationProps) {
@@ -112,16 +112,17 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const isActive = isActiveRoute(item.href);
-          
+
           return (
             <Link
               key={item.href}
               href={item.href as any}
               className={`
                 flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                ${isActive 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }
               `}
               onClick={() => setMobileNavOpen(false)}
@@ -197,7 +198,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              
+
               {/* Breadcrumb */}
               <div className="hidden sm:flex items-center space-x-2 text-sm text-muted-foreground">
                 <Link href="/admin" className="hover:text-foreground">
@@ -207,7 +208,11 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
                   <>
                     <span>/</span>
                     <span className="text-foreground">
-                      {navigationItems.find(item => pathname.startsWith(item.href) && item.href !== "/admin")?.label || "Page"}
+                      {navigationItems.find(
+                        (item) =>
+                          pathname.startsWith(item.href) &&
+                          item.href !== "/admin"
+                      )?.label || "Page"}
                     </span>
                   </>
                 )}
@@ -231,9 +236,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
         </header>
 
         {/* Page Content */}
-        <main className="p-4 lg:p-6">
-          {children}
-        </main>
+        <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
   );
