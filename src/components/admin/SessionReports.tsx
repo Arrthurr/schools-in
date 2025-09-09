@@ -26,8 +26,9 @@ import {
   TrendingUp,
   School,
   AlertCircle,
+  FileDown,
 } from "lucide-react";
-import { formatDuration, getSessionStatusConfig } from "@/lib/utils/session";
+import { formatDuration, getSessionStatusConfig, calculateSessionDuration } from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
 import { getCollection, COLLECTIONS } from "@/lib/firebase/firestore";
 import { Timestamp } from "firebase/firestore";
@@ -82,31 +83,55 @@ export function SessionReports() {
   });
 
   // Calculate date range based on filter selection
-  const getDateRange = useCallback((range: ReportFilters["dateRange"]) => {
-    const now = new Date();
-    let startDate: Date;
-    let endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  const getDateRange = useCallback(
+    (range: ReportFilters["dateRange"]) => {
+      const now = new Date();
+      let startDate: Date;
+      let endDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59
+      );
 
-    switch (range) {
-      case "today":
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-        break;
-      case "week":
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay());
-        startDate = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate(), 0, 0, 0);
-        break;
-      case "month":
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-        break;
-      case "custom":
-        return { startDate: filters.startDate, endDate: filters.endDate };
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-    }
+      switch (range) {
+        case "today":
+          startDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            0,
+            0,
+            0
+          );
+          break;
+        case "week":
+          const weekStart = new Date(now);
+          weekStart.setDate(now.getDate() - now.getDay());
+          startDate = new Date(
+            weekStart.getFullYear(),
+            weekStart.getMonth(),
+            weekStart.getDate(),
+            0,
+            0,
+            0
+          );
+          break;
+        case "month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+          break;
+        case "custom":
+          return { startDate: filters.startDate, endDate: filters.endDate };
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      }
 
-    return { startDate, endDate };
-  }, [filters.startDate, filters.endDate]);
+      return { startDate, endDate };
+    },
+    [filters.startDate, filters.endDate]
+  );
 
   // Load initial data
   useEffect(() => {
@@ -119,7 +144,9 @@ export function SessionReports() {
         ]);
 
         setSchools(schoolsData as School[]);
-        setProviders((usersData as User[]).filter((user: User) => user.role === "provider"));
+        setProviders(
+          (usersData as User[]).filter((user: User) => user.role === "provider")
+        );
       } catch (err) {
         console.error("Error loading initial data:", err);
         setError("Failed to load filter data");
@@ -140,7 +167,7 @@ export function SessionReports() {
       // Get all sessions first, then filter client-side
       // In a production app, you'd want to implement server-side filtering
       const allSessions = await getCollection(COLLECTIONS.SESSIONS);
-      
+
       // Apply filters
       let filteredSessions = allSessions as SessionData[];
 
@@ -149,7 +176,10 @@ export function SessionReports() {
       if (dateRange.startDate && dateRange.endDate) {
         filteredSessions = filteredSessions.filter((session) => {
           const sessionDate = session.checkInTime.toDate();
-          return sessionDate >= dateRange.startDate! && sessionDate <= dateRange.endDate!;
+          return (
+            sessionDate >= dateRange.startDate! &&
+            sessionDate <= dateRange.endDate!
+          );
         });
       }
 
@@ -176,26 +206,33 @@ export function SessionReports() {
 
       // Calculate summary statistics
       const totalSessions = filteredSessions.length;
-      const completedSessions = filteredSessions.filter(s => s.status === "completed");
-      const activeSessions = filteredSessions.filter(s => s.status === "active");
-      
+      const completedSessions = filteredSessions.filter(
+        (s) => s.status === "completed"
+      );
+      const activeSessions = filteredSessions.filter(
+        (s) => s.status === "active"
+      );
+
       const totalDuration = completedSessions.reduce((sum, session) => {
         if (session.checkInTime && session.checkOutTime) {
           const duration = Math.round(
-            (session.checkOutTime.toMillis() - session.checkInTime.toMillis()) / (1000 * 60)
+            (session.checkOutTime.toMillis() - session.checkInTime.toMillis()) /
+              (1000 * 60)
           );
           return sum + duration;
         }
         return sum;
       }, 0);
 
-      const averageSessionDuration = completedSessions.length > 0 
-        ? Math.round(totalDuration / completedSessions.length) 
-        : 0;
+      const averageSessionDuration =
+        completedSessions.length > 0
+          ? Math.round(totalDuration / completedSessions.length)
+          : 0;
 
-      const completionRate = totalSessions > 0 
-        ? Math.round((completedSessions.length / totalSessions) * 100) 
-        : 0;
+      const completionRate =
+        totalSessions > 0
+          ? Math.round((completedSessions.length / totalSessions) * 100)
+          : 0;
 
       setSummary({
         totalSessions,
@@ -249,6 +286,57 @@ export function SessionReports() {
     }));
   };
 
+  // CSV Export functionality
+  const exportToCSV = () => {
+    if (sessions.length === 0) {
+      setError("No data to export");
+      return;
+    }
+
+    const headers = [
+      "Session ID",
+      "Provider Name",
+      "School Name",
+      "Check In Time",
+      "Check Out Time",
+      "Duration",
+      "Status",
+      "Check In Location",
+      "Check Out Location"
+    ];
+
+    const csvData = sessions.map((session) => [
+      session.id || "N/A",
+      getProviderName(session.userId),
+      getSchoolName(session.schoolId),
+      session.checkInTime ? new Date(session.checkInTime.toDate()).toLocaleString() : "N/A",
+      session.checkOutTime ? new Date(session.checkOutTime.toDate()).toLocaleString() : "N/A",
+      session.checkInTime && session.checkOutTime
+        ? formatDuration(calculateSessionDuration(session.checkInTime, session.checkOutTime))
+        : "N/A",
+      getSessionStatusConfig(session.status).label,
+      session.checkInLocation ? `${session.checkInLocation.latitude}, ${session.checkInLocation.longitude}` : "N/A",
+      session.checkOutLocation ? `${session.checkOutLocation.latitude}, ${session.checkOutLocation.longitude}` : "N/A"
+    ]);
+
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `session-report-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Report Filters */}
@@ -272,7 +360,9 @@ export function SessionReports() {
                   { value: "custom", label: "Custom Range" },
                 ]}
                 value={filters.dateRange}
-                onValueChange={(value) => handleFilterChange("dateRange", value)}
+                onValueChange={(value) =>
+                  handleFilterChange("dateRange", value)
+                }
                 placeholder="Select date range"
               />
             </div>
@@ -289,7 +379,9 @@ export function SessionReports() {
                   })),
                 ]}
                 value={filters.providerId || ""}
-                onValueChange={(value) => handleFilterChange("providerId", value || undefined)}
+                onValueChange={(value) =>
+                  handleFilterChange("providerId", value || undefined)
+                }
                 placeholder="All Providers"
               />
             </div>
@@ -306,7 +398,9 @@ export function SessionReports() {
                   })),
                 ]}
                 value={filters.schoolId || ""}
-                onValueChange={(value) => handleFilterChange("schoolId", value || undefined)}
+                onValueChange={(value) =>
+                  handleFilterChange("schoolId", value || undefined)
+                }
                 placeholder="All Schools"
               />
             </div>
@@ -324,7 +418,9 @@ export function SessionReports() {
                   { value: "cancelled", label: "Cancelled" },
                 ]}
                 value={filters.status || ""}
-                onValueChange={(value) => handleFilterChange("status", value || undefined)}
+                onValueChange={(value) =>
+                  handleFilterChange("status", value || undefined)
+                }
                 placeholder="All Statuses"
               />
             </div>
@@ -338,8 +434,14 @@ export function SessionReports() {
                 <Input
                   id="startDate"
                   type="date"
-                  value={filters.startDate ? filters.startDate.toISOString().split("T")[0] : ""}
-                  onChange={(e) => handleDateChange("startDate", e.target.value)}
+                  value={
+                    filters.startDate
+                      ? filters.startDate.toISOString().split("T")[0]
+                      : ""
+                  }
+                  onChange={(e) =>
+                    handleDateChange("startDate", e.target.value)
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -347,7 +449,11 @@ export function SessionReports() {
                 <Input
                   id="endDate"
                   type="date"
-                  value={filters.endDate ? filters.endDate.toISOString().split("T")[0] : ""}
+                  value={
+                    filters.endDate
+                      ? filters.endDate.toISOString().split("T")[0]
+                      : ""
+                  }
                   onChange={(e) => handleDateChange("endDate", e.target.value)}
                 />
               </div>
@@ -368,6 +474,15 @@ export function SessionReports() {
             >
               Reset Filters
             </Button>
+            <Button
+              variant="outline"
+              onClick={exportToCSV}
+              disabled={sessions.length === 0}
+              className="flex items-center gap-2"
+            >
+              <FileDown className="h-4 w-4" />
+              Export CSV
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -386,7 +501,9 @@ export function SessionReports() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Sessions</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Sessions
+                </p>
                 <p className="text-2xl font-bold">{summary.totalSessions}</p>
               </div>
               <BarChart3 className="h-8 w-8 text-muted-foreground" />
@@ -398,8 +515,12 @@ export function SessionReports() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Duration</p>
-                <p className="text-2xl font-bold">{formatDuration(summary.totalDuration)}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Duration
+                </p>
+                <p className="text-2xl font-bold">
+                  {formatDuration(summary.totalDuration)}
+                </p>
               </div>
               <Clock className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -410,8 +531,12 @@ export function SessionReports() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Avg Session</p>
-                <p className="text-2xl font-bold">{formatDuration(summary.averageSessionDuration)}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Avg Session
+                </p>
+                <p className="text-2xl font-bold">
+                  {formatDuration(summary.averageSessionDuration)}
+                </p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -422,7 +547,9 @@ export function SessionReports() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Completion Rate</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Completion Rate
+                </p>
                 <p className="text-2xl font-bold">{summary.completionRate}%</p>
               </div>
               <Users className="h-8 w-8 text-muted-foreground" />
@@ -448,11 +575,15 @@ export function SessionReports() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="text-sm text-muted-foreground">Loading sessions...</div>
+              <div className="text-sm text-muted-foreground">
+                Loading sessions...
+              </div>
             </div>
           ) : sessions.length === 0 ? (
             <div className="flex items-center justify-center py-8">
-              <div className="text-sm text-muted-foreground">No sessions found for the selected filters</div>
+              <div className="text-sm text-muted-foreground">
+                No sessions found for the selected filters
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -469,10 +600,15 @@ export function SessionReports() {
                 </TableHeader>
                 <TableBody>
                   {sessions.map((session) => {
-                    const duration = session.checkInTime && session.checkOutTime
-                      ? Math.round((session.checkOutTime.toMillis() - session.checkInTime.toMillis()) / (1000 * 60))
-                      : 0;
-                    
+                    const duration =
+                      session.checkInTime && session.checkOutTime
+                        ? Math.round(
+                            (session.checkOutTime.toMillis() -
+                              session.checkInTime.toMillis()) /
+                              (1000 * 60)
+                          )
+                        : 0;
+
                     const statusStyle = getSessionStatusConfig(session.status);
 
                     return (
@@ -490,8 +626,8 @@ export function SessionReports() {
                           {session.checkInTime.toDate().toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          {session.checkOutTime 
-                            ? session.checkOutTime.toDate().toLocaleString() 
+                          {session.checkOutTime
+                            ? session.checkOutTime.toDate().toLocaleString()
                             : "--"}
                         </TableCell>
                         <TableCell>
