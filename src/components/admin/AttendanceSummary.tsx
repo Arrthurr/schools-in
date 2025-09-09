@@ -159,13 +159,29 @@ export function AttendanceSummary() {
           endOfWeek.setDate(startOfWeek.getDate() + 7);
           return { startDate: startOfWeek, endDate: endOfWeek };
         case "month":
-          const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-          const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+          const startOfMonth = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            1
+          );
+          const endOfMonth = new Date(
+            today.getFullYear(),
+            today.getMonth() + 1,
+            1
+          );
           return { startDate: startOfMonth, endDate: endOfMonth };
         case "quarter":
           const currentQuarter = Math.floor(today.getMonth() / 3);
-          const startOfQuarter = new Date(today.getFullYear(), currentQuarter * 3, 1);
-          const endOfQuarter = new Date(today.getFullYear(), (currentQuarter + 1) * 3, 1);
+          const startOfQuarter = new Date(
+            today.getFullYear(),
+            currentQuarter * 3,
+            1
+          );
+          const endOfQuarter = new Date(
+            today.getFullYear(),
+            (currentQuarter + 1) * 3,
+            1
+          );
           return { startDate: startOfQuarter, endDate: endOfQuarter };
         case "custom":
           return {
@@ -219,12 +235,15 @@ export function AttendanceSummary() {
 
       // Calculate provider attendance summaries
       const providerSummaries = calculateProviderAttendance(filteredSessions);
-      
+
       // Calculate school attendance summaries
       const schoolSummaries = calculateSchoolAttendance(filteredSessions);
 
       // Calculate overall statistics
-      const overallStats = calculateOverallStats(providerSummaries, schoolSummaries);
+      const overallStats = calculateOverallStats(
+        providerSummaries,
+        schoolSummaries
+      );
 
       setAttendanceData({
         providerSummaries,
@@ -242,7 +261,9 @@ export function AttendanceSummary() {
   }, [filters, loading, getDateRange]);
 
   // Calculate provider attendance data
-  const calculateProviderAttendance = (sessions: SessionData[]): ProviderAttendance[] => {
+  const calculateProviderAttendance = (
+    sessions: SessionData[]
+  ): ProviderAttendance[] => {
     const providerMap = new Map<string, ProviderAttendance>();
 
     sessions.forEach((session) => {
@@ -266,14 +287,17 @@ export function AttendanceSummary() {
       const provider = providerMap.get(providerId)!;
       (provider.totalDays as any).add(sessionDate);
       provider.totalSessions++;
-      
+
       if (session.checkOutTime) {
-        const duration = calculateSessionDuration(session.checkInTime, session.checkOutTime);
+        const duration = calculateSessionDuration(
+          session.checkInTime,
+          session.checkOutTime
+        );
         provider.totalDuration += duration;
       }
 
       (provider.schoolsVisited as any).add(session.schoolId);
-      
+
       const sessionDateTime = session.checkInTime.toDate();
       if (!provider.lastSession || sessionDateTime > provider.lastSession) {
         provider.lastSession = sessionDateTime;
@@ -285,15 +309,21 @@ export function AttendanceSummary() {
       ...provider,
       totalDays: (provider.totalDays as any).size,
       schoolsVisited: Array.from(provider.schoolsVisited as any),
-      averageSessionDuration: provider.totalSessions > 0 
-        ? Math.round(provider.totalDuration / provider.totalSessions)
-        : 0,
-      attendanceRate: calculateAttendanceRate(provider.totalDays as any, filters),
+      averageSessionDuration:
+        provider.totalSessions > 0
+          ? Math.round(provider.totalDuration / provider.totalSessions)
+          : 0,
+      attendanceRate: calculateAttendanceRate(
+        provider.totalDays as any,
+        filters
+      ),
     }));
   };
 
   // Calculate school attendance data
-  const calculateSchoolAttendance = (sessions: SessionData[]): SchoolAttendance[] => {
+  const calculateSchoolAttendance = (
+    sessions: SessionData[]
+  ): SchoolAttendance[] => {
     const schoolMap = new Map<string, SchoolAttendance>();
 
     sessions.forEach((session) => {
@@ -318,7 +348,10 @@ export function AttendanceSummary() {
       school.totalSessions++;
 
       if (session.checkOutTime) {
-        const duration = calculateSessionDuration(session.checkInTime, session.checkOutTime);
+        const duration = calculateSessionDuration(
+          session.checkInTime,
+          session.checkOutTime
+        );
         school.totalDuration += duration;
       }
     });
@@ -328,12 +361,16 @@ export function AttendanceSummary() {
       ...school,
       totalProviders: (school.totalProviders as any).size,
       providersVisited: Array.from(school.providersVisited as any),
-      averageSessionDuration: school.totalSessions > 0 
-        ? Math.round(school.totalDuration / school.totalSessions)
-        : 0,
-      coverageRate: providers.length > 0 
-        ? Math.round(((school.totalProviders as any).size / providers.length) * 100)
-        : 0,
+      averageSessionDuration:
+        school.totalSessions > 0
+          ? Math.round(school.totalDuration / school.totalSessions)
+          : 0,
+      coverageRate:
+        providers.length > 0
+          ? Math.round(
+              ((school.totalProviders as any).size / providers.length) * 100
+            )
+          : 0,
     }));
   };
 
@@ -344,22 +381,31 @@ export function AttendanceSummary() {
   ) => {
     const totalProviders = providerSummaries.length;
     const totalSchools = schoolSummaries.length;
-    const averageAttendanceRate = totalProviders > 0 
-      ? Math.round(providerSummaries.reduce((sum, p) => sum + p.attendanceRate, 0) / totalProviders)
-      : 0;
-    const totalSessionDays = providerSummaries.reduce((sum, p) => sum + p.totalDays, 0);
-    
-    const mostActiveProvider = providerSummaries.length > 0
-      ? providerSummaries.reduce((most, current) => 
-          current.totalSessions > most.totalSessions ? current : most
-        ).providerName
-      : "";
+    const averageAttendanceRate =
+      totalProviders > 0
+        ? Math.round(
+            providerSummaries.reduce((sum, p) => sum + p.attendanceRate, 0) /
+              totalProviders
+          )
+        : 0;
+    const totalSessionDays = providerSummaries.reduce(
+      (sum, p) => sum + p.totalDays,
+      0
+    );
 
-    const mostVisitedSchool = schoolSummaries.length > 0
-      ? schoolSummaries.reduce((most, current) => 
-          current.totalSessions > most.totalSessions ? current : most
-        ).schoolName
-      : "";
+    const mostActiveProvider =
+      providerSummaries.length > 0
+        ? providerSummaries.reduce((most, current) =>
+            current.totalSessions > most.totalSessions ? current : most
+          ).providerName
+        : "";
+
+    const mostVisitedSchool =
+      schoolSummaries.length > 0
+        ? schoolSummaries.reduce((most, current) =>
+            current.totalSessions > most.totalSessions ? current : most
+          ).schoolName
+        : "";
 
     return {
       totalProviders,
@@ -372,12 +418,20 @@ export function AttendanceSummary() {
   };
 
   // Calculate attendance rate based on expected working days
-  const calculateAttendanceRate = (totalDays: Set<string>, filters: AttendanceFilters): number => {
+  const calculateAttendanceRate = (
+    totalDays: Set<string>,
+    filters: AttendanceFilters
+  ): number => {
     const dateRange = getDateRange(filters.dateRange);
     if (!dateRange.startDate || !dateRange.endDate) return 0;
 
-    const totalWorkingDays = getWorkingDaysBetween(dateRange.startDate, dateRange.endDate);
-    return totalWorkingDays > 0 ? Math.round((totalDays.size / totalWorkingDays) * 100) : 0;
+    const totalWorkingDays = getWorkingDaysBetween(
+      dateRange.startDate,
+      dateRange.endDate
+    );
+    return totalWorkingDays > 0
+      ? Math.round((totalDays.size / totalWorkingDays) * 100)
+      : 0;
   };
 
   // Get working days between two dates (excluding weekends)
@@ -387,7 +441,8 @@ export function AttendanceSummary() {
 
     while (currentDate < endDate) {
       const dayOfWeek = currentDate.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday (0) or Saturday (6)
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        // Not Sunday (0) or Saturday (6)
         workingDays++;
       }
       currentDate.setDate(currentDate.getDate() + 1);
@@ -563,11 +618,15 @@ export function AttendanceSummary() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Providers</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Providers
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{attendanceData.overallStats.totalProviders}</div>
+            <div className="text-2xl font-bold">
+              {attendanceData.overallStats.totalProviders}
+            </div>
           </CardContent>
         </Card>
 
@@ -577,27 +636,37 @@ export function AttendanceSummary() {
             <School className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{attendanceData.overallStats.totalSchools}</div>
+            <div className="text-2xl font-bold">
+              {attendanceData.overallStats.totalSchools}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Attendance Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Avg Attendance Rate
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{attendanceData.overallStats.averageAttendanceRate}%</div>
+            <div className="text-2xl font-bold">
+              {attendanceData.overallStats.averageAttendanceRate}%
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Session Days</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Session Days
+            </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{attendanceData.overallStats.totalSessionDays}</div>
+            <div className="text-2xl font-bold">
+              {attendanceData.overallStats.totalSessionDays}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -607,7 +676,8 @@ export function AttendanceSummary() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserCheck className="h-5 w-5" />
-            Provider Attendance Summary ({attendanceData.providerSummaries.length} providers)
+            Provider Attendance Summary (
+            {attendanceData.providerSummaries.length} providers)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -638,22 +708,30 @@ export function AttendanceSummary() {
                       </TableCell>
                       <TableCell>{provider.totalDays}</TableCell>
                       <TableCell>{provider.totalSessions}</TableCell>
-                      <TableCell>{formatDuration(provider.totalDuration)}</TableCell>
-                      <TableCell>{formatDuration(provider.averageSessionDuration)}</TableCell>
+                      <TableCell>
+                        {formatDuration(provider.totalDuration)}
+                      </TableCell>
+                      <TableCell>
+                        {formatDuration(provider.averageSessionDuration)}
+                      </TableCell>
                       <TableCell>{provider.schoolsVisited.length}</TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={provider.attendanceRate >= 80 ? "default" : 
-                                  provider.attendanceRate >= 60 ? "secondary" : "destructive"}
+                        <Badge
+                          variant={
+                            provider.attendanceRate >= 80
+                              ? "default"
+                              : provider.attendanceRate >= 60
+                              ? "secondary"
+                              : "destructive"
+                          }
                         >
                           {provider.attendanceRate}%
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {provider.lastSession 
+                        {provider.lastSession
                           ? provider.lastSession.toLocaleDateString()
-                          : "N/A"
-                        }
+                          : "N/A"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -669,7 +747,10 @@ export function AttendanceSummary() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            School Coverage Summary ({attendanceData.schoolSummaries.length} schools)
+            School Coverage Summary ({
+              attendanceData.schoolSummaries.length
+            }{" "}
+            schools)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -698,12 +779,21 @@ export function AttendanceSummary() {
                       </TableCell>
                       <TableCell>{school.totalProviders}</TableCell>
                       <TableCell>{school.totalSessions}</TableCell>
-                      <TableCell>{formatDuration(school.totalDuration)}</TableCell>
-                      <TableCell>{formatDuration(school.averageSessionDuration)}</TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={school.coverageRate >= 50 ? "default" : 
-                                  school.coverageRate >= 25 ? "secondary" : "destructive"}
+                        {formatDuration(school.totalDuration)}
+                      </TableCell>
+                      <TableCell>
+                        {formatDuration(school.averageSessionDuration)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            school.coverageRate >= 50
+                              ? "default"
+                              : school.coverageRate >= 25
+                              ? "secondary"
+                              : "destructive"
+                          }
                         >
                           {school.coverageRate}%
                         </Badge>
@@ -718,7 +808,8 @@ export function AttendanceSummary() {
       </Card>
 
       {/* Key Insights */}
-      {(attendanceData.overallStats.mostActiveProvider || attendanceData.overallStats.mostVisitedSchool) && (
+      {(attendanceData.overallStats.mostActiveProvider ||
+        attendanceData.overallStats.mostVisitedSchool) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

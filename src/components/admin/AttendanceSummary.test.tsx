@@ -45,15 +45,21 @@ describe("AttendanceSummary Component", () => {
   it("renders provider and school attendance tables", () => {
     render(<AttendanceSummary />);
 
-    expect(screen.getByText("Provider Attendance Summary (0 providers)")).toBeInTheDocument();
-    expect(screen.getByText("School Coverage Summary (0 schools)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Provider Attendance Summary (0 providers)")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("School Coverage Summary (0 schools)")
+    ).toBeInTheDocument();
   });
 
   it("shows empty state messages", () => {
     render(<AttendanceSummary />);
 
     expect(
-      screen.getByText("No provider attendance data found for the selected filters")
+      screen.getByText(
+        "No provider attendance data found for the selected filters"
+      )
     ).toBeInTheDocument();
     expect(
       screen.getByText("No school coverage data found for the selected filters")

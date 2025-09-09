@@ -8,19 +8,22 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminNavigation } from "@/components/admin/AdminNavigation";
 import { SessionReports } from "@/components/admin/SessionReports";
 import { AttendanceSummary } from "@/components/admin/AttendanceSummary";
+import { SessionManagement } from "@/components/admin/SessionManagement";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BarChart3, UserCheck } from "lucide-react";
+import { BarChart3, UserCheck, Edit } from "lucide-react";
 
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<"sessions" | "attendance">("sessions");
+  const [activeTab, setActiveTab] = useState<
+    "sessions" | "attendance" | "management"
+  >("sessions");
 
   return (
     <ProtectedRoute roles={["admin"]}>
       <AdminNavigation>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">Reports & Export</h1>
+            <h1 className="text-3xl font-bold">Reports & Management</h1>
           </div>
 
           {/* Tab Navigation */}
@@ -43,6 +46,14 @@ export default function ReportsPage() {
                   <UserCheck className="h-4 w-4" />
                   Attendance Summary
                 </Button>
+                <Button
+                  variant={activeTab === "management" ? "default" : "outline"}
+                  onClick={() => setActiveTab("management")}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Session Management
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -50,6 +61,7 @@ export default function ReportsPage() {
           {/* Tab Content */}
           {activeTab === "sessions" && <SessionReports />}
           {activeTab === "attendance" && <AttendanceSummary />}
+          {activeTab === "management" && <SessionManagement />}
         </div>
       </AdminNavigation>
     </ProtectedRoute>
