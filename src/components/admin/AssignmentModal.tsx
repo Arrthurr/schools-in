@@ -25,6 +25,13 @@ import {
   Mail,
   Calendar,
 } from "lucide-react";
+import { LoadingButton, LoadingOverlay } from "@/components/ui/loading";
+import { SkeletonList } from "@/components/ui/skeleton";
+import {
+  ErrorState,
+  EmptyState,
+  CompactEmptyState,
+} from "@/components/ui/error-empty-states";
 import {
   SchoolAssignment,
   replaceSchoolAssignments,
@@ -252,8 +259,8 @@ export function AssignmentModal({
           </div>
 
           {/* Assignment Preview */}
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <p className="text-sm font-medium text-blue-900">
+          <div className="status-brand p-3 rounded-lg">
+            <p className="text-sm font-medium text-brand-primary">
               Assignment Preview: {getAssignmentCount()} total providers will be
               assigned
             </p>
@@ -370,12 +377,14 @@ export function AssignmentModal({
             })}
 
             {filteredProviders.length === 0 && (
-              <div className="p-8 text-center">
-                <Users className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">
-                  No providers found matching your search
-                </p>
-              </div>
+              <CompactEmptyState
+                message={
+                  searchTerm
+                    ? `No providers found matching "${searchTerm}"`
+                    : "No providers available for assignment"
+                }
+                className="py-8"
+              />
             )}
           </div>
         </div>
@@ -384,19 +393,20 @@ export function AssignmentModal({
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
+          <LoadingButton
             onClick={handleSave}
-            disabled={isLoading}
-            className={mode === "remove" ? "bg-red-600 hover:bg-red-700" : ""}
+            isLoading={isLoading}
+            loadingText="Saving..."
+            className={`micro-scale ${
+              mode === "remove" ? "bg-red-600 hover:bg-red-700" : ""
+            }`}
           >
-            {isLoading
-              ? "Saving..."
-              : mode === "replace"
+            {mode === "replace"
               ? "Replace Assignments"
               : mode === "add"
               ? "Add Providers"
               : "Remove Providers"}
-          </Button>
+          </LoadingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

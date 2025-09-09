@@ -24,6 +24,14 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
+import { SkeletonCard, SkeletonList } from "../ui/skeleton";
+import { LoadingSpinner } from "../ui/loading";
+import { ErrorState, EmptyState } from "../ui/error-empty-states";
+import {
+  useAnnouncement,
+  ScreenReaderOnly,
+  ARIA,
+} from "../../lib/accessibility";
 
 interface SchoolListProps {
   onSchoolSelect?: (school: School) => void;
@@ -48,6 +56,10 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Accessibility hooks
+  const { announce } = useAnnouncement();
+  const searchInputId = ARIA.useId("school-search");
+
   // Load assigned schools
   useEffect(() => {
     const loadSchools = async () => {
@@ -58,13 +70,18 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
       try {
         const assignedSchools = await SchoolService.getAssignedSchools(
-          user.uid,
+          user.uid
         );
         setSchools(assignedSchools);
         setFilteredSchools(assignedSchools);
+
+        // Announce results to screen readers
+        announce(`${assignedSchools.length} assigned schools loaded`, "polite");
       } catch (err) {
         console.error("Error loading schools:", err);
-        setError("Failed to load schools. Please try again.");
+        const errorMessage = "Failed to load schools. Please try again.";
+        setError(errorMessage);
+        announce(`Error: ${errorMessage}`, "assertive");
       } finally {
         setLoading(false);
       }
@@ -82,7 +99,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         const schoolsWithDistance = await SchoolService.getSchoolsWithDistance(
           location.latitude,
           location.longitude,
-          user.uid,
+          user.uid
         );
         setSchools(schoolsWithDistance);
 
@@ -90,11 +107,11 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         if (searchQuery.trim()) {
           const filtered = await SchoolService.searchSchools(
             searchQuery,
-            user.uid,
+            user.uid
           );
           const filteredWithDistance = filtered.map((school) => {
             const schoolWithDistance = schoolsWithDistance.find(
-              (s) => s.id === school.id,
+              (s) => s.id === school.id
             );
             return schoolWithDistance || school;
           });
@@ -118,11 +135,20 @@ export const SchoolList: React.FC<SchoolListProps> = ({
       try {
         const filtered = await SchoolService.searchSchools(
           searchQuery,
-          user.uid,
+          user.uid
         );
         setFilteredSchools(filtered);
+
+        // Announce search results to screen readers
+        if (searchQuery.trim()) {
+          announce(
+            `${filtered.length} schools found for "${searchQuery}"`,
+            "polite"
+          );
+        }
       } catch (err) {
         console.error("Error filtering schools:", err);
+        announce("Error filtering schools", "assertive");
       }
     };
 
@@ -150,7 +176,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     const withinRadius = SchoolService.isWithinRadius(
       location.latitude,
       location.longitude,
-      school,
+      school
     );
 
     if (withinRadius) {
@@ -201,10 +227,8 @@ export const SchoolList: React.FC<SchoolListProps> = ({
           </CardTitle>
           <CardDescription>Loading your school assignments...</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-[#154690]" />
-          </div>
+        <CardContent className="space-y-4">
+          <SkeletonList items={3} showAvatar={false} />
         </CardContent>
       </Card>
     );
@@ -212,62 +236,50 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
   if (error) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center text-red-600">
-            <AlertCircle className="mr-2 h-5 w-5" />
-            Error
-          </CardTitle>
-          <CardDescription>{error}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button
-            onClick={() => window.location.reload()}
-            variant="outline"
-            className="w-full"
-          >
-            Retry
-          </Button>
-        </CardContent>
-      </Card>
+      <ErrorState
+        type="generic"
+        title="Failed to load schools"
+        message={error}
+        onAction={() => window.location.reload()}
+        actionLabel="Reload"
+        className={className}
+      />
     );
   }
 
   if (schools.length === 0) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <SchoolIcon className="mr-2 h-5 w-5" />
-            Assigned Schools
-          </CardTitle>
-          <CardDescription>Your current school assignments</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <SchoolIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-gray-600">
-              No schools assigned yet. Contact your administrator to get
-              started.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <EmptyState
+        type="schools"
+        title="No schools assigned"
+        message="You don't have any schools assigned yet. Contact your administrator to get access to schools."
+        actionLabel="Contact Support"
+        onAction={() => window.open("mailto:support@example.com", "_blank")}
+        className={className}
+      />
     );
   }
 
   return (
     <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center">
-              <SchoolIcon className="mr-2 h-5 w-5" />
-              Assigned Schools
+      <CardHeader className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <CardTitle className="flex items-center text-lg sm:text-xl">
+              <SchoolIcon className="mr-2 h-5 w-5 flex-shrink-0" />
+              <span className="truncate">Assigned Schools</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="mt-1">
               {schools.length} school{schools.length !== 1 ? "s" : ""} assigned
-              {location && " • Location services active"}
+              {location && (
+                <span className="inline-flex items-center ml-2">
+                  <span className="hidden sm:inline">
+                    {" "}
+                    • Location services active
+                  </span>
+                  <CheckCircle className="h-4 w-4 ml-1 text-green-600 sm:hidden" />
+                </span>
+              )}
             </CardDescription>
           </div>
           {!location && (
@@ -276,85 +288,134 @@ export const SchoolList: React.FC<SchoolListProps> = ({
               disabled={locationLoading}
               size="sm"
               variant="outline"
+              className="touch-target flex-shrink-0 w-full sm:w-auto micro-scale"
+              aria-label={
+                locationLoading
+                  ? "Getting your location..."
+                  : "Enable location services to see distances to schools"
+              }
             >
               {locationLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <LoadingSpinner size="sm" variant="secondary" />
               ) : (
-                <Navigation className="h-4 w-4 mr-2" />
+                <Navigation className="h-4 w-4 mr-2" aria-hidden="true" />
               )}
-              Get Location
+              <span className="sm:hidden">
+                {locationLoading ? "Getting Location..." : "Enable Location"}
+              </span>
+              <span className="hidden sm:inline">
+                {locationLoading ? "Getting..." : "Get Location"}
+              </span>
             </Button>
           )}
         </div>
 
-        {/* Search bar */}
-        <div className="relative mt-4">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        {/* Search bar with better mobile UX */}
+        <div className="relative">
+          <label htmlFor={searchInputId} className="sr-only">
+            Search schools
+          </label>
+          <Search
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+            aria-hidden="true"
+          />
           <Input
+            id={searchInputId}
             placeholder="Search schools..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 touch-target text-base sm:text-sm"
+            aria-label="Search schools by name or location"
+            aria-describedby={
+              filteredSchools.length > 0
+                ? `${searchInputId}-results`
+                : undefined
+            }
           />
+          <ScreenReaderOnly>
+            <div id={`${searchInputId}-results`} aria-live="polite">
+              {searchQuery && `${filteredSchools.length} schools found`}
+            </div>
+          </ScreenReaderOnly>
         </div>
       </CardHeader>
 
       <CardContent>
         <div className="space-y-3">
           {filteredSchools.length === 0 && searchQuery ? (
-            <div className="text-center py-4">
-              <Search className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-              <p className="text-gray-600">
-                No schools found matching "{searchQuery}"
-              </p>
-            </div>
+            <EmptyState
+              type="search"
+              title="No schools found"
+              message={`No schools match "${searchQuery}". Try adjusting your search terms.`}
+              actionLabel="Clear Search"
+              onAction={() => setSearchQuery("")}
+              showAction={true}
+            />
           ) : (
-            filteredSchools.map((school) => (
+            filteredSchools.map((school, index) => (
               <div
                 key={school.id}
-                className={`p-4 border rounded-lg transition-colors ${
+                className={`p-4 sm:p-5 border rounded-lg transition-colors ${
                   onSchoolSelect
-                    ? "cursor-pointer hover:bg-gray-50 hover:border-[#154690]"
+                    ? "cursor-pointer hover:bg-gray-50 hover:border-brand-primary active:bg-gray-100"
                     : ""
                 }`}
                 onClick={() => handleSchoolClick(school)}
+                role={onSchoolSelect ? "button" : "article"}
+                tabIndex={onSchoolSelect ? 0 : undefined}
+                aria-label={
+                  onSchoolSelect ? `Select ${school.name}` : undefined
+                }
+                onKeyDown={(e) => {
+                  if (onSchoolSelect && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    handleSchoolClick(school);
+                  }
+                }}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-gray-900">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                      <h4 className="font-medium text-gray-900 text-base sm:text-lg truncate">
                         {school.name}
                       </h4>
                       {getSchoolStatusBadge(school)}
                     </div>
 
-                    <div className="flex items-center text-sm text-gray-600 mb-2">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      <span>{school.address || "Address not available"}</span>
+                    <div className="flex items-start text-sm text-gray-600 mb-3">
+                      <MapPin
+                        className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0"
+                        aria-hidden="true"
+                      />
+                      <span className="break-words">
+                        {school.address || "Address not available"}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-500">
                       {typeof school.distance === "number" && (
                         <div className="flex items-center">
-                          <Navigation className="h-4 w-4 mr-1" />
+                          <Navigation className="h-4 w-4 mr-1 flex-shrink-0" />
                           <span>{formatDistance(school.distance)} away</span>
                         </div>
                       )}
                       <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-1" />
+                        <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
                         <span>{school.radius || 100}m radius</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="ml-4 flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:ml-4 w-full sm:w-auto">
                     {showDetailButtons && (
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={(e) => handleSchoolDetail(school, e)}
+                        className="touch-target w-full sm:w-auto"
                       >
-                        View Details
+                        <span className="sm:hidden">Details</span>
+                        <span className="hidden sm:inline">View Details</span>
                       </Button>
                     )}
                     {showCheckInButtons && (
@@ -366,10 +427,10 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                             !SchoolService.isWithinRadius(
                               location?.latitude || 0,
                               location?.longitude || 0,
-                              school,
+                              school
                             ))
                         }
-                        className="bg-[#154690] hover:bg-[#0f3a7a]"
+                        className="btn-brand-primary touch-target w-full sm:w-auto"
                       >
                         <Clock className="h-4 w-4 mr-2" />
                         Check In
@@ -384,14 +445,16 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
         {filteredSchools.length > 0 && (
           <div className="mt-4 pt-4 border-t">
-            <div className="flex items-center justify-between text-sm text-gray-500">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-gray-500">
               <span>
-                Showing {filteredSchools.length} of {schools.length} schools
+                Showing {filteredSchools.length} of {schools.length} school
+                {schools.length !== 1 ? "s" : ""}
               </span>
               {location && (
                 <span className="flex items-center">
                   <CheckCircle className="h-4 w-4 mr-1 text-green-600" />
-                  Location active
+                  <span className="hidden sm:inline">Location active</span>
+                  <span className="sm:hidden">GPS active</span>
                 </span>
               )}
             </div>

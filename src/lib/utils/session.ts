@@ -82,7 +82,7 @@ export const getSessionStatusColor = (status: string): string => {
     case "active":
       return "bg-green-100 text-green-800 border-green-200";
     case "completed":
-      return "bg-blue-100 text-blue-800 border-blue-200";
+      return "bg-primary/10 text-primary border-primary/20";
     case "paused":
       return "bg-yellow-100 text-yellow-800 border-yellow-200";
     case "error":
@@ -107,7 +107,7 @@ export const getSessionStatusConfig = (status: string) => {
     case "completed":
       return {
         label: "Completed",
-        color: "bg-blue-100 text-blue-800 border-blue-200",
+        color: "bg-primary/10 text-primary border-primary/20",
         icon: "CheckCircle",
         description: "Session has been completed successfully",
       };

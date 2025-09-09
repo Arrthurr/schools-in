@@ -28,6 +28,7 @@ import {
 import { useAuth } from "@/lib/hooks/useAuth";
 import { logOut } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
+import { Logo } from "../ui/logo";
 
 interface AdminNavigationProps {
   children: React.ReactNode;
@@ -103,9 +104,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
       {/* Logo/Brand */}
       <div className="flex items-center px-6 py-4 border-b">
         <Link href="/admin" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <School className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <Logo size="sm" showText={false} priority />
           <div>
             <h2 className="text-lg font-semibold">Schools In</h2>
             <p className="text-xs text-muted-foreground">Admin Panel</p>

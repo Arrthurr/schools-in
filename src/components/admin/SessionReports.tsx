@@ -17,6 +17,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  ErrorState,
+  EmptyState,
+  CompactEmptyState,
+} from "@/components/ui/error-empty-states";
+import {
   CalendarDays,
   Download,
   Filter,
@@ -597,11 +602,22 @@ export function SessionReports() {
               </div>
             </div>
           ) : sessions.length === 0 ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-sm text-muted-foreground">
-                No sessions found for the selected filters
-              </div>
-            </div>
+            <EmptyState
+              type="reports"
+              title="No sessions found"
+              message="No sessions match the selected filters. Try adjusting your date range or clearing filters to see more results."
+              actionLabel="Clear Filters"
+              onAction={() => {
+                setFilters({
+                  dateRange: "month",
+                  startDate: undefined,
+                  endDate: undefined,
+                  providerId: "",
+                  schoolId: "",
+                  status: "",
+                });
+              }}
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>

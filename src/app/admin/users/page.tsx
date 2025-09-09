@@ -324,7 +324,7 @@ function UserManagementContent() {
           <div className="text-sm text-gray-600">Total Users</div>
         </div>
         <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-blue-600">
+          <div className="text-2xl font-bold text-brand-primary">
             {stats.totalProviders}
           </div>
           <div className="text-sm text-gray-600">Providers</div>
@@ -391,9 +391,9 @@ function UserManagementContent() {
 
       {/* Bulk Actions */}
       {selectedUsers.size > 0 && (
-        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center justify-between p-4 status-brand border rounded-lg">
           <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-blue-900">
+            <span className="text-sm font-medium text-brand-primary">
               {selectedUsers.size} users selected
             </span>
             <Button
@@ -469,7 +469,7 @@ function UserManagementContent() {
                     onChange={(e) =>
                       handleUserSelection(user.id, e.target.checked)
                     }
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
                   />
 
                   <div className="flex-shrink-0">

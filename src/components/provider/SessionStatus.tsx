@@ -129,7 +129,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center text-lg">
-            <Timer className="h-5 w-5 mr-2 text-[#154690]" />
+            <Timer className="h-5 w-5 mr-2 text-brand-primary" />
             Current Session
           </CardTitle>
           <CardDescription>No active session</CardDescription>
@@ -155,7 +155,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center text-lg">
-              <Timer className="h-5 w-5 mr-2 text-[#154690]" />
+              <Timer className="h-5 w-5 mr-2 text-brand-primary" />
               Current Session
             </CardTitle>
             <CardDescription>
@@ -169,7 +169,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
       <CardContent className="space-y-6">
         {/* School Information */}
         <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-          <SchoolIcon className="h-5 w-5 text-[#154690]" />
+          <SchoolIcon className="h-5 w-5 text-brand-primary" />
           <div>
             <p className="font-medium text-gray-900">
               {currentSession.schoolName}
@@ -186,7 +186,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
 
         {/* Session Timer */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-24 h-24 bg-[#154690] rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-brand-primary rounded-full mb-4">
             <div className="text-center text-white">
               <div className="text-2xl font-bold">
                 {formatDuration(elapsedTime)}
@@ -239,7 +239,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
               <>
                 <Button
                   onClick={handleResumeSession}
-                  className="flex-1 bg-[#154690] hover:bg-[#0f3a7a]"
+                  className="flex-1 btn-brand-primary"
                 >
                   <Play className="h-4 w-4 mr-2" />
                   Resume
@@ -272,13 +272,13 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
 
         {/* Session completed info */}
         {currentSession.status === "completed" && (
-          <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="flex items-start gap-3 p-3 bg-brand-primary/5 rounded-lg border border-brand-primary/20">
+            <CheckCircle className="h-5 w-5 text-brand-primary mt-0.5 flex-shrink-0" />
             <div>
-              <p className="font-medium text-blue-900 mb-1">
+              <p className="font-medium text-brand-primary mb-1">
                 Session Completed
               </p>
-              <p className="text-blue-800 text-sm">
+              <p className="text-brand-primary/80 text-sm">
                 This session has been completed and the time has been recorded.
                 Total duration: {formatDuration(currentSession.duration)}
               </p>

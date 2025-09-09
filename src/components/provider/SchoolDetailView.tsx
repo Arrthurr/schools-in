@@ -57,14 +57,14 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
         location.latitude,
         location.longitude,
         school.latitude,
-        school.longitude,
+        school.longitude
       );
       setDistance(calculatedDistance);
 
       const withinRadius = SchoolService.isWithinRadius(
         location.latitude,
         location.longitude,
-        school,
+        school
       );
       setIsWithinRadius(withinRadius);
     } else {
@@ -95,14 +95,20 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
 
     if (isWithinRadius) {
       return (
-        <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
+        <Badge
+          variant="secondary"
+          className="bg-green-100 text-green-700 border-green-200"
+        >
           <CheckCircle className="w-3 h-3 mr-1" />
           In Check-in Range
         </Badge>
       );
     } else {
       return (
-        <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-200">
+        <Badge
+          variant="secondary"
+          className="bg-yellow-100 text-yellow-700 border-yellow-200"
+        >
           <AlertCircle className="w-3 h-3 mr-1" />
           Outside Check-in Range
         </Badge>
@@ -147,7 +153,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             {getLocationStatusBadge()}
             {school.isAssigned && (
-              <Badge variant="default" className="bg-[#154690]">
+              <Badge variant="default" className="bg-primary">
                 <Users className="w-3 h-3 mr-1" />
                 Assigned
               </Badge>
@@ -163,7 +169,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
                 variant="outline"
               >
                 {locationLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#154690] mr-2" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2" />
                 ) : (
                   <Navigation className="h-4 w-4 mr-2" />
                 )}
@@ -175,7 +181,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
               <Button
                 onClick={handleCheckIn}
                 disabled={!location || !isWithinRadius}
-                className="bg-[#154690] hover:bg-[#0f3a7a]"
+                className="bg-primary hover:bg-primary/90"
               >
                 <Clock className="h-4 w-4 mr-2" />
                 Check In
@@ -188,7 +194,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-lg">
-              <MapPin className="h-5 w-5 mr-2 text-[#154690]" />
+              <MapPin className="h-5 w-5 mr-2 text-brand-primary" />
               Location Details
             </CardTitle>
           </CardHeader>
@@ -244,7 +250,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-lg">
-              <Phone className="h-5 w-5 mr-2 text-[#154690]" />
+              <Phone className="h-5 w-5 mr-2 text-brand-primary" />
               Contact Information
             </CardTitle>
           </CardHeader>
@@ -282,7 +288,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-lg">
-              <Calendar className="h-5 w-5 mr-2 text-[#154690]" />
+              <Calendar className="h-5 w-5 mr-2 text-brand-primary" />
               Session Information
             </CardTitle>
           </CardHeader>
@@ -319,8 +325,8 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
                     Location Services Required
                   </p>
                   <p className="text-amber-800 text-sm mb-3">
-                    Enable location services to see your distance from this school
-                    and enable check-in functionality.
+                    Enable location services to see your distance from this
+                    school and enable check-in functionality.
                   </p>
                   <Button
                     onClick={getLocation}
@@ -344,17 +350,18 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
 
         {/* Check-in Instructions */}
         {location && !isWithinRadius && showCheckInButton && (
-          <Card className="border-blue-200 bg-blue-50">
+          <Card className="status-brand border">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-blue-600 mt-0.5" />
+                <MapPin className="h-5 w-5 text-brand-primary mt-0.5" />
                 <div>
-                  <p className="font-medium text-blue-900 mb-1">
+                  <p className="font-medium text-brand-primary mb-1">
                     Move Closer to Check In
                   </p>
-                  <p className="text-blue-800 text-sm">
-                    You need to be within {school.radius || 100} meters of the school
-                    to check in. You're currently {distance && formatDistance(distance)} away.
+                  <p className="text-brand-primary/80 text-sm">
+                    You need to be within {school.radius || 100} meters of the
+                    school to check in. You're currently{" "}
+                    {distance && formatDistance(distance)} away.
                   </p>
                 </div>
               </div>

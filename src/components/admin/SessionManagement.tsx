@@ -27,6 +27,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  ErrorState,
+  EmptyState,
+  CompactEmptyState,
+} from "@/components/ui/error-empty-states";
+import {
   Edit,
   X,
   Clock,
@@ -430,9 +435,18 @@ export function SessionManagement() {
         </CardHeader>
         <CardContent>
           {sessions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {loading ? "Loading sessions..." : "No sessions found"}
-            </div>
+            loading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Loading sessions...
+              </div>
+            ) : (
+              <EmptyState
+                type="sessions"
+                title="No sessions found"
+                message="No check-in sessions have been recorded yet. Sessions will appear here once providers start checking in."
+                showAction={false}
+              />
+            )
           ) : (
             <div className="overflow-auto">
               <Table>

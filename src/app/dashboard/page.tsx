@@ -30,6 +30,7 @@ import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "../../../firebase.config";
 import { SchoolService } from "../../lib/services/schoolService";
+import { Logo } from "../../components/ui/logo";
 
 interface SessionData {
   id: string;
@@ -49,7 +50,7 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
   const [currentSession, setCurrentSession] = useState<SessionData | null>(
-    null,
+    null
   );
 
   // Load assigned schools count for dashboard stats
@@ -127,12 +128,7 @@ export default function DashboardPage() {
           <div className="flex h-full flex-col">
             {/* Sidebar header */}
             <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
-              <div className="flex items-center">
-                <School className="h-8 w-8 text-[#154690]" />
-                <span className="ml-2 text-xl font-bold text-gray-900">
-                  Schools In
-                </span>
-              </div>
+              <Logo size="sm" priority />
               <Button
                 variant="ghost"
                 size="sm"
@@ -146,7 +142,7 @@ export default function DashboardPage() {
             {/* User info */}
             <div className="p-4 border-b">
               <div className="flex items-center">
-                <div className="h-10 w-10 rounded-full bg-[#154690] flex items-center justify-center">
+                <div className="h-10 w-10 rounded-full bg-brand-primary flex items-center justify-center">
                   <User className="h-6 w-6 text-white" />
                 </div>
                 <div className="ml-3">
@@ -168,7 +164,7 @@ export default function DashboardPage() {
                   href={item.href}
                   className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     item.current
-                      ? "bg-[#154690] text-white"
+                      ? "bg-brand-primary text-white"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                 >

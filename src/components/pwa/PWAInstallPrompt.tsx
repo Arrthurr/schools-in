@@ -95,12 +95,12 @@ export function PWAInstallPrompt() {
   }
 
   return (
-    <Card className="mb-4 border-blue-200 bg-blue-50">
+    <Card className="mb-4 status-brand border">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Download className="h-5 w-5 text-blue-600" />
-            <CardTitle className="text-lg text-blue-900">
+            <Download className="h-5 w-5 text-brand-primary" />
+            <CardTitle className="text-lg text-brand-primary">
               Install Schools In
             </CardTitle>
           </div>
@@ -108,16 +108,13 @@ export function PWAInstallPrompt() {
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <CardDescription className="text-blue-700">
+        <CardDescription className="text-brand-primary/80">
           Install the app for faster access and offline functionality
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="flex gap-2">
-          <Button
-            onClick={handleInstallClick}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
+          <Button onClick={handleInstallClick} className="btn-brand-primary">
             <Download className="h-4 w-4 mr-2" />
             Install App
           </Button>

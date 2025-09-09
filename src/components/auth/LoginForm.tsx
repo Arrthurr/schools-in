@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/form";
 import { signInWithEmail, signInWithGoogle } from "@/lib/firebase/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { LoadingButton } from "@/components/ui/loading";
+import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -28,6 +30,11 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Accessibility hooks
+  const { announce } = useAnnouncement();
+  const formId = ARIA.useId("login-form");
+  const errorId = ARIA.useId("login-error");
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -39,10 +46,14 @@ export function LoginForm() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     setError(null);
+
     try {
       await signInWithEmail(values.email, values.password);
+      announce("Successfully signed in", "polite");
     } catch (error: any) {
-      setError(error.message);
+      const errorMessage = error.message;
+      setError(errorMessage);
+      announce(`Sign in failed: ${errorMessage}`, "assertive");
     } finally {
       setLoading(false);
     }
@@ -51,29 +62,60 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError(null);
+
     try {
       await signInWithGoogle();
+      announce("Successfully signed in with Google", "polite");
     } catch (error: any) {
-      setError(error.message);
+      const errorMessage = error.message;
+      setError(errorMessage);
+      announce(`Google sign in failed: ${errorMessage}`, "assertive");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md w-full mx-auto">
+    <div className="w-full space-y-4 sm:space-y-6">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4"
+          aria-labelledby={`${formId}-title`}
+          aria-describedby={error ? errorId : undefined}
+          noValidate
+        >
+          <ScreenReaderOnly>
+            <h2 id={`${formId}-title`}>Sign in to your account</h2>
+          </ScreenReaderOnly>
+
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel className="text-sm sm:text-base">Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="your@email.com" {...field} />
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    className="touch-target text-base sm:text-sm"
+                    autoComplete="email"
+                    aria-describedby={
+                      form.formState.errors.email
+                        ? `${field.name}-error`
+                        : undefined
+                    }
+                    {...field}
+                  />
                 </FormControl>
-                <FormMessage />
+                <FormMessage
+                  id={
+                    form.formState.errors.email
+                      ? `${field.name}-error`
+                      : undefined
+                  }
+                />
               </FormItem>
             )}
           />
@@ -82,26 +124,57 @@ export function LoginForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className="text-sm sm:text-base">Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="********" {...field} />
+                  <Input
+                    type="password"
+                    placeholder="Enter your password"
+                    className="touch-target text-base sm:text-sm"
+                    autoComplete="current-password"
+                    aria-describedby={
+                      form.formState.errors.password
+                        ? `${field.name}-error`
+                        : undefined
+                    }
+                    {...field}
+                  />
                 </FormControl>
-                <FormMessage />
+                <FormMessage
+                  id={
+                    form.formState.errors.password
+                      ? `${field.name}-error`
+                      : undefined
+                  }
+                />
               </FormItem>
             )}
           />
           {error && (
-            <Alert variant="destructive">
+            <Alert
+              variant="destructive"
+              className="text-sm"
+              role="alert"
+              id={errorId}
+            >
               <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription className="break-words">
+                {error}
+              </AlertDescription>
             </Alert>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing In..." : "Sign In"}
-          </Button>
+          <LoadingButton
+            type="submit"
+            className="w-full touch-target text-base sm:text-sm micro-scale"
+            isLoading={loading}
+            loadingText="Signing In..."
+            aria-describedby={error ? errorId : undefined}
+          >
+            Sign In
+          </LoadingButton>
         </form>
       </Form>
-      <div className="relative my-4">
+
+      <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
         </div>
@@ -111,14 +184,17 @@ export function LoginForm() {
           </span>
         </div>
       </div>
-      <Button
+
+      <LoadingButton
         variant="outline"
-        className="w-full"
+        className="w-full touch-target text-base sm:text-sm micro-scale"
         onClick={handleGoogleSignIn}
-        disabled={loading}
+        isLoading={loading}
+        loadingText="Connecting..."
+        aria-label="Sign in with Google OAuth"
       >
-        {loading ? "..." : "Sign in with Google"}
-      </Button>
+        Sign in with Google
+      </LoadingButton>
     </div>
   );
 }

@@ -37,7 +37,7 @@ export function OfflineNotification() {
               <RefreshCw
                 className={`h-5 w-5 ${
                   syncInProgress ? "animate-spin" : ""
-                } text-blue-500`}
+                } text-brand-primary`}
               />
             )}
             <div>

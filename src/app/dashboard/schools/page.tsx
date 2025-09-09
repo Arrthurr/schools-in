@@ -60,7 +60,7 @@ export default function SchoolsPage() {
                 Dashboard
               </Button>
               <div className="h-6 w-px bg-gray-300" />
-              <SchoolIcon className="h-6 w-6 text-[#154690]" />
+              <SchoolIcon className="h-6 w-6 text-brand-primary" />
               <h1 className="text-3xl font-bold text-gray-900">
                 {viewMode === "detail" && selectedSchool
                   ? selectedSchool.name
@@ -104,24 +104,24 @@ export default function SchoolsPage() {
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center">
-                        <List className="h-5 w-5 mr-2 text-[#154690]" />
+                        <List className="h-5 w-5 mr-2 text-brand-primary" />
                         Quick Tips
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-2 text-sm text-gray-600">
                         <li className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-[#154690] rounded-full mt-2 flex-shrink-0" />
+                          <div className="w-1.5 h-1.5 bg-brand-primary rounded-full mt-2 flex-shrink-0" />
                           Click "View Details" to see comprehensive school
                           information
                         </li>
                         <li className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-[#154690] rounded-full mt-2 flex-shrink-0" />
+                          <div className="w-1.5 h-1.5 bg-brand-primary rounded-full mt-2 flex-shrink-0" />
                           Enable location services for accurate distance
                           calculations
                         </li>
                         <li className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 bg-[#154690] rounded-full mt-2 flex-shrink-0" />
+                          <div className="w-1.5 h-1.5 bg-brand-primary rounded-full mt-2 flex-shrink-0" />
                           You must be within the check-in radius to start a
                           session
                         </li>
@@ -132,7 +132,7 @@ export default function SchoolsPage() {
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center">
-                        <MapPin className="h-5 w-5 mr-2 text-[#154690]" />
+                        <MapPin className="h-5 w-5 mr-2 text-brand-primary" />
                         Location Status
                       </CardTitle>
                     </CardHeader>

@@ -22,6 +22,7 @@ import {
   Download,
   AlertTriangle,
 } from "lucide-react";
+import { CompactErrorState, CompactEmptyState } from "../ui/error-empty-states";
 import { useCache } from "@/lib/hooks/useCache";
 import { useOffline } from "@/lib/hooks/useOffline";
 

@@ -108,11 +108,11 @@ export function QueueStatus({
       case QUEUE_STATUS.PENDING:
         return <Clock className="h-4 w-4 text-orange-500" />;
       case QUEUE_STATUS.SYNCING:
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
+        return <Loader2 className="h-4 w-4 text-primary animate-spin" />;
       case QUEUE_STATUS.SYNCED:
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-success" />;
       case QUEUE_STATUS.FAILED:
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-error" />;
       case QUEUE_STATUS.CANCELLED:
         return <AlertCircle className="h-4 w-4 text-gray-500" />;
       default:
@@ -291,7 +291,7 @@ export function QueueStatus({
             <div className="text-xs text-muted-foreground">Pending</div>
           </div>
           <div className="text-center p-3 bg-muted rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-brand-primary">
               {stats.syncing}
             </div>
             <div className="text-xs text-muted-foreground">Syncing</div>

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { CompactEmptyState } from "../ui/error-empty-states";
 import { UserRecord, updateUserProfile } from "@/lib/services/userService";
 
 interface School {
@@ -239,7 +240,7 @@ export function UserForm({
                     isActive: e.target.checked,
                   }))
                 }
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
               />
               <div>
                 <label className="text-sm font-medium text-gray-700">
@@ -304,7 +305,7 @@ export function UserForm({
                           id={school.id}
                           checked={formData.assignedSchools.includes(school.id)}
                           onChange={() => handleSchoolToggle(school.id)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
                         />
                         <label
                           htmlFor={school.id}
@@ -321,9 +322,7 @@ export function UserForm({
                     ))}
                 </div>
                 {schools.filter((school) => school.isActive).length === 0 && (
-                  <p className="text-sm text-gray-500">
-                    No active schools available
-                  </p>
+                  <CompactEmptyState message="No active schools available for assignment" />
                 )}
               </div>
             </div>

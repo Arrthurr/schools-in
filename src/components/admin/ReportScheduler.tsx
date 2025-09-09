@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  ErrorState,
+  EmptyState,
+  CompactErrorState,
+  NetworkStatus,
+} from "../ui/error-empty-states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -267,25 +273,25 @@ export function ReportScheduler() {
         return {
           label: "Session Reports",
           icon: FileText,
-          color: "bg-blue-100 text-blue-800",
+          color: "status-brand",
         };
       case "attendance":
         return {
           label: "Attendance Summary",
           icon: Users,
-          color: "bg-green-100 text-green-800",
+          color: "bg-success/10 text-success",
         };
       case "analytics":
         return {
           label: "Analytics Dashboard",
           icon: Calendar,
-          color: "bg-purple-100 text-purple-800",
+          color: "bg-primary/10 text-primary",
         };
       case "management":
         return {
           label: "Session Management",
           icon: Settings,
-          color: "bg-orange-100 text-orange-800",
+          color: "bg-warning/10 text-warning",
         };
       default:
         return {
@@ -300,11 +306,11 @@ export function ReportScheduler() {
   const getFrequencyColor = (frequency: string) => {
     switch (frequency) {
       case "daily":
-        return "bg-red-100 text-red-800";
+        return "bg-error/10 text-error";
       case "weekly":
-        return "bg-blue-100 text-blue-800";
+        return "bg-primary/10 text-primary";
       case "monthly":
-        return "bg-green-100 text-green-800";
+        return "bg-success/10 text-success";
       case "quarterly":
         return "bg-purple-100 text-purple-800";
       default:
@@ -346,10 +352,10 @@ export function ReportScheduler() {
               </DialogHeader>
 
               {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
+                <CompactErrorState
+                  message={error}
+                  onRetry={() => setError(null)}
+                />
               )}
 
               <div className="grid gap-4">
@@ -505,18 +511,13 @@ export function ReportScheduler() {
       {/* Schedules List */}
       <div className="grid gap-4">
         {schedules.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center h-48">
-              <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                No Scheduled Reports
-              </h3>
-              <p className="text-muted-foreground text-center max-w-md">
-                Create your first automated report schedule to receive regular
-                updates via email.
-              </p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            type="reports"
+            title="No Scheduled Reports"
+            message="Create your first automated report schedule to receive regular updates via email."
+            actionLabel="Create Report Schedule"
+            onAction={() => setShowCreateDialog(true)}
+          />
         ) : (
           schedules.map((schedule) => {
             const typeInfo = getReportTypeInfo(schedule.reportType);
@@ -599,7 +600,7 @@ export function ReportScheduler() {
                         )}
                         {schedule.nextRun && (
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-3 w-3 text-blue-600" />
+                            <Calendar className="h-3 w-3 text-brand-primary" />
                             Next: {schedule.nextRun.toLocaleDateString()}
                           </div>
                         )}
@@ -684,7 +685,7 @@ export function ReportScheduler() {
                 <div className="text-sm text-muted-foreground">Active</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-brand-primary">
                   {schedules.filter((s) => s.frequency === "daily").length}
                 </div>
                 <div className="text-sm text-muted-foreground">

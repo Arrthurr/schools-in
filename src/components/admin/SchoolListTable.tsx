@@ -41,6 +41,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  ErrorState,
+  EmptyState,
+  CompactErrorState,
+  NetworkStatus,
+} from "../ui/error-empty-states";
 
 interface School {
   id: string;
@@ -201,13 +207,16 @@ export function SchoolListTable({
 
   if (schools.length === 0) {
     return (
-      <div className="text-center py-12 border rounded-lg bg-gray-50">
-        <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          No schools found
-        </h3>
-        <p className="text-gray-600">No schools match your current filters.</p>
-      </div>
+      <EmptyState
+        type="schools"
+        title="No schools found"
+        message="No schools match your current filters. Try adjusting your search criteria or add new schools to get started."
+        actionLabel="Clear Filters"
+        onAction={() => {
+          // This would be passed from parent component to clear filters
+          console.log("Clear filters action - implement in parent component");
+        }}
+      />
     );
   }
 

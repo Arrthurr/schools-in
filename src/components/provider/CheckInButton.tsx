@@ -23,6 +23,19 @@ import {
   WifiOff,
   Target,
 } from "lucide-react";
+import { LoadingButton, LoadingSpinner } from "../ui/loading";
+import { StepProgress } from "../ui/progress-indicators";
+import {
+  ErrorState,
+  EmptyState,
+  CompactErrorState,
+  NetworkStatus,
+} from "../ui/error-empty-states";
+import {
+  useAnnouncement,
+  ScreenReaderOnly,
+  ARIA,
+} from "../../lib/accessibility";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useSession } from "../../lib/hooks/useSession";
 import {
@@ -111,6 +124,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   const [retryCount, setRetryCount] = useState(0);
   const [maxRetries] = useState(3);
   const [lastErrorTime, setLastErrorTime] = useState<number | null>(null);
+
+  // Accessibility - Screen reader announcements
+  const { announce, AnnouncementRegion } = useAnnouncement();
 
   // Cleanup GPS states after operation completes
   useEffect(() => {
@@ -293,6 +309,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       setLocationStatusMessage("Requesting location permission...");
       setLocationErrorType(null);
 
+      // Announce to screen readers
+      announce("Getting your location", "polite");
+
       try {
         // Enhanced location options based on retry attempt and error history
         const locationOptions = {
@@ -338,6 +357,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         setLocationStatusMessage("Validating location accuracy...");
         setUserLocation(location);
 
+        // Announce successful location acquisition
+        announce("Location obtained successfully", "polite");
+
         // Validate location against school coordinates
         const schoolCoords = {
           latitude: school.gpsCoordinates.latitude,
@@ -356,6 +378,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         setGpsProgress(100);
         setGpsOperationPhase("complete");
         setLocationStatusMessage("Location verified successfully!");
+
+        // Announce successful location validation
+        announce("Location verified successfully!", "polite");
 
         // Reset error tracking on success
         setRetryCount(0);
@@ -432,6 +457,10 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         setGpsOperationPhase("idle");
         setGpsProgress(0);
         setLocationStatusMessage("");
+
+        // Announce location error to screen readers
+        announce(`Location error: ${finalErrorMessage}`, "assertive");
+
         throw error;
       } finally {
         setIsGettingLocation(false);
@@ -453,6 +482,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     if (!user) {
       setLocationError("You must be logged in to check in");
       setLocationErrorType("permission-denied"); // Use permission-denied for auth errors
+      announce("Check-in failed: You must be logged in", "assertive");
       return;
     }
 
@@ -462,6 +492,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     setGpsOperationPhase("idle");
     setGpsProgress(0);
     setLocationStatusMessage("");
+
+    // Announce start of check-in process
+    announce("Starting check-in process", "polite");
 
     try {
       // Get location with enhanced validation
@@ -480,15 +513,18 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       );
 
       if (!validation.isReasonableDistance) {
-        setLocationError(
-          `You appear to be ${validation.distance}m from ${school.name}. ` +
-            "Please ensure you are at the correct school location."
-        );
+        const errorMessage = `You appear to be ${validation.distance}m from ${school.name}. Please ensure you are at the correct school location.`;
+        setLocationError(errorMessage);
+        announce(`Check-in validation failed: ${errorMessage}`, "assertive");
         return;
       }
 
       // Show confirmation dialog with all validation info
       setShowConfirmDialog(true);
+      announce(
+        "Location verified. Check-in confirmation dialog opened",
+        "polite"
+      );
     } catch {
       // Location error already set in getCurrentLocation
     } finally {
@@ -578,6 +614,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     if (!user || !currentSessionId) {
       setLocationError("Invalid session for check out");
       setLocationErrorType("permission-denied"); // Use permission-denied for auth/session errors
+      announce("Check-out failed: Invalid session", "assertive");
       return;
     }
 
@@ -587,6 +624,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     setGpsOperationPhase("idle");
     setGpsProgress(0);
     setLocationStatusMessage("");
+
+    // Announce start of check-out process
+    announce("Starting check-out process", "polite");
 
     try {
       const location = await getCurrentLocation();
@@ -863,13 +903,13 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     const getPhaseIcon = () => {
       switch (gpsOperationPhase) {
         case "requesting-permission":
-          return <Wifi className="h-4 w-4 text-blue-500" />;
+          return <Wifi className="h-4 w-4 text-primary" />;
         case "getting-location":
-          return <Navigation className="h-4 w-4 text-blue-500 animate-pulse" />;
+          return <Navigation className="h-4 w-4 text-primary animate-pulse" />;
         case "validating":
-          return <Target className="h-4 w-4 text-yellow-500" />;
+          return <Target className="h-4 w-4 text-warning" />;
         case "complete":
-          return <CheckCircle className="h-4 w-4 text-green-500" />;
+          return <CheckCircle className="h-4 w-4 text-success" />;
         default:
           return <WifiOff className="h-4 w-4 text-gray-400" />;
       }
@@ -878,9 +918,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     const getPhaseColor = () => {
       switch (gpsOperationPhase) {
         case "requesting-permission":
-          return "bg-blue-100 border-blue-200";
+          return "bg-primary/10 border-primary/20";
         case "getting-location":
-          return "bg-blue-100 border-blue-200";
+          return "bg-primary/10 border-primary/20";
         case "validating":
           return "bg-yellow-100 border-yellow-200";
         case "complete":
@@ -902,7 +942,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         {/* Progress Bar */}
         <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
           <div
-            className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-in-out"
+            className="bg-primary h-2 rounded-full transition-all duration-300 ease-in-out"
             style={{ width: `${gpsProgress}%` }}
           />
         </div>
@@ -917,6 +957,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
 
   return (
     <>
+      <AnnouncementRegion />
       <div className={`space-y-3 ${className}`}>
         {/* Offline Status Indicator */}
         {(!networkStatus.isOnline || networkStatus.isUnstable) && (
@@ -925,11 +966,47 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
           </div>
         )}
 
-        {/* Location Error Alert - Replaced with enhanced ErrorRecoveryOptions */}
-        {/* <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{locationError}</AlertDescription>
-        </Alert> */}
+        {/* Check-in Process Progress */}
+        {(isGettingLocation || isVerifyingLocation || sessionLoading) && (
+          <div className="mb-4 animate-fadeInUp">
+            <StepProgress
+              steps={[
+                {
+                  id: "location",
+                  label: "Get Location",
+                  status: isGettingLocation
+                    ? "current"
+                    : userLocation
+                    ? "completed"
+                    : locationError
+                    ? "error"
+                    : "pending",
+                },
+                {
+                  id: "verify",
+                  label: "Verify Range",
+                  status: isVerifyingLocation
+                    ? "current"
+                    : isWithinRange === true
+                    ? "completed"
+                    : isWithinRange === false
+                    ? "error"
+                    : "pending",
+                },
+                {
+                  id: "checkin",
+                  label: isCheckedIn ? "Check Out" : "Check In",
+                  status: sessionLoading
+                    ? "current"
+                    : isCheckedIn && !sessionLoading
+                    ? "completed"
+                    : "pending",
+                },
+              ]}
+              orientation="horizontal"
+            />
+          </div>
+        )}
 
         {/* Enhanced Error Recovery Options */}
         <ErrorRecoveryOptions />
@@ -941,22 +1018,38 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         <SessionTimer />
 
         {/* Check In/Out Button */}
-        <Button
+        <LoadingButton
           onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
-          disabled={isLoading}
+          isLoading={isLoading}
           size="lg"
-          className={`w-full h-12 font-semibold ${
-            isCheckedIn
-              ? "bg-red-600 hover:bg-red-700"
-              : "bg-[#154690] hover:bg-[#0f3a7a]"
+          className={`w-full h-12 font-semibold micro-scale ${
+            isCheckedIn ? "bg-red-600 hover:bg-red-700" : "btn-brand-primary"
           }`}
+          aria-label={
+            isLoading
+              ? isGettingLocation
+                ? `Getting location, attempt ${locationAttempts} of 3`
+                : isVerifyingLocation
+                ? "Verifying location"
+                : sessionLoading
+                ? isCheckedIn
+                  ? "Checking out"
+                  : "Checking in"
+                : "Loading"
+              : isCheckedIn
+              ? `Check out from ${school?.name || "location"}`
+              : `Check in to ${school?.name || "location"}`
+          }
+          aria-describedby={locationError ? "location-error" : undefined}
         >
-          {isLoading ? (
-            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-          ) : isCheckedIn ? (
-            <Clock className="h-5 w-5 mr-2" />
-          ) : (
-            <MapPin className="h-5 w-5 mr-2" />
+          {!isLoading && (
+            <>
+              {isCheckedIn ? (
+                <Clock className="h-5 w-5 mr-2" />
+              ) : (
+                <MapPin className="h-5 w-5 mr-2" />
+              )}
+            </>
           )}
 
           {isGettingLocation
@@ -979,7 +1072,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
                   : "0m"
               })`
             : "Check In"}
-        </Button>
+        </LoadingButton>
 
         {/* Enhanced Location Status Display */}
         {userLocation && locationStatus && (
@@ -1033,7 +1126,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-[#154690]" />
+              <MapPin className="h-5 w-5 text-primary" />
               Confirm Check-In
             </DialogTitle>
             <DialogDescription>
@@ -1101,9 +1194,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
                   locationAccuracy &&
                   locationAccuracy > 20 &&
                   locationAccuracy <= 50 && (
-                    <Alert className="border-blue-200 bg-blue-50">
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-blue-800">
+                    <Alert className="status-brand border">
+                      <CheckCircle className="h-4 w-4 text-brand-primary" />
+                      <AlertDescription className="text-brand-primary">
                         You are within the check-in radius, but GPS accuracy
                         could be better. Check-in is allowed but location
                         precision is ±{Math.round(locationAccuracy)}m.
@@ -1136,7 +1229,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
                 sessionLoading ||
                 (locationAccuracy !== null && locationAccuracy > 100)
               }
-              className="bg-[#154690] hover:bg-[#0f3a7a]"
+              className="btn-brand-primary"
             >
               {sessionLoading ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1170,14 +1263,14 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
             </div>
 
             {/* Session Summary */}
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="p-3 bg-brand-primary/5 rounded-lg border border-brand-primary/20">
               <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="h-4 w-4 text-blue-600" />
-                <span className="font-medium text-blue-900">
+                <CheckCircle className="h-4 w-4 text-brand-primary" />
+                <span className="font-medium text-brand-primary">
                   Session Summary
                 </span>
               </div>
-              <div className="text-sm text-blue-800">
+              <div className="text-sm text-brand-primary/80">
                 <div>You are about to end your session at {school.name}.</div>
                 {sessionDuration ? (
                   <div className="mt-1">

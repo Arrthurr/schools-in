@@ -3,22 +3,25 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/provider/AuthProvider";
 import ClientLayout from "@/components/layout/ClientLayout";
+import { SkipToContent } from "@/lib/accessibility";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Schools In - Provider Check-In System",
-  description: "Location-based check-in system for education providers",
+  title: "DMDL Schools-In - Provider Check-In System",
+  description:
+    "Professional location-based check-in system for education service providers",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Schools In",
+    title: "DMDL Schools-In",
   },
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/DMDL_logo.png", sizes: "280x60", type: "image/png" },
     ],
     apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
   },
@@ -27,9 +30,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5, // Allow zooming for accessibility
+  userScalable: true, // Enable user scaling for accessibility
   themeColor: "#154690",
+  viewportFit: "cover", // Support for safe area insets on notched devices
 };
 
 export default function RootLayout({
@@ -38,10 +42,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="h-full">
+      <body
+        className={`${inter.className} h-full bg-background text-foreground antialiased`}
+      >
+        <SkipToContent />
         <AuthProvider>
-          <ClientLayout>{children}</ClientLayout>
+          <div className="min-h-full safe-area-inset">
+            <ClientLayout>{children}</ClientLayout>
+          </div>
         </AuthProvider>
       </body>
     </html>
