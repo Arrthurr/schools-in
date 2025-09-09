@@ -57,7 +57,13 @@ interface User {
 
 interface ChartFilters {
   dateRange: "week" | "month" | "quarter" | "year";
-  chartType: "volume" | "duration" | "providers" | "schools" | "status" | "trends";
+  chartType:
+    | "volume"
+    | "duration"
+    | "providers"
+    | "schools"
+    | "status"
+    | "trends";
 }
 
 interface SessionVolumeData {
@@ -152,36 +158,39 @@ export function SessionAnalytics() {
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    return sessions.filter(session => 
-      session.checkInTime.toDate() >= startDate
+    return sessions.filter(
+      (session) => session.checkInTime.toDate() >= startDate
     );
   }, [sessions, filters.dateRange]);
 
   // Get school name by ID
   const getSchoolName = (schoolId: string) => {
-    const school = schools.find(s => s.id === schoolId);
+    const school = schools.find((s) => s.id === schoolId);
     return school?.name || "Unknown School";
   };
 
   // Get provider name by ID
   const getProviderName = (userId: string) => {
-    const provider = providers.find(p => p.id === userId);
+    const provider = providers.find((p) => p.id === userId);
     return provider?.displayName || provider?.email || "Unknown Provider";
   };
 
   // Session Volume Data
   const sessionVolumeData = useMemo(() => {
     const dateMap = new Map<string, { sessions: number; duration: number }>();
-    
-    filteredSessions.forEach(session => {
-      const date = session.checkInTime.toDate().toISOString().split('T')[0];
+
+    filteredSessions.forEach((session) => {
+      const date = session.checkInTime.toDate().toISOString().split("T")[0];
       const existing = dateMap.get(date) || { sessions: 0, duration: 0 };
-      
+
       existing.sessions += 1;
       if (session.checkOutTime) {
-        existing.duration += calculateSessionDuration(session.checkInTime, session.checkOutTime);
+        existing.duration += calculateSessionDuration(
+          session.checkInTime,
+          session.checkOutTime
+        );
       }
-      
+
       dateMap.set(date, existing);
     });
 
@@ -197,23 +206,35 @@ export function SessionAnalytics() {
 
   // Provider Performance Data
   const providerPerformanceData = useMemo(() => {
-    const providerMap = new Map<string, { sessions: number; duration: number }>();
-    
-    filteredSessions.forEach(session => {
-      const existing = providerMap.get(session.userId) || { sessions: 0, duration: 0 };
+    const providerMap = new Map<
+      string,
+      { sessions: number; duration: number }
+    >();
+
+    filteredSessions.forEach((session) => {
+      const existing = providerMap.get(session.userId) || {
+        sessions: 0,
+        duration: 0,
+      };
       existing.sessions += 1;
       if (session.checkOutTime) {
-        existing.duration += calculateSessionDuration(session.checkInTime, session.checkOutTime);
+        existing.duration += calculateSessionDuration(
+          session.checkInTime,
+          session.checkOutTime
+        );
       }
       providerMap.set(session.userId, existing);
     });
 
     return Array.from(providerMap.entries())
       .map(([userId, data]) => ({
-        name: getProviderName(userId).split(' ')[0] || getProviderName(userId).substring(0, 10),
+        name:
+          getProviderName(userId).split(" ")[0] ||
+          getProviderName(userId).substring(0, 10),
         sessions: data.sessions,
         duration: data.duration,
-        avgDuration: data.sessions > 0 ? Math.round(data.duration / data.sessions) : 0,
+        avgDuration:
+          data.sessions > 0 ? Math.round(data.duration / data.sessions) : 0,
       }))
       .sort((a, b) => b.sessions - a.sessions)
       .slice(0, 10); // Top 10 providers
@@ -221,18 +242,24 @@ export function SessionAnalytics() {
 
   // School Activity Data
   const schoolActivityData = useMemo(() => {
-    const schoolMap = new Map<string, { sessions: number; providers: Set<string>; duration: number }>();
-    
-    filteredSessions.forEach(session => {
-      const existing = schoolMap.get(session.schoolId) || { 
-        sessions: 0, 
-        providers: new Set<string>(), 
-        duration: 0 
+    const schoolMap = new Map<
+      string,
+      { sessions: number; providers: Set<string>; duration: number }
+    >();
+
+    filteredSessions.forEach((session) => {
+      const existing = schoolMap.get(session.schoolId) || {
+        sessions: 0,
+        providers: new Set<string>(),
+        duration: 0,
       };
       existing.sessions += 1;
       existing.providers.add(session.userId);
       if (session.checkOutTime) {
-        existing.duration += calculateSessionDuration(session.checkInTime, session.checkOutTime);
+        existing.duration += calculateSessionDuration(
+          session.checkInTime,
+          session.checkOutTime
+        );
       }
       schoolMap.set(session.schoolId, existing);
     });
@@ -242,7 +269,8 @@ export function SessionAnalytics() {
         name: getSchoolName(schoolId).substring(0, 15),
         sessions: data.sessions,
         providers: data.providers.size,
-        avgDuration: data.sessions > 0 ? Math.round(data.duration / data.sessions) : 0,
+        avgDuration:
+          data.sessions > 0 ? Math.round(data.duration / data.sessions) : 0,
       }))
       .sort((a, b) => b.sessions - a.sessions)
       .slice(0, 10); // Top 10 schools
@@ -251,8 +279,8 @@ export function SessionAnalytics() {
   // Status Distribution Data
   const statusDistributionData = useMemo(() => {
     const statusMap = new Map<string, number>();
-    
-    filteredSessions.forEach(session => {
+
+    filteredSessions.forEach((session) => {
       const count = statusMap.get(session.status) || 0;
       statusMap.set(session.status, count + 1);
     });
@@ -270,13 +298,16 @@ export function SessionAnalytics() {
   // Hourly Trends Data
   const hourlyTrendsData = useMemo(() => {
     const hourMap = new Map<number, { sessions: number; duration: number }>();
-    
-    filteredSessions.forEach(session => {
+
+    filteredSessions.forEach((session) => {
       const hour = session.checkInTime.toDate().getHours();
       const existing = hourMap.get(hour) || { sessions: 0, duration: 0 };
       existing.sessions += 1;
       if (session.checkOutTime) {
-        existing.duration += calculateSessionDuration(session.checkInTime, session.checkOutTime);
+        existing.duration += calculateSessionDuration(
+          session.checkInTime,
+          session.checkOutTime
+        );
       }
       hourMap.set(hour, existing);
     });
@@ -284,19 +315,27 @@ export function SessionAnalytics() {
     return Array.from({ length: 24 }, (_, hour) => {
       const data = hourMap.get(hour) || { sessions: 0, duration: 0 };
       return {
-        hour: `${hour.toString().padStart(2, '0')}:00`,
+        hour: `${hour.toString().padStart(2, "0")}:00`,
         sessions: data.sessions,
-        avgDuration: data.sessions > 0 ? Math.round(data.duration / data.sessions) : 0,
+        avgDuration:
+          data.sessions > 0 ? Math.round(data.duration / data.sessions) : 0,
       };
     });
   }, [filteredSessions]);
 
   // Chart Colors
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+  const COLORS = [
+    "#0088FE",
+    "#00C49F",
+    "#FFBB28",
+    "#FF8042",
+    "#8884D8",
+    "#82CA9D",
+  ];
 
   // Handle filter changes
   const handleFilterChange = (key: keyof ChartFilters, value: any) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       [key]: value,
     }));
@@ -314,12 +353,12 @@ export function SessionAnalytics() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Area 
-                type="monotone" 
-                dataKey="sessions" 
-                stackId="1" 
-                stroke="#8884d8" 
-                fill="#8884d8" 
+              <Area
+                type="monotone"
+                dataKey="sessions"
+                stackId="1"
+                stroke="#8884d8"
+                fill="#8884d8"
                 name="Sessions"
               />
             </AreaChart>
@@ -333,12 +372,17 @@ export function SessionAnalytics() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
-              <Tooltip formatter={(value) => [formatDuration(Number(value)), "Total Duration"]} />
+              <Tooltip
+                formatter={(value) => [
+                  formatDuration(Number(value)),
+                  "Total Duration",
+                ]}
+              />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="duration" 
-                stroke="#82ca9d" 
+              <Line
+                type="monotone"
+                dataKey="duration"
+                stroke="#82ca9d"
                 strokeWidth={3}
                 name="Duration (minutes)"
               />
@@ -390,7 +434,10 @@ export function SessionAnalytics() {
                 dataKey="count"
               >
                 {statusDistributionData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
                 ))}
               </Pie>
               <Tooltip />
@@ -407,10 +454,10 @@ export function SessionAnalytics() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="sessions" 
-                stroke="#8884d8" 
+              <Line
+                type="monotone"
+                dataKey="sessions"
+                stroke="#8884d8"
                 strokeWidth={2}
                 name="Sessions"
               />
@@ -429,32 +476,32 @@ export function SessionAnalytics() {
       case "volume":
         return {
           title: "Session Volume Over Time",
-          description: "Daily session counts showing activity levels"
+          description: "Daily session counts showing activity levels",
         };
       case "duration":
         return {
           title: "Session Duration Trends",
-          description: "Total session duration per day"
+          description: "Total session duration per day",
         };
       case "providers":
         return {
           title: "Top Provider Performance",
-          description: "Most active providers by session count"
+          description: "Most active providers by session count",
         };
       case "schools":
         return {
           title: "School Activity Analysis",
-          description: "Session and provider distribution across schools"
+          description: "Session and provider distribution across schools",
         };
       case "status":
         return {
           title: "Session Status Distribution",
-          description: "Breakdown of session statuses"
+          description: "Breakdown of session statuses",
         };
       case "trends":
         return {
           title: "Hourly Activity Trends",
-          description: "Session patterns throughout the day"
+          description: "Session patterns throughout the day",
         };
       default:
         return { title: "Analytics", description: "Select a chart type" };
@@ -475,7 +522,8 @@ export function SessionAnalytics() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Visual analytics and insights for session data, provider performance, and activity trends.
+            Visual analytics and insights for session data, provider
+            performance, and activity trends.
           </p>
         </CardContent>
       </Card>
@@ -505,7 +553,9 @@ export function SessionAnalytics() {
                   { value: "year", label: "Last Year" },
                 ]}
                 value={filters.dateRange}
-                onValueChange={(value) => handleFilterChange("dateRange", value)}
+                onValueChange={(value) =>
+                  handleFilterChange("dateRange", value)
+                }
                 placeholder="Select date range"
               />
             </div>
@@ -521,7 +571,9 @@ export function SessionAnalytics() {
                   { value: "trends", label: "Hourly Trends" },
                 ]}
                 value={filters.chartType}
-                onValueChange={(value) => handleFilterChange("chartType", value)}
+                onValueChange={(value) =>
+                  handleFilterChange("chartType", value)
+                }
                 placeholder="Select chart type"
               />
             </div>
@@ -533,44 +585,44 @@ export function SessionAnalytics() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Sessions
+            </CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{filteredSessions.length}</div>
-            <p className="text-xs text-muted-foreground">
-              In selected period
-            </p>
+            <p className="text-xs text-muted-foreground">In selected period</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Providers</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Providers
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {new Set(filteredSessions.map(s => s.userId)).size}
+              {new Set(filteredSessions.map((s) => s.userId)).size}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Unique providers
-            </p>
+            <p className="text-xs text-muted-foreground">Unique providers</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Schools Visited</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Schools Visited
+            </CardTitle>
             <School className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {new Set(filteredSessions.map(s => s.schoolId)).size}
+              {new Set(filteredSessions.map((s) => s.schoolId)).size}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Unique schools
-            </p>
+            <p className="text-xs text-muted-foreground">Unique schools</p>
           </CardContent>
         </Card>
 
@@ -581,21 +633,26 @@ export function SessionAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredSessions.length > 0 
+              {filteredSessions.length > 0
                 ? formatDuration(
                     Math.round(
                       filteredSessions
-                        .filter(s => s.checkOutTime)
-                        .reduce((sum, s) => sum + calculateSessionDuration(s.checkInTime, s.checkOutTime!), 0) 
-                      / filteredSessions.filter(s => s.checkOutTime).length
+                        .filter((s) => s.checkOutTime)
+                        .reduce(
+                          (sum, s) =>
+                            sum +
+                            calculateSessionDuration(
+                              s.checkInTime,
+                              s.checkOutTime!
+                            ),
+                          0
+                        ) /
+                        filteredSessions.filter((s) => s.checkOutTime).length
                     )
                   )
-                : "0m"
-              }
+                : "0m"}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Per session
-            </p>
+            <p className="text-xs text-muted-foreground">Per session</p>
           </CardContent>
         </Card>
       </div>
@@ -604,11 +661,15 @@ export function SessionAnalytics() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {filters.chartType === "volume" && <TrendingUp className="h-5 w-5" />}
+            {filters.chartType === "volume" && (
+              <TrendingUp className="h-5 w-5" />
+            )}
             {filters.chartType === "duration" && <Clock className="h-5 w-5" />}
             {filters.chartType === "providers" && <Users className="h-5 w-5" />}
             {filters.chartType === "schools" && <School className="h-5 w-5" />}
-            {filters.chartType === "status" && <PieChartIcon className="h-5 w-5" />}
+            {filters.chartType === "status" && (
+              <PieChartIcon className="h-5 w-5" />
+            )}
             {filters.chartType === "trends" && <Calendar className="h-5 w-5" />}
             {chartInfo.title}
           </CardTitle>
@@ -649,22 +710,20 @@ export function SessionAnalytics() {
                 <h4 className="font-medium">Most Active Day</h4>
                 <p className="text-sm text-muted-foreground">
                   {sessionVolumeData.length > 0
-                    ? sessionVolumeData.reduce((max, current) => 
+                    ? sessionVolumeData.reduce((max, current) =>
                         current.sessions > max.sessions ? current : max
                       ).date
-                    : "No data"
-                  }
+                    : "No data"}
                 </p>
               </div>
               <div className="space-y-2">
                 <h4 className="font-medium">Peak Hour</h4>
                 <p className="text-sm text-muted-foreground">
                   {hourlyTrendsData.length > 0
-                    ? hourlyTrendsData.reduce((max, current) => 
+                    ? hourlyTrendsData.reduce((max, current) =>
                         current.sessions > max.sessions ? current : max
                       ).hour
-                    : "No data"
-                  }
+                    : "No data"}
                 </p>
               </div>
               <div className="space-y-2">
@@ -672,10 +731,13 @@ export function SessionAnalytics() {
                 <p className="text-sm text-muted-foreground">
                   {filteredSessions.length > 0
                     ? `${Math.round(
-                        (filteredSessions.filter(s => s.status === "completed").length / filteredSessions.length) * 100
+                        (filteredSessions.filter(
+                          (s) => s.status === "completed"
+                        ).length /
+                          filteredSessions.length) *
+                          100
                       )}%`
-                    : "0%"
-                  }
+                    : "0%"}
                 </p>
               </div>
             </div>

@@ -10,13 +10,14 @@ import { SessionReports } from "@/components/admin/SessionReports";
 import { AttendanceSummary } from "@/components/admin/AttendanceSummary";
 import { SessionManagement } from "@/components/admin/SessionManagement";
 import { SessionAnalytics } from "@/components/admin/SessionAnalytics";
+import { ReportScheduler } from "@/components/admin/ReportScheduler";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BarChart3, UserCheck, Edit, TrendingUp } from "lucide-react";
+import { BarChart3, UserCheck, Edit, TrendingUp, Calendar } from "lucide-react";
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<
-    "sessions" | "attendance" | "management" | "analytics"
+    "sessions" | "attendance" | "management" | "analytics" | "scheduler"
   >("sessions");
 
   return (
@@ -63,6 +64,14 @@ export default function ReportsPage() {
                   <TrendingUp className="h-4 w-4" />
                   Analytics
                 </Button>
+                <Button
+                  variant={activeTab === "scheduler" ? "default" : "outline"}
+                  onClick={() => setActiveTab("scheduler")}
+                  className="flex items-center gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Scheduling
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -72,6 +81,7 @@ export default function ReportsPage() {
           {activeTab === "attendance" && <AttendanceSummary />}
           {activeTab === "management" && <SessionManagement />}
           {activeTab === "analytics" && <SessionAnalytics />}
+          {activeTab === "scheduler" && <ReportScheduler />}
         </div>
       </AdminNavigation>
     </ProtectedRoute>

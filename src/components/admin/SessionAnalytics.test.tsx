@@ -13,18 +13,28 @@ jest.mock("../../lib/firebase/firestore", () => ({
 }));
 
 import { getCollection } from "@/lib/firebase/firestore";
-const mockGetCollection = getCollection as jest.MockedFunction<typeof getCollection>;
+const mockGetCollection = getCollection as jest.MockedFunction<
+  typeof getCollection
+>;
 
 // Mock the Recharts components
 jest.mock("recharts", () => ({
-  BarChart: ({ children }: any) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: ({ children }: any) => (
+    <div data-testid="bar-chart">{children}</div>
+  ),
   Bar: () => <div data-testid="bar" />,
-  LineChart: ({ children }: any) => <div data-testid="line-chart">{children}</div>,
+  LineChart: ({ children }: any) => (
+    <div data-testid="line-chart">{children}</div>
+  ),
   Line: () => <div data-testid="line" />,
-  PieChart: ({ children }: any) => <div data-testid="pie-chart">{children}</div>,
+  PieChart: ({ children }: any) => (
+    <div data-testid="pie-chart">{children}</div>
+  ),
   Pie: () => <div data-testid="pie" />,
   Cell: () => <div data-testid="cell" />,
-  AreaChart: ({ children }: any) => <div data-testid="area-chart">{children}</div>,
+  AreaChart: ({ children }: any) => (
+    <div data-testid="area-chart">{children}</div>
+  ),
   Area: () => <div data-testid="area" />,
   XAxis: () => <div data-testid="x-axis" />,
   YAxis: () => <div data-testid="y-axis" />,
@@ -49,8 +59,18 @@ const mockSchools = [
 ];
 
 const mockProviders = [
-  { id: "user1", email: "provider1@test.com", displayName: "Provider One", role: "provider" },
-  { id: "user2", email: "provider2@test.com", displayName: "Provider Two", role: "provider" },
+  {
+    id: "user1",
+    email: "provider1@test.com",
+    displayName: "Provider One",
+    role: "provider",
+  },
+  {
+    id: "user2",
+    email: "provider2@test.com",
+    displayName: "Provider Two",
+    role: "provider",
+  },
 ];
 
 const mockSessions = [
@@ -103,9 +123,11 @@ describe("SessionAnalytics", () => {
   it("renders analytics dashboard", async () => {
     render(<SessionAnalytics />);
 
-    expect(screen.getByText("Session Analytics & Visualization")).toBeInTheDocument();
+    expect(
+      screen.getByText("Session Analytics & Visualization")
+    ).toBeInTheDocument();
     expect(screen.getByText("Analytics Filters")).toBeInTheDocument();
-    
+
     // Wait for data to load
     await waitFor(() => {
       expect(screen.getByText("Total Sessions")).toBeInTheDocument();
@@ -138,37 +160,41 @@ describe("SessionAnalytics", () => {
   it("handles loading state", () => {
     // Mock loading state
     mockGetCollection.mockImplementation(() => new Promise(() => {}));
-    
+
     render(<SessionAnalytics />);
-    
+
     expect(screen.getByText("Loading chart data...")).toBeInTheDocument();
   });
 
   it("handles error state", async () => {
     // Mock error
     mockGetCollection.mockRejectedValue(new Error("Failed to load data"));
-    
+
     render(<SessionAnalytics />);
-    
+
     await waitFor(() => {
-      expect(screen.getByText("Failed to load analytics data")).toBeInTheDocument();
+      expect(
+        screen.getByText("Failed to load analytics data")
+      ).toBeInTheDocument();
     });
   });
 
   it("handles empty data state", async () => {
     // Mock empty data
     mockGetCollection.mockResolvedValue([]);
-    
+
     render(<SessionAnalytics />);
-    
+
     await waitFor(() => {
-      expect(screen.getByText("No data available for the selected period")).toBeInTheDocument();
+      expect(
+        screen.getByText("No data available for the selected period")
+      ).toBeInTheDocument();
     });
   });
 
   it("renders filter controls", () => {
     render(<SessionAnalytics />);
-    
+
     expect(screen.getByText("Date Range")).toBeInTheDocument();
     expect(screen.getByText("Chart Type")).toBeInTheDocument();
     expect(screen.getByText("Last 30 Days")).toBeInTheDocument();
