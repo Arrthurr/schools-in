@@ -8,7 +8,9 @@ describe("ReportScheduler", () => {
 
     expect(screen.getByText("Automated Report Scheduling")).toBeInTheDocument();
     expect(screen.getByText("Create Schedule")).toBeInTheDocument();
-    expect(screen.getByText(/Configure automated delivery of reports/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Configure automated delivery of reports/)
+    ).toBeInTheDocument();
   });
 
   it("displays mock schedules", async () => {
@@ -29,7 +31,7 @@ describe("ReportScheduler", () => {
       expect(screen.getByText("Total Schedules")).toBeInTheDocument();
       expect(screen.getAllByText("Active")).toContainEqual(
         expect.objectContaining({
-          textContent: "Active"
+          textContent: "Active",
         })
       );
       expect(screen.getByText("Daily Reports")).toBeInTheDocument();
@@ -45,7 +47,7 @@ describe("ReportScheduler", () => {
       expect(screen.getByText("weekly")).toBeInTheDocument();
       expect(screen.getByText("monthly")).toBeInTheDocument();
       expect(screen.getByText("daily")).toBeInTheDocument();
-      
+
       // Check for action buttons
       expect(screen.getAllByText("Run Now")).toHaveLength(3);
       expect(screen.getAllByText("Edit")).toHaveLength(3);
@@ -104,7 +106,7 @@ describe("ReportScheduler", () => {
       const runButtons = screen.getAllByText("Run Now");
       const editButtons = screen.getAllByText("Edit");
       const deleteButtons = screen.getAllByText("Delete");
-      
+
       expect(runButtons).toHaveLength(3);
       expect(editButtons).toHaveLength(3);
       expect(deleteButtons).toHaveLength(3);

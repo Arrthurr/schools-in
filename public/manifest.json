@@ -24,6 +24,22 @@
       "purpose": "any maskable"
     }
   ],
+  "shortcuts": [
+    {
+      "name": "Check In",
+      "short_name": "Check In",
+      "description": "Quick check-in to assigned school",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Session History",
+      "short_name": "History",
+      "description": "View session history",
+      "url": "/dashboard/history",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "screenshots": [
     {
       "src": "/screenshot-mobile.png",
@@ -40,6 +56,11 @@
       "label": "Desktop view of admin dashboard"
     }
   ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
   "features": [
     "GPS location tracking",
     "Offline check-in queue",

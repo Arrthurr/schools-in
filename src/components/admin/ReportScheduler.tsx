@@ -70,7 +70,9 @@ export function ReportScheduler() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState<ReportSchedule | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<ReportSchedule | null>(
+    null
+  );
 
   const [newSchedule, setNewSchedule] = useState<NewScheduleForm>({
     name: "",
@@ -151,7 +153,7 @@ export function ReportScheduler() {
         }
         break;
       case "weekly":
-        nextRun.setDate(nextRun.getDate() + (7 - nextRun.getDay()) % 7 || 7);
+        nextRun.setDate(nextRun.getDate() + ((7 - nextRun.getDay()) % 7) || 7);
         break;
       case "monthly":
         nextRun.setMonth(nextRun.getMonth() + 1, 1);
@@ -179,16 +181,28 @@ export function ReportScheduler() {
       reportType: newSchedule.reportType,
       frequency: newSchedule.frequency,
       deliveryTime: newSchedule.deliveryTime,
-      recipients: newSchedule.recipients.split(",").map(email => email.trim()),
-      filters: { dateRange: newSchedule.frequency === "daily" ? "day" : newSchedule.frequency === "weekly" ? "week" : "month" },
+      recipients: newSchedule.recipients
+        .split(",")
+        .map((email) => email.trim()),
+      filters: {
+        dateRange:
+          newSchedule.frequency === "daily"
+            ? "day"
+            : newSchedule.frequency === "weekly"
+            ? "week"
+            : "month",
+      },
       format: newSchedule.format,
       isActive: true,
-      nextRun: calculateNextRun(newSchedule.frequency, newSchedule.deliveryTime),
+      nextRun: calculateNextRun(
+        newSchedule.frequency,
+        newSchedule.deliveryTime
+      ),
       createdAt: new Date(),
       createdBy: "current-user@schoolsin.com", // Would be from auth context
     };
 
-    setSchedules(prev => [...prev, schedule]);
+    setSchedules((prev) => [...prev, schedule]);
     setShowCreateDialog(false);
     setNewSchedule({
       name: "",
@@ -204,8 +218,8 @@ export function ReportScheduler() {
 
   // Toggle schedule active state
   const toggleScheduleActive = (id: string) => {
-    setSchedules(prev =>
-      prev.map(schedule =>
+    setSchedules((prev) =>
+      prev.map((schedule) =>
         schedule.id === id
           ? {
               ...schedule,
@@ -221,20 +235,23 @@ export function ReportScheduler() {
 
   // Delete schedule
   const deleteSchedule = (id: string) => {
-    setSchedules(prev => prev.filter(schedule => schedule.id !== id));
+    setSchedules((prev) => prev.filter((schedule) => schedule.id !== id));
   };
 
   // Simulate running a report
   const runScheduleNow = (id: string) => {
     setLoading(true);
     setTimeout(() => {
-      setSchedules(prev =>
-        prev.map(schedule =>
+      setSchedules((prev) =>
+        prev.map((schedule) =>
           schedule.id === id
             ? {
                 ...schedule,
                 lastRun: new Date(),
-                nextRun: calculateNextRun(schedule.frequency, schedule.deliveryTime),
+                nextRun: calculateNextRun(
+                  schedule.frequency,
+                  schedule.deliveryTime
+                ),
               }
             : schedule
         )
@@ -247,26 +264,51 @@ export function ReportScheduler() {
   const getReportTypeInfo = (type: string) => {
     switch (type) {
       case "sessions":
-        return { label: "Session Reports", icon: FileText, color: "bg-blue-100 text-blue-800" };
+        return {
+          label: "Session Reports",
+          icon: FileText,
+          color: "bg-blue-100 text-blue-800",
+        };
       case "attendance":
-        return { label: "Attendance Summary", icon: Users, color: "bg-green-100 text-green-800" };
+        return {
+          label: "Attendance Summary",
+          icon: Users,
+          color: "bg-green-100 text-green-800",
+        };
       case "analytics":
-        return { label: "Analytics Dashboard", icon: Calendar, color: "bg-purple-100 text-purple-800" };
+        return {
+          label: "Analytics Dashboard",
+          icon: Calendar,
+          color: "bg-purple-100 text-purple-800",
+        };
       case "management":
-        return { label: "Session Management", icon: Settings, color: "bg-orange-100 text-orange-800" };
+        return {
+          label: "Session Management",
+          icon: Settings,
+          color: "bg-orange-100 text-orange-800",
+        };
       default:
-        return { label: "Unknown", icon: FileText, color: "bg-gray-100 text-gray-800" };
+        return {
+          label: "Unknown",
+          icon: FileText,
+          color: "bg-gray-100 text-gray-800",
+        };
     }
   };
 
   // Get frequency badge color
   const getFrequencyColor = (frequency: string) => {
     switch (frequency) {
-      case "daily": return "bg-red-100 text-red-800";
-      case "weekly": return "bg-blue-100 text-blue-800";
-      case "monthly": return "bg-green-100 text-green-800";
-      case "quarterly": return "bg-purple-100 text-purple-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "daily":
+        return "bg-red-100 text-red-800";
+      case "weekly":
+        return "bg-blue-100 text-blue-800";
+      case "monthly":
+        return "bg-green-100 text-green-800";
+      case "quarterly":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -282,10 +324,11 @@ export function ReportScheduler() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Configure automated delivery of reports via email. Set up recurring schedules for session reports,
-            attendance summaries, analytics dashboards, and management overviews.
+            Configure automated delivery of reports via email. Set up recurring
+            schedules for session reports, attendance summaries, analytics
+            dashboards, and management overviews.
           </p>
-          
+
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button className="flex items-center gap-2">
@@ -297,10 +340,11 @@ export function ReportScheduler() {
               <DialogHeader>
                 <DialogTitle>Create Report Schedule</DialogTitle>
                 <DialogDescription>
-                  Set up a new automated report to be delivered via email on a recurring basis.
+                  Set up a new automated report to be delivered via email on a
+                  recurring basis.
                 </DialogDescription>
               </DialogHeader>
-              
+
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -316,7 +360,12 @@ export function ReportScheduler() {
                     <Input
                       id="name"
                       value={newSchedule.name}
-                      onChange={(e) => setNewSchedule(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) =>
+                        setNewSchedule((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
                       placeholder="e.g., Weekly Session Summary"
                     />
                   </div>
@@ -330,7 +379,12 @@ export function ReportScheduler() {
                         { value: "management", label: "Session Management" },
                       ]}
                       value={newSchedule.reportType}
-                      onValueChange={(value) => setNewSchedule(prev => ({ ...prev, reportType: value as any }))}
+                      onValueChange={(value) =>
+                        setNewSchedule((prev) => ({
+                          ...prev,
+                          reportType: value as any,
+                        }))
+                      }
                     />
                   </div>
                 </div>
@@ -340,7 +394,12 @@ export function ReportScheduler() {
                   <Input
                     id="description"
                     value={newSchedule.description}
-                    onChange={(e) => setNewSchedule(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setNewSchedule((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
                     placeholder="Brief description of this report schedule"
                   />
                 </div>
@@ -357,7 +416,12 @@ export function ReportScheduler() {
                         { value: "quarterly", label: "Quarterly" },
                       ]}
                       value={newSchedule.frequency}
-                      onValueChange={(value) => setNewSchedule(prev => ({ ...prev, frequency: value as any }))}
+                      onValueChange={(value) =>
+                        setNewSchedule((prev) => ({
+                          ...prev,
+                          frequency: value as any,
+                        }))
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -366,7 +430,12 @@ export function ReportScheduler() {
                       id="deliveryTime"
                       type="time"
                       value={newSchedule.deliveryTime}
-                      onChange={(e) => setNewSchedule(prev => ({ ...prev, deliveryTime: e.target.value }))}
+                      onChange={(e) =>
+                        setNewSchedule((prev) => ({
+                          ...prev,
+                          deliveryTime: e.target.value,
+                        }))
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -378,7 +447,12 @@ export function ReportScheduler() {
                         { value: "excel", label: "Excel Spreadsheet" },
                       ]}
                       value={newSchedule.format}
-                      onValueChange={(value) => setNewSchedule(prev => ({ ...prev, format: value as any }))}
+                      onValueChange={(value) =>
+                        setNewSchedule((prev) => ({
+                          ...prev,
+                          format: value as any,
+                        }))
+                      }
                     />
                   </div>
                 </div>
@@ -389,7 +463,12 @@ export function ReportScheduler() {
                   <Input
                     id="recipients"
                     value={newSchedule.recipients}
-                    onChange={(e) => setNewSchedule(prev => ({ ...prev, recipients: e.target.value }))}
+                    onChange={(e) =>
+                      setNewSchedule((prev) => ({
+                        ...prev,
+                        recipients: e.target.value,
+                      }))
+                    }
                     placeholder="email1@example.com, email2@example.com"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -399,7 +478,10 @@ export function ReportScheduler() {
 
                 {/* Actions */}
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCreateDialog(false)}
+                  >
                     Cancel
                   </Button>
                   <Button onClick={handleCreateSchedule}>
@@ -426,9 +508,12 @@ export function ReportScheduler() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center h-48">
               <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Scheduled Reports</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                No Scheduled Reports
+              </h3>
               <p className="text-muted-foreground text-center max-w-md">
-                Create your first automated report schedule to receive regular updates via email.
+                Create your first automated report schedule to receive regular
+                updates via email.
               </p>
             </CardContent>
           </Card>
@@ -438,7 +523,10 @@ export function ReportScheduler() {
             const TypeIcon = typeInfo.icon;
 
             return (
-              <Card key={schedule.id} className={`${!schedule.isActive ? "opacity-75" : ""}`}>
+              <Card
+                key={schedule.id}
+                className={`${!schedule.isActive ? "opacity-75" : ""}`}
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
@@ -446,7 +534,9 @@ export function ReportScheduler() {
                         <TypeIcon className="h-4 w-4" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">{schedule.name}</CardTitle>
+                        <CardTitle className="text-lg">
+                          {schedule.name}
+                        </CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">
                           {schedule.description}
                         </p>
@@ -456,7 +546,9 @@ export function ReportScheduler() {
                       <Badge className={getFrequencyColor(schedule.frequency)}>
                         {schedule.frequency}
                       </Badge>
-                      <Badge variant={schedule.isActive ? "default" : "secondary"}>
+                      <Badge
+                        variant={schedule.isActive ? "default" : "secondary"}
+                      >
                         {schedule.isActive ? "Active" : "Paused"}
                       </Badge>
                     </div>
@@ -484,7 +576,10 @@ export function ReportScheduler() {
                       <h4 className="font-medium text-sm">Recipients</h4>
                       <div className="space-y-1">
                         {schedule.recipients.map((email, index) => (
-                          <div key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 text-sm text-muted-foreground"
+                          >
                             <Mail className="h-3 w-3" />
                             {email}
                           </div>
@@ -578,25 +673,34 @@ export function ReportScheduler() {
             <div className="grid gap-4 md:grid-cols-4">
               <div className="text-center">
                 <div className="text-2xl font-bold">{schedules.length}</div>
-                <div className="text-sm text-muted-foreground">Total Schedules</div>
+                <div className="text-sm text-muted-foreground">
+                  Total Schedules
+                </div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {schedules.filter(s => s.isActive).length}
+                  {schedules.filter((s) => s.isActive).length}
                 </div>
                 <div className="text-sm text-muted-foreground">Active</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {schedules.filter(s => s.frequency === "daily").length}
+                  {schedules.filter((s) => s.frequency === "daily").length}
                 </div>
-                <div className="text-sm text-muted-foreground">Daily Reports</div>
+                <div className="text-sm text-muted-foreground">
+                  Daily Reports
+                </div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-purple-600">
-                  {schedules.reduce((total, s) => total + s.recipients.length, 0)}
+                  {schedules.reduce(
+                    (total, s) => total + s.recipients.length,
+                    0
+                  )}
                 </div>
-                <div className="text-sm text-muted-foreground">Total Recipients</div>
+                <div className="text-sm text-muted-foreground">
+                  Total Recipients
+                </div>
               </div>
             </div>
           </CardContent>

@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { logOut } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
+import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
+import { PWAStatus } from "@/components/pwa/PWAStatus";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -14,7 +17,11 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <>
       <Header />
-      {children}
+      <PWAUpdatePrompt />
+      <main className="container mx-auto px-4">
+        <PWAInstallPrompt />
+        {children}
+      </main>
     </>
   );
 }
@@ -36,14 +43,15 @@ function Header() {
       >
         Schools-In
       </Link>
-      <nav>
+      <nav className="flex items-center gap-4">
         {user && (
-          <div className="flex items-center gap-4">
+          <>
+            <PWAStatus />
             <Link href="/profile">Profile</Link>
             <Button variant="outline" onClick={handleSignOut}>
               Sign Out
             </Button>
-          </div>
+          </>
         )}
       </nav>
     </header>
