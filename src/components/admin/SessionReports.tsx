@@ -28,7 +28,11 @@ import {
   AlertCircle,
   FileDown,
 } from "lucide-react";
-import { formatDuration, getSessionStatusConfig, calculateSessionDuration } from "@/lib/utils/session";
+import {
+  formatDuration,
+  getSessionStatusConfig,
+  calculateSessionDuration,
+} from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
 import { getCollection, COLLECTIONS } from "@/lib/firebase/firestore";
 import { Timestamp } from "firebase/firestore";
@@ -302,34 +306,47 @@ export function SessionReports() {
       "Duration",
       "Status",
       "Check In Location",
-      "Check Out Location"
+      "Check Out Location",
     ];
 
     const csvData = sessions.map((session) => [
       session.id || "N/A",
       getProviderName(session.userId),
       getSchoolName(session.schoolId),
-      session.checkInTime ? new Date(session.checkInTime.toDate()).toLocaleString() : "N/A",
-      session.checkOutTime ? new Date(session.checkOutTime.toDate()).toLocaleString() : "N/A",
+      session.checkInTime
+        ? new Date(session.checkInTime.toDate()).toLocaleString()
+        : "N/A",
+      session.checkOutTime
+        ? new Date(session.checkOutTime.toDate()).toLocaleString()
+        : "N/A",
       session.checkInTime && session.checkOutTime
-        ? formatDuration(calculateSessionDuration(session.checkInTime, session.checkOutTime))
+        ? formatDuration(
+            calculateSessionDuration(session.checkInTime, session.checkOutTime)
+          )
         : "N/A",
       getSessionStatusConfig(session.status).label,
-      session.checkInLocation ? `${session.checkInLocation.latitude}, ${session.checkInLocation.longitude}` : "N/A",
-      session.checkOutLocation ? `${session.checkOutLocation.latitude}, ${session.checkOutLocation.longitude}` : "N/A"
+      session.checkInLocation
+        ? `${session.checkInLocation.latitude}, ${session.checkInLocation.longitude}`
+        : "N/A",
+      session.checkOutLocation
+        ? `${session.checkOutLocation.latitude}, ${session.checkOutLocation.longitude}`
+        : "N/A",
     ]);
 
     const csvContent = [headers, ...csvData]
-      .map(row => row.map(field => `"${field}"`).join(","))
+      .map((row) => row.map((field) => `"${field}"`).join(","))
       .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    
+
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute("href", url);
-      link.setAttribute("download", `session-report-${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `session-report-${new Date().toISOString().split("T")[0]}.csv`
+      );
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();

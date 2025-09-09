@@ -1,16 +1,20 @@
 // Reports and export page
 
+"use client";
+
+import { useState } from "react";
 import { Metadata } from "next";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminNavigation } from "@/components/admin/AdminNavigation";
 import { SessionReports } from "@/components/admin/SessionReports";
-
-export const metadata: Metadata = {
-  title: "Reports & Export | Schools In Admin",
-  description: "Generate reports and export session data",
-};
+import { AttendanceSummary } from "@/components/admin/AttendanceSummary";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { BarChart3, UserCheck } from "lucide-react";
 
 export default function ReportsPage() {
+  const [activeTab, setActiveTab] = useState<"sessions" | "attendance">("sessions");
+
   return (
     <ProtectedRoute roles={["admin"]}>
       <AdminNavigation>
@@ -19,7 +23,33 @@ export default function ReportsPage() {
             <h1 className="text-3xl font-bold">Reports & Export</h1>
           </div>
 
-          <SessionReports />
+          {/* Tab Navigation */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex gap-2">
+                <Button
+                  variant={activeTab === "sessions" ? "default" : "outline"}
+                  onClick={() => setActiveTab("sessions")}
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Session Reports
+                </Button>
+                <Button
+                  variant={activeTab === "attendance" ? "default" : "outline"}
+                  onClick={() => setActiveTab("attendance")}
+                  className="flex items-center gap-2"
+                >
+                  <UserCheck className="h-4 w-4" />
+                  Attendance Summary
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tab Content */}
+          {activeTab === "sessions" && <SessionReports />}
+          {activeTab === "attendance" && <AttendanceSummary />}
         </div>
       </AdminNavigation>
     </ProtectedRoute>
