@@ -5,7 +5,13 @@ import { Metadata } from "next";
 import { Plus, Search, MapPin, Edit, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminNavigation } from "@/components/admin/AdminNavigation";
@@ -60,7 +66,7 @@ function SchoolManagementContent() {
       totalSessions: 45,
     },
     {
-      id: "2", 
+      id: "2",
       name: "Jones College Prep High School",
       address: "700 S State St, Chicago, IL 60605",
       latitude: 41.871431,
@@ -74,7 +80,7 @@ function SchoolManagementContent() {
     },
     {
       id: "3",
-      name: "Lane Tech College Prep High School", 
+      name: "Lane Tech College Prep High School",
       address: "2501 W Addison St, Chicago, IL 60618",
       latitude: 41.947068,
       longitude: -87.693497,
@@ -93,7 +99,7 @@ function SchoolManagementContent() {
       setIsLoading(true);
       try {
         // In a real app, this would be an API call
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         setSchools(mockSchools);
         setFilteredSchools(mockSchools);
       } catch (error) {
@@ -113,10 +119,11 @@ function SchoolManagementContent() {
       return;
     }
 
-    const filtered = schools.filter(school =>
-      school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      school.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      school.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    const filtered = schools.filter(
+      (school) =>
+        school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        school.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        school.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredSchools(filtered);
   }, [searchQuery, schools]);
@@ -124,7 +131,7 @@ function SchoolManagementContent() {
   const handleCreateSchool = async (data: SchoolFormData) => {
     try {
       setIsLoading(true);
-      
+
       // In a real app, this would be an API call to create the school
       const newSchool: School = {
         id: Date.now().toString(),
@@ -136,9 +143,9 @@ function SchoolManagementContent() {
       };
 
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      setSchools(prev => [...prev, newSchool]);
+      setSchools((prev) => [...prev, newSchool]);
       setError(null);
     } catch (error) {
       throw new Error("Failed to create school");
@@ -160,10 +167,10 @@ function SchoolManagementContent() {
       };
 
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      setSchools(prev =>
-        prev.map(school =>
+      setSchools((prev) =>
+        prev.map((school) =>
           school.id === editingSchool.id ? updatedSchool : school
         )
       );
@@ -177,17 +184,21 @@ function SchoolManagementContent() {
   };
 
   const handleDeleteSchool = async (schoolId: string) => {
-    if (!confirm("Are you sure you want to delete this school? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this school? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
     try {
       setIsLoading(true);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
 
-      setSchools(prev => prev.filter(school => school.id !== schoolId));
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      setSchools((prev) => prev.filter((school) => school.id !== schoolId));
       setError(null);
     } catch (error) {
       setError("Failed to delete school");
@@ -211,9 +222,12 @@ function SchoolManagementContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">School Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            School Management
+          </h1>
           <p className="text-gray-600 mt-1">
-            Manage school locations and their check-in settings for Title I providers.
+            Manage school locations and their check-in settings for Title I
+            providers.
           </p>
         </div>
         <Button onClick={() => setIsFormOpen(true)}>
@@ -297,7 +311,7 @@ function SchoolManagementContent() {
                   </div>
                 </div>
               </CardHeader>
-              
+
               <CardContent>
                 <div className="space-y-3">
                   {/* Stats */}
@@ -320,7 +334,8 @@ function SchoolManagementContent() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Coordinates:</span>
                       <span className="text-gray-900 font-mono text-xs">
-                        {school.latitude.toFixed(4)}, {school.longitude.toFixed(4)}
+                        {school.latitude.toFixed(4)},{" "}
+                        {school.longitude.toFixed(4)}
                       </span>
                     </div>
                   </div>

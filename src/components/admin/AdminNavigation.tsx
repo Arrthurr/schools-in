@@ -67,6 +67,12 @@ const navigationItems: NavItem[] = [
     description: "Manage providers and admins",
   },
   {
+    href: "/admin/assignments",
+    label: "Assignments",
+    icon: Activity,
+    description: "School-provider assignments",
+  },
+  {
     href: "/admin/settings",
     label: "Settings",
     icon: Settings,

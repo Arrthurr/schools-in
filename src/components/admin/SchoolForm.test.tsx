@@ -87,7 +87,7 @@ describe("SchoolForm", () => {
 
     const nameInput = screen.getByLabelText(/school name/i);
     const addressInput = screen.getByLabelText(/address/i);
-    
+
     fireEvent.change(nameInput, { target: { value: "Test School" } });
     fireEvent.change(addressInput, { target: { value: "123 Main St" } });
 
@@ -95,30 +95,32 @@ describe("SchoolForm", () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText("Valid coordinates are required")).toBeInTheDocument();
+      expect(
+        screen.getByText("Valid coordinates are required")
+      ).toBeInTheDocument();
     });
   });
 
   it("calls onSubmit with form data", async () => {
     render(<SchoolForm {...defaultProps} />);
 
-    fireEvent.change(screen.getByLabelText(/school name/i), { 
-      target: { value: "Test School" } 
+    fireEvent.change(screen.getByLabelText(/school name/i), {
+      target: { value: "Test School" },
     });
-    fireEvent.change(screen.getByLabelText(/address/i), { 
-      target: { value: "123 Main St" } 
+    fireEvent.change(screen.getByLabelText(/address/i), {
+      target: { value: "123 Main St" },
     });
-    fireEvent.change(screen.getByLabelText(/latitude/i), { 
-      target: { value: "41.8781" } 
+    fireEvent.change(screen.getByLabelText(/latitude/i), {
+      target: { value: "41.8781" },
     });
-    fireEvent.change(screen.getByLabelText(/longitude/i), { 
-      target: { value: "-87.6298" } 
+    fireEvent.change(screen.getByLabelText(/longitude/i), {
+      target: { value: "-87.6298" },
     });
-    fireEvent.change(screen.getByLabelText(/check-in radius/i), { 
-      target: { value: "150" } 
+    fireEvent.change(screen.getByLabelText(/check-in radius/i), {
+      target: { value: "150" },
     });
-    fireEvent.change(screen.getByLabelText(/description/i), { 
-      target: { value: "Test description" } 
+    fireEvent.change(screen.getByLabelText(/description/i), {
+      target: { value: "Test description" },
     });
 
     const submitButton = screen.getByRole("button", { name: /create school/i });
@@ -161,12 +163,14 @@ describe("SchoolForm", () => {
     const geocodeButton = screen.getByRole("button", { name: /get coords/i });
     fireEvent.click(geocodeButton);
 
-    expect(screen.getByRole("button", { name: /finding.../i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /finding.../i })
+    ).toBeInTheDocument();
   });
 
   it("does not render when isOpen is false", () => {
     render(<SchoolForm {...defaultProps} isOpen={false} />);
-    
+
     expect(screen.queryByText("Add New School")).not.toBeInTheDocument();
   });
 });
