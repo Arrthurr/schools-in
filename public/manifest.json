@@ -67,7 +67,5 @@
     "Session management",
     "Real-time sync"
   ],
-  "permissions": [
-    "geolocation"
-  ]
+  "permissions": ["geolocation"]
 }

@@ -2,24 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { RefreshCw, X } from "lucide-react";
 
 export function PWAUpdatePrompt() {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
-  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [registration, setRegistration] =
+    useState<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    if ("serviceWorker" in navigator) {
       navigator.serviceWorker.ready.then((reg) => {
         setRegistration(reg);
-        
+
         // Listen for updates
-        reg.addEventListener('updatefound', () => {
+        reg.addEventListener("updatefound", () => {
           const newWorker = reg.installing;
           if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
                 // New content is available
                 setShowUpdatePrompt(true);
               }
@@ -29,7 +39,7 @@ export function PWAUpdatePrompt() {
       });
 
       // Listen for controller change (when new SW takes over)
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
         window.location.reload();
       });
     }
@@ -38,7 +48,7 @@ export function PWAUpdatePrompt() {
   const handleUpdate = () => {
     if (registration?.waiting) {
       // Tell the waiting service worker to skip waiting and become active
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
     }
     setShowUpdatePrompt(false);
   };
@@ -57,19 +67,25 @@ export function PWAUpdatePrompt() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <RefreshCw className="h-5 w-5 text-green-600" />
-            <CardTitle className="text-lg text-green-900">Update Available</CardTitle>
+            <CardTitle className="text-lg text-green-900">
+              Update Available
+            </CardTitle>
           </div>
           <Button variant="ghost" size="sm" onClick={handleDismiss}>
             <X className="h-4 w-4" />
           </Button>
         </div>
         <CardDescription className="text-green-700">
-          A new version of Schools In is available with improvements and bug fixes
+          A new version of Schools In is available with improvements and bug
+          fixes
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="flex gap-2">
-          <Button onClick={handleUpdate} className="bg-green-600 hover:bg-green-700">
+          <Button
+            onClick={handleUpdate}
+            className="bg-green-600 hover:bg-green-700"
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             Update Now
           </Button>
