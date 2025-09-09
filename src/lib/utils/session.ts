@@ -102,42 +102,42 @@ export const getSessionStatusConfig = (status: string) => {
         label: "Active",
         color: "bg-green-100 text-green-800 border-green-200",
         icon: "Clock",
-        description: "Session is currently in progress"
+        description: "Session is currently in progress",
       };
     case "completed":
       return {
         label: "Completed",
         color: "bg-blue-100 text-blue-800 border-blue-200",
         icon: "CheckCircle",
-        description: "Session has been completed successfully"
+        description: "Session has been completed successfully",
       };
     case "paused":
       return {
         label: "Paused",
         color: "bg-yellow-100 text-yellow-800 border-yellow-200",
         icon: "Pause",
-        description: "Session is temporarily paused"
+        description: "Session is temporarily paused",
       };
     case "error":
       return {
         label: "Error",
         color: "bg-red-100 text-red-800 border-red-200",
         icon: "AlertCircle",
-        description: "Session encountered an error"
+        description: "Session encountered an error",
       };
     case "cancelled":
       return {
         label: "Cancelled",
         color: "bg-gray-100 text-gray-800 border-gray-200",
         icon: "X",
-        description: "Session was cancelled"
+        description: "Session was cancelled",
       };
     default:
       return {
         label: status,
         color: "bg-gray-100 text-gray-800 border-gray-200",
         icon: "HelpCircle",
-        description: "Unknown status"
+        description: "Unknown status",
       };
   }
 };

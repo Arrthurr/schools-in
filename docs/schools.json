@@ -1,156 +1,181 @@
 [
   {
     "name": "Walter Payton HS",
+    "address": "1034 N Wells St, Chicago, IL 60610",
     "latitude": 41.90191443941818,
     "longitude": -87.63472443763325
   },
   {
     "name": "Estrella Foothills HS",
+    "address": "13033 S 183rd Ave, Goodyear, AZ 85338",
     "latitude": 33.32774730573383,
     "longitude": -112.42321335568697
   },
   {
     "name": "Augustus Tolton",
+    "address": "7120 S Calumet Ave, Chicago, IL 60619",
     "latitude": 41.758053594905924,
     "longitude": -87.61082755311055
   },
   {
     "name": "Bethesda International Academy",
+    "address": "6803 N Campbell Ave, Chicago, IL 60645",
     "latitude": 42.009123647694,
     "longitude": -87.63274729304545
   },
   {
     "name": "Cambridge School",
+    "address": "1012 E 47th St #1906, Chicago, IL 60653",
     "latitude": 41.81239483239481,
     "longitude": -87.59650712631131
   },
   {
     "name": "Chicago SDA Academy",
+    "address": "7008 S Michigan Ave, Chicago, IL 60637",
     "latitude": 41.7720688903756,
     "longitude": -87.66943795996532
   },
   {
     "name": "Chicago West Side Christian School",
+    "address": "1240 S Pulaski Rd, Chicago, IL 60623",
     "latitude": 41.88298993613497,
     "longitude": -87.72200785016952
   },
   {
     "name": "Children of Peace Catholic School",
+    "address": "1900 W Taylor St, Chicago, IL 60612",
     "latitude": 41.86620678370595,
     "longitude": -87.68791329791728
   },
   {
     "name": "Daystar Academy",
+    "address": "1550 S State St, Chicago, IL 60605",
     "latitude": 41.86988548410223,
     "longitude": -87.57461735669517
   },
   {
     "name": "DePaul College Prep",
+    "address": "3333 N Rockwell St, Chicago, IL 60618",
     "latitude": 41.94556292997298,
     "longitude": -87.66897039985464
   },
   {
     "name": "Good Shepherd Catholic School",
+    "address": "2725 S Kolin Ave, Chicago, IL 60623",
     "latitude": 41.79038457319608,
     "longitude": -87.61852882493487
   },
   {
     "name": "Heritage Leadership Academy",
+    "address": "1425 W 112th St, Chicago, IL 60643",
     "latitude": 41.69418980316117,
     "longitude": -87.64041011233861
   },
   {
     "name": "Holy Angels Catholic School",
+    "address": "750 E 40th St, Chicago, IL 60653",
     "latitude": 41.82452120447666,
     "longitude": -87.62574790138426
   },
   {
     "name": "HOPE Excel Academy",
+    "address": "4821 W Chicago Ave, Chicago, IL 60651",
     "latitude": 41.89489643826383,
     "longitude": -87.74549042314361
   },
   {
     "name": "ICCI Academy",
+    "address": "6435 W Belmont Ave, Chicago, IL 60634",
     "latitude": 41.946599346578196,
     "longitude": -87.84449809034912
   },
   {
     "name": "ITA Village Leadership Academy",
+    "address": "4930 S Cottage Grove Ave, Chicago, IL 60615",
     "latitude": 41.81040593002731,
     "longitude": -87.62672967311518
   },
   {
     "name": "LYDIA Home",
+    "address": "4300 W Irving Park Rd, Chicago, IL 60641",
     "latitude": 41.958698147522966,
     "longitude": -87.71297429733272
   },
   {
     "name": "Makki Educational Academy",
+    "address": "4926 N Kimball Ave, Chicago, IL 60625",
     "latitude": 41.989645326938415,
     "longitude": -87.71231955385213
   },
   {
-    "name": "Mercy School for Boys",
-    "latitude": 41.884398518323565,
-    "longitude": -87.64727650010171
-  },
-  {
-    "name": "Mercy School for Girls",
+    "name": "Mercy Home for Boys & Girls",
+    "address": "1140 W Jackson Blvd, Chicago, IL 60607",
     "latitude": 41.884398518323565,
     "longitude": -87.64727650010171
   },
   {
     "name": "Oakdale Christian Academy",
+    "address": "9440 S Vincennes Ave, Chicago, IL 60620",
     "latitude": 41.73076656266556,
     "longitude": -87.64951378822167
   },
   {
     "name": "Ravenswood Baptist Christian",
+    "address": "4455 N Seeley Ave, Chicago, IL 60625",
     "latitude": 41.96342476422094,
     "longitude": -87.6792012118811
   },
   {
     "name": "St. Ailbe School",
+    "address": "9037 S Harper Ave, Chicago, IL 60619",
     "latitude": 41.733963943348805,
     "longitude": -87.60463832507088
   },
   {
-    "name": "St. Katharine - Drexel Catholic School",
+    "name": "St. Katharine Drexel",
+    "address": "9015 S Harper Ave, Chicago, IL 60619",
     "latitude": 41.73788198295598,
     "longitude": -87.56671196475762
   },
   {
     "name": "St. John's Lutheran School",
+    "address": "4939 W Montrose Ave, Chicago, IL 60641",
     "latitude": 41.96368428829383,
     "longitude": -87.7800006332083
   },
   {
     "name": "St. Margaret of Scotland School",
+    "address": "9833 S Throop St, Chicago, IL 60643",
     "latitude": 41.71704149043431,
     "longitude": -87.67381145357817
   },
   {
     "name": "St. Paul Lutheran School",
+    "address": "7621 S Dorchester Ave, Chicago, IL 60619",
     "latitude": 41.75478591099567,
     "longitude": -87.58372602978359
   },
   {
     "name": "St. Philip Neri School",
+    "address": "2110 E 72nd St, Chicago, IL 60649",
     "latitude": 41.79231990661875,
     "longitude": -87.58304443755415
   },
   {
     "name": "St. Sabina Academy",
+    "address": "7801 S Throop St, Chicago, IL 60620",
     "latitude": 41.76041917658477,
     "longitude": -87.69943544658119
   },
   {
     "name": "St. Viator Elementary School",
+    "address": "4140 W Addison St, Chicago, IL 60641",
     "latitude": 41.946667823924905,
     "longitude": -87.73031274614014
   },
   {
     "name": "Visitation Catholic School",
+    "address": "900 W Garfield Blvd, Chicago, IL 60609",
     "latitude": 41.79280915614653,
     "longitude": -87.64731241877288
   }

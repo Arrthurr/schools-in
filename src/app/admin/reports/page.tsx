@@ -1,6 +1,8 @@
 // Reports and export page
 
 import { Metadata } from 'next';
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AdminNavigation } from "@/components/admin/AdminNavigation";
 
 export const metadata: Metadata = {
   title: 'Reports & Export | Schools In Admin',
@@ -9,11 +11,12 @@ export const metadata: Metadata = {
 
 export default function ReportsPage() {
   return (
-    <div className="container mx-auto py-6">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Reports & Export</h1>
-        </div>
+    <ProtectedRoute roles={["admin"]}>
+      <AdminNavigation>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Reports & Export</h1>
+          </div>
         
         {/* Report Filters */}
         <div className="bg-white rounded-lg shadow p-6">
@@ -107,7 +110,8 @@ export default function ReportsPage() {
             </p>
           </div>
         </div>
-      </div>
-    </div>
+        </div>
+      </AdminNavigation>
+    </ProtectedRoute>
   );
 }

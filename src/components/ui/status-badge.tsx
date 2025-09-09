@@ -6,7 +6,7 @@ import {
   AlertCircle,
   Pause,
   X,
-  HelpCircle
+  HelpCircle,
 } from "lucide-react";
 import { getSessionStatusConfig } from "@/lib/utils/session";
 
@@ -29,7 +29,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   const getIcon = (iconName: string) => {
     const iconProps = {
-      className: size === "sm" ? "w-3 h-3" : size === "lg" ? "w-4 h-4" : "w-3 h-3"
+      className:
+        size === "sm" ? "w-3 h-3" : size === "lg" ? "w-4 h-4" : "w-3 h-3",
     };
 
     switch (iconName) {
@@ -51,7 +52,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const sizeClasses = {
     sm: "text-xs px-2 py-0.5",
     md: "text-sm px-2.5 py-0.5",
-    lg: "text-base px-3 py-1"
+    lg: "text-base px-3 py-1",
   };
 
   return (
@@ -60,11 +61,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       className={`${config.color} ${sizeClasses[size]} ${className}`}
       title={showDescription ? config.description : undefined}
     >
-      {showIcon && (
-        <span className="mr-1">
-          {getIcon(config.icon)}
-        </span>
-      )}
+      {showIcon && <span className="mr-1">{getIcon(config.icon)}</span>}
       {config.label}
     </Badge>
   );

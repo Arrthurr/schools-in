@@ -65,7 +65,9 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
       interval = setInterval(() => {
         const now = new Date();
         const startTime = new Date(currentSession.startTime);
-        const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000 / 60); // in minutes
+        const elapsed = Math.floor(
+          (now.getTime() - startTime.getTime()) / 1000 / 60
+        ); // in minutes
         setElapsedTime(elapsed);
       }, 60000); // Update every minute
     } else {
@@ -100,7 +102,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
     });
   };
 
-    // Format time for display
+  // Format time for display
 
   // Handle session actions
   const handleEndSession = () => {
@@ -169,11 +171,14 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
         <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
           <SchoolIcon className="h-5 w-5 text-[#154690]" />
           <div>
-            <p className="font-medium text-gray-900">{currentSession.schoolName}</p>
+            <p className="font-medium text-gray-900">
+              {currentSession.schoolName}
+            </p>
             <div className="flex items-center text-sm text-gray-600 mt-1">
               <MapPin className="h-3 w-3 mr-1" />
               <span>
-                {currentSession.location.latitude.toFixed(4)}, {currentSession.location.longitude.toFixed(4)}
+                {currentSession.location.latitude.toFixed(4)},{" "}
+                {currentSession.location.longitude.toFixed(4)}
               </span>
             </div>
           </div>
@@ -191,9 +196,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
               </div>
             </div>
           </div>
-          <p className="text-sm text-gray-600">
-            Session duration
-          </p>
+          <p className="text-sm text-gray-600">Session duration</p>
         </div>
 
         {/* Session Stats */}
@@ -260,8 +263,8 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
             <div>
               <p className="font-medium text-yellow-900 mb-1">Session Paused</p>
               <p className="text-yellow-800 text-sm">
-                Remember to resume your session when you return to work.
-                Paused sessions don't count toward your active time.
+                Remember to resume your session when you return to work. Paused
+                sessions don't count toward your active time.
               </p>
             </div>
           </div>
@@ -272,7 +275,9 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
           <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="font-medium text-blue-900 mb-1">Session Completed</p>
+              <p className="font-medium text-blue-900 mb-1">
+                Session Completed
+              </p>
               <p className="text-blue-800 text-sm">
                 This session has been completed and the time has been recorded.
                 Total duration: {formatDuration(currentSession.duration)}
