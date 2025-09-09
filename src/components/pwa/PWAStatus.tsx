@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Wifi, WifiOff, Smartphone, Monitor, RefreshCw, Clock } from "lucide-react";
+import {
+  Wifi,
+  WifiOff,
+  Smartphone,
+  Monitor,
+  RefreshCw,
+  Clock,
+} from "lucide-react";
 import { useOffline } from "@/lib/hooks/useOffline";
 
 export function PWAStatus() {

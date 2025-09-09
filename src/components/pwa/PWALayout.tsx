@@ -11,10 +11,10 @@ interface PWALayoutProps {
   showOfflineNotification?: boolean;
 }
 
-export function PWALayout({ 
-  children, 
-  showStatus = true, 
-  showOfflineNotification = true 
+export function PWALayout({
+  children,
+  showStatus = true,
+  showOfflineNotification = true,
 }: PWALayoutProps) {
   return (
     <div className="min-h-screen">
@@ -35,9 +35,7 @@ export function PWALayout({
       )}
 
       {/* Main Content */}
-      <main className="flex-1">
-        {children}
-      </main>
+      <main className="flex-1">{children}</main>
 
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />

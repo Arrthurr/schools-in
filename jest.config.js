@@ -14,6 +14,11 @@ const config = {
   // Setup files
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
 
+  // Module name mapping for path aliases
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/src/$1",
+  },
+
   // Test file patterns
   testMatch: [
     "<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}",

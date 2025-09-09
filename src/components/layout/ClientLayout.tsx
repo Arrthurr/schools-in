@@ -8,6 +8,10 @@ import Link from "next/link";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
 import { PWAStatus } from "@/components/pwa/PWAStatus";
+import { OfflineMessagingProvider } from "@/components/offline/OfflineMessaging";
+import { OfflineStatusBar } from "@/components/offline/OfflineStatusBar";
+import { OfflineStatusIndicator } from "@/components/offline/OfflineStatusIndicator";
+import { Toaster } from "@/components/ui/toaster";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -15,14 +19,16 @@ interface ClientLayoutProps {
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
-    <>
+    <OfflineMessagingProvider enableToasts={true} enableNotifications={true}>
       <Header />
+      <OfflineStatusBar variant="compact" position="top" />
       <PWAUpdatePrompt />
       <main className="container mx-auto px-4">
         <PWAInstallPrompt />
         {children}
       </main>
-    </>
+      <Toaster />
+    </OfflineMessagingProvider>
   );
 }
 
@@ -46,6 +52,7 @@ function Header() {
       <nav className="flex items-center gap-4">
         {user && (
           <>
+            <OfflineStatusIndicator variant="compact" />
             <PWAStatus />
             <Link href="/profile">Profile</Link>
             <Button variant="outline" onClick={handleSignOut}>

@@ -6,7 +6,7 @@ import { openDB } from "idb";
 // Types
 interface OfflineAction {
   id: string;
-  type: 'checkIn' | 'checkOut';
+  type: "checkIn" | "checkOut";
   data: any;
   timestamp: number;
   endpoint: string;
@@ -169,22 +169,22 @@ export async function getQueuedActions(): Promise<OfflineAction[]> {
 export async function syncPendingActions(): Promise<void> {
   const db = await initDB();
   const actions = await db.getAll(STORES.PENDING_ACTIONS);
-  
+
   for (const action of actions) {
     try {
       // Attempt to sync the action based on type
       let response: Response;
-      
-      if (action.type === 'check-in') {
-        response = await fetch('/api/sessions/check-in', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+
+      if (action.type === "check-in") {
+        response = await fetch("/api/sessions/check-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(action.data),
         });
-      } else if (action.type === 'check-out') {
-        response = await fetch('/api/sessions/check-out', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+      } else if (action.type === "check-out") {
+        response = await fetch("/api/sessions/check-out", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(action.data),
         });
       } else {
@@ -200,7 +200,7 @@ export async function syncPendingActions(): Promise<void> {
         await db.put(STORES.PENDING_ACTIONS, action);
       }
     } catch (error) {
-      console.error('Failed to sync action:', error);
+      console.error("Failed to sync action:", error);
       // Increment retry count
       action.retry = (action.retry || 0) + 1;
       await db.put(STORES.PENDING_ACTIONS, action);

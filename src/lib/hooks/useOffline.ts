@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { serviceManager } from '../offline/serviceManager';
+import { useState, useEffect, useCallback } from "react";
+import { serviceManager } from "../offline/serviceManager";
 
 interface OfflineState {
   isOnline: boolean;
@@ -36,17 +36,17 @@ export function useOffline(): UseOfflineReturn {
     isOnline: true,
     syncInProgress: false,
     pendingActions: 0,
-    lastSyncTime: null
+    lastSyncTime: null,
   });
 
   useEffect(() => {
     // Initialize state
     const updateState = () => {
       const { isOnline, syncInProgress } = serviceManager.getSyncStatus();
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isOnline,
-        syncInProgress
+        syncInProgress,
       }));
     };
 
@@ -55,63 +55,80 @@ export function useOffline(): UseOfflineReturn {
     // Listen for service manager status changes
     const handleStatusChange = (event: CustomEvent) => {
       const { status, isOnline } = event.detail;
-      
-      setState(prev => ({
+
+      setState((prev) => ({
         ...prev,
         isOnline,
-        syncInProgress: status === 'sync-started',
-        lastSyncTime: status === 'sync-completed' ? new Date() : prev.lastSyncTime
+        syncInProgress: status === "sync-started",
+        lastSyncTime:
+          status === "sync-completed" ? new Date() : prev.lastSyncTime,
       }));
     };
 
-    window.addEventListener('service-manager-status', handleStatusChange as EventListener);
+    window.addEventListener(
+      "service-manager-status",
+      handleStatusChange as EventListener
+    );
 
     // Check online status changes
-    const handleOnline = () => setState(prev => ({ ...prev, isOnline: true }));
-    const handleOffline = () => setState(prev => ({ ...prev, isOnline: false }));
+    const handleOnline = () =>
+      setState((prev) => ({ ...prev, isOnline: true }));
+    const handleOffline = () =>
+      setState((prev) => ({ ...prev, isOnline: false }));
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener('service-manager-status', handleStatusChange as EventListener);
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener(
+        "service-manager-status",
+        handleStatusChange as EventListener
+      );
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
-  const performOfflineCheckIn = useCallback(async (checkInData: {
-    schoolId: string;
-    userId: string;
-    coordinates: { lat: number; lng: number };
-    timestamp: number;
-  }) => {
-    try {
-      setState(prev => ({ ...prev, syncInProgress: true }));
-      const result = await serviceManager.performOfflineCheckIn(checkInData);
-      setState(prev => ({ ...prev, syncInProgress: false }));
-      return result;
-    } catch (error) {
-      setState(prev => ({ ...prev, syncInProgress: false }));
-      throw error;
-    }
-  }, []);
+  const performOfflineCheckIn = useCallback(
+    async (checkInData: {
+      schoolId: string;
+      userId: string;
+      coordinates: { lat: number; lng: number };
+      timestamp: number;
+    }) => {
+      try {
+        setState((prev) => ({ ...prev, syncInProgress: true }));
+        const result = await serviceManager.performOfflineCheckIn(checkInData);
+        setState((prev) => ({ ...prev, syncInProgress: false }));
+        return result;
+      } catch (error) {
+        setState((prev) => ({ ...prev, syncInProgress: false }));
+        throw error;
+      }
+    },
+    []
+  );
 
-  const performOfflineCheckOut = useCallback(async (checkOutData: {
-    sessionId: string;
-    coordinates: { lat: number; lng: number };
-    timestamp: number;
-  }) => {
-    try {
-      setState(prev => ({ ...prev, syncInProgress: true }));
-      const result = await serviceManager.performOfflineCheckOut(checkOutData);
-      setState(prev => ({ ...prev, syncInProgress: false }));
-      return result;
-    } catch (error) {
-      setState(prev => ({ ...prev, syncInProgress: false }));
-      throw error;
-    }
-  }, []);
+  const performOfflineCheckOut = useCallback(
+    async (checkOutData: {
+      sessionId: string;
+      coordinates: { lat: number; lng: number };
+      timestamp: number;
+    }) => {
+      try {
+        setState((prev) => ({ ...prev, syncInProgress: true }));
+        const result = await serviceManager.performOfflineCheckOut(
+          checkOutData
+        );
+        setState((prev) => ({ ...prev, syncInProgress: false }));
+        return result;
+      } catch (error) {
+        setState((prev) => ({ ...prev, syncInProgress: false }));
+        throw error;
+      }
+    },
+    []
+  );
 
   const getCachedSchools = useCallback(async (userId?: string) => {
     return await serviceManager.getOfflineSchools(userId);
@@ -122,26 +139,26 @@ export function useOffline(): UseOfflineReturn {
   }, []);
 
   const triggerSync = useCallback(async () => {
-    setState(prev => ({ ...prev, syncInProgress: true }));
+    setState((prev) => ({ ...prev, syncInProgress: true }));
     try {
       await serviceManager.performBackgroundSync();
-      setState(prev => ({ 
-        ...prev, 
+      setState((prev) => ({
+        ...prev,
         syncInProgress: false,
-        lastSyncTime: new Date()
+        lastSyncTime: new Date(),
       }));
     } catch (error) {
-      setState(prev => ({ ...prev, syncInProgress: false }));
+      setState((prev) => ({ ...prev, syncInProgress: false }));
       throw error;
     }
   }, []);
 
   const clearOfflineData = useCallback(async () => {
     await serviceManager.clearAllOfflineData();
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       pendingActions: 0,
-      lastSyncTime: null
+      lastSyncTime: null,
     }));
   }, []);
 
@@ -154,6 +171,6 @@ export function useOffline(): UseOfflineReturn {
     syncOfflineActions: triggerSync,
     getCachedSchools,
     getCachedSessions,
-    clearOfflineData
+    clearOfflineData,
   };
 }

@@ -33,6 +33,8 @@ import {
 } from "../../lib/utils/location";
 import { formatDuration } from "../../lib/utils/session";
 import { SessionTimerDisplay } from "./SessionTimerDisplay";
+import { useOfflineMessaging } from "../offline/OfflineMessaging";
+import { OfflineStatusIndicator } from "../offline/OfflineStatusIndicator";
 
 interface School {
   id: string;
@@ -67,6 +69,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     loading: sessionLoading,
     currentSession,
   } = useSession();
+  const { showActionMessage, networkStatus } = useOfflineMessaging();
 
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -535,6 +538,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
 
       await checkIn(sessionData.schoolId, sessionData.location);
 
+      // Show success message
+      showActionMessage("check-in", true, !networkStatus.isOnline);
+
       // Reset all state after successful check-in
       setShowConfirmDialog(false);
       setUserLocation(null);
@@ -547,10 +553,13 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       setGpsProgress(0);
       setLocationStatusMessage("");
     } catch (error: unknown) {
-      setLocationError(
-        error instanceof Error ? error.message : "Failed to check in"
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to check in";
+      setLocationError(errorMessage);
       setLocationErrorType("unavailable");
+
+      // Show error message
+      showActionMessage("check-in", false, false);
     }
   }, [
     user,
@@ -641,6 +650,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
 
       await checkOut(currentSessionId, location);
 
+      // Show success message
+      showActionMessage("check-out", true, !networkStatus.isOnline);
+
       // Reset all state after successful check-out
       setShowCheckOutDialog(false);
       setUserLocation(null);
@@ -654,10 +666,13 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       setGpsProgress(0);
       setLocationStatusMessage("");
     } catch (error: unknown) {
-      setLocationError(
-        error instanceof Error ? error.message : "Failed to check out"
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to check out";
+      setLocationError(errorMessage);
       setLocationErrorType("unavailable");
+
+      // Show error message
+      showActionMessage("check-out", false, false);
     }
   }, [user, currentSessionId, userLocation, school.gpsCoordinates, checkOut]);
 
@@ -903,6 +918,13 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   return (
     <>
       <div className={`space-y-3 ${className}`}>
+        {/* Offline Status Indicator */}
+        {(!networkStatus.isOnline || networkStatus.isUnstable) && (
+          <div className="mb-3">
+            <OfflineStatusIndicator variant="banner" showSyncButton={false} />
+          </div>
+        )}
+
         {/* Location Error Alert - Replaced with enhanced ErrorRecoveryOptions */}
         {/* <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
