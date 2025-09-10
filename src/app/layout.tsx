@@ -3,7 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/provider/AuthProvider";
 import ClientLayout from "@/components/layout/ClientLayout";
-import { SkipToContent } from "@/lib/accessibility";
+import { SkipToContent } from "@/lib/accessibility.tsx";
+import { NetworkStatusIndicator } from "@/components/common/NetworkStatusIndicator";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -50,6 +51,7 @@ export default function RootLayout({
         <AuthProvider>
           <div className="min-h-full safe-area-inset">
             <ClientLayout>{children}</ClientLayout>
+            <NetworkStatusIndicator />
           </div>
         </AuthProvider>
       </body>

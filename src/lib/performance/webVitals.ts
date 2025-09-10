@@ -1,8 +1,8 @@
 // Web Vitals monitoring utility
-import { getCLS, getFID, getFCP, getLCP, getTTFB, onCLS, onFID, onFCP, onLCP, onTTFB } from 'web-vitals';
+import { onCLS, onINP, onFCP, onLCP, onTTFB } from 'web-vitals';
 
 export interface WebVitalsMetric {
-  name: 'CLS' | 'FID' | 'FCP' | 'LCP' | 'TTFB';
+  name: 'CLS' | 'INP' | 'FCP' | 'LCP' | 'TTFB';
   value: number;
   delta: number;
   id: string;
@@ -33,7 +33,7 @@ export interface WebVitalsReport {
 // Performance thresholds (based on Core Web Vitals recommendations)
 export const PERFORMANCE_THRESHOLDS = {
   LCP: { good: 2500, needsImprovement: 4000 }, // Largest Contentful Paint
-  FID: { good: 100, needsImprovement: 300 },   // First Input Delay
+  INP: { good: 200, needsImprovement: 500 },   // Interaction to Next Paint
   CLS: { good: 0.1, needsImprovement: 0.25 },  // Cumulative Layout Shift
   FCP: { good: 1800, needsImprovement: 3000 }, // First Contentful Paint
   TTFB: { good: 800, needsImprovement: 1800 }, // Time to First Byte
@@ -58,7 +58,7 @@ class WebVitalsMonitor {
   private initialize() {
     // Initialize all Core Web Vitals monitoring
     onCLS(this.handleMetric.bind(this));
-    onFID(this.handleMetric.bind(this));
+    onINP(this.handleMetric.bind(this));
     onFCP(this.handleMetric.bind(this));
     onLCP(this.handleMetric.bind(this));
     onTTFB(this.handleMetric.bind(this));
@@ -83,7 +83,7 @@ class WebVitalsMonitor {
       delta: metric.delta,
       id: metric.id,
       rating: this.getRating(metric.name, metric.value),
-      navigationType: (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type || 'navigate',
+      navigationType: this.normalizeNavigationType((performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type) || 'navigate',
       timestamp: Date.now(),
       url: window.location.href,
       userAgent: navigator.userAgent,
@@ -99,6 +99,17 @@ class WebVitalsMonitor {
     // Send real-time alerts for poor performance
     if (webVitalsMetric.rating === 'poor') {
       this.sendAlert(webVitalsMetric);
+    }
+  }
+
+  private normalizeNavigationType(type: string): 'navigate' | 'reload' | 'back-forward' | 'back-forward-cache' | 'prerender' {
+    switch (type) {
+      case 'back_forward':
+        return 'back-forward';
+      case 'back_forward_cache':
+        return 'back-forward-cache';
+      default:
+        return type as 'navigate' | 'reload' | 'back-forward' | 'back-forward-cache' | 'prerender';
     }
   }
 
@@ -122,7 +133,7 @@ class WebVitalsMonitor {
     };
   }
 
-  private generateReport(): WebVitalsReport {
+  public generateReport(): WebVitalsReport {
     return {
       metrics: Array.from(this.metrics.values()),
       timestamp: Date.now(),
@@ -170,9 +181,9 @@ class WebVitalsMonitor {
 
   private sendToAnalytics(report: WebVitalsReport) {
     // Google Analytics 4 integration
-    if (typeof gtag !== 'undefined') {
+    if (typeof window !== 'undefined' && (window as any).gtag) {
       report.metrics.forEach(metric => {
-        gtag('event', 'web_vitals', {
+        (window as any).gtag('event', 'web_vitals', {
           event_category: 'Web Vitals',
           event_label: metric.name,
           value: Math.round(metric.value),
@@ -203,8 +214,8 @@ class WebVitalsMonitor {
         performance.mark(`web-vitals-${metric.name.toLowerCase()}-${metric.value}`);
         
         // Send custom trace (if Firebase Performance is initialized)
-        if (window.firebase && window.firebase.performance) {
-          const trace = window.firebase.performance().trace(`web_vitals_${metric.name}`);
+        if ((window as any).firebase && (window as any).firebase.performance) {
+          const trace = (window as any).firebase.performance().trace(`web_vitals_${metric.name}`);
           trace.putAttribute('rating', metric.rating);
           trace.putAttribute('page', report.page);
           trace.putMetric('value', Math.round(metric.value));
@@ -216,8 +227,8 @@ class WebVitalsMonitor {
 
   private sendToErrorReporting(error: any) {
     // Send to error reporting service (e.g., Sentry)
-    if (window.Sentry) {
-      window.Sentry.captureMessage('Performance Alert', {
+    if ((window as any).Sentry) {
+      (window as any).Sentry.captureMessage('Performance Alert', {
         level: 'warning',
         extra: error,
       });
@@ -237,19 +248,13 @@ class WebVitalsMonitor {
     return this.metrics.get(name);
   }
 
-  public async getAllMetrics(): Promise<{ [key: string]: number }> {
-    return new Promise((resolve) => {
-      const metrics: { [key: string]: number } = {};
-      
-      getCLS((metric) => metrics.CLS = metric.value);
-      getFID((metric) => metrics.FID = metric.value);
-      getFCP((metric) => metrics.FCP = metric.value);
-      getLCP((metric) => metrics.LCP = metric.value);
-      getTTFB((metric) => metrics.TTFB = metric.value);
-      
-      // Give metrics time to be collected
-      setTimeout(() => resolve(metrics), 100);
+  public getAllMetrics(): { [key: string]: number } {
+    // Return the current collected metrics
+    const result: { [key: string]: number } = {};
+    this.metrics.forEach(metric => {
+      result[metric.name] = metric.value;
     });
+    return result;
   }
 
   public getPerformanceGrade(): 'A' | 'B' | 'C' | 'D' | 'F' {
@@ -265,7 +270,7 @@ class WebVitalsMonitor {
       }
     });
 
-    const averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const averageScore = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
 
     if (averageScore >= 2.8) return 'A';
     if (averageScore >= 2.4) return 'B';

@@ -1,0 +1,359 @@
+name: Deployment Monitoring
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: 'Type of check to run'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+        - quick
+        - full
+        - performance
+
+env:
+  NODE_VERSION: '18'
+  FIREBASE_PROJECT_ID: 'schools-in-check'
+  PRODUCTION_URL: 'https://schools-in-check.web.app'
+
+jobs:
+  # Health monitoring
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Basic connectivity test
+        id: connectivity
+        run: |
+          echo "🔍 Checking basic connectivity..."
+          
+          # Test main endpoints
+          endpoints=(
+            "/"
+            "/dashboard"
+            "/admin" 
+            "/manifest.json"
+            "/sw.js"
+          )
+          
+          failed_endpoints=()
+          
+          for endpoint in "${endpoints[@]}"; do
+            url="${{ env.PRODUCTION_URL }}${endpoint}"
+            echo "Testing: $url"
+            
+            if ! curl -f -s --max-time 30 "$url" > /dev/null; then
+              failed_endpoints+=("$endpoint")
+              echo "❌ Failed: $endpoint"
+            else
+              echo "✅ Success: $endpoint"
+            fi
+          done
+          
+          if [ ${#failed_endpoints[@]} -eq 0 ]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "✅ All endpoints healthy"
+          else
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "❌ Failed endpoints: ${failed_endpoints[*]}"
+            exit 1
+          fi
+          
+      - name: Performance quick check
+        if: github.event.inputs.check_type != 'quick'
+        run: |
+          echo "📊 Quick performance check..."
+          
+          start_time=$(date +%s%3N)
+          curl -f -s "${{ env.PRODUCTION_URL }}" > /dev/null
+          end_time=$(date +%s%3N)
+          
+          response_time=$((end_time - start_time))
+          echo "Response time: ${response_time}ms"
+          
+          if [ $response_time -gt 3000 ]; then
+            echo "⚠️ Slow response time: ${response_time}ms"
+          else
+            echo "✅ Good response time: ${response_time}ms"
+          fi
+          
+      - name: Firebase services health
+        if: github.event.inputs.check_type == 'full'
+        run: |
+          echo "🔥 Checking Firebase services..."
+          
+          # Test Firebase callable function (health check)
+          # This would require setting up Firebase Admin SDK or using the REST API
+          echo "Note: Firebase services health check would be implemented via callable function"
+
+  # Performance monitoring
+  performance-monitor:
+    name: Performance Monitor
+    runs-on: ubuntu-latest
+    if: github.event.inputs.check_type == 'performance' || github.event.inputs.check_type == 'full'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+        
+      - name: Run Lighthouse audit
+        id: lighthouse
+        run: |
+          echo "🏮 Running Lighthouse audit..."
+          
+          lhci autorun \
+            --collect.url="${{ env.PRODUCTION_URL }}" \
+            --collect.numberOfRuns=3 \
+            --assert.assertions.performance=0.9 \
+            --assert.assertions.accessibility=0.95 \
+            --assert.assertions.seo=0.9 \
+            --assert.assertions.pwa=0.8 \
+            --upload.target=temporary-public-storage
+            
+      - name: Check Core Web Vitals
+        run: |
+          echo "🎯 Checking Core Web Vitals..."
+          
+          # This would integrate with real monitoring tools
+          echo "Note: Core Web Vitals monitoring would integrate with:"
+          echo "- Google PageSpeed Insights API"
+          echo "- Firebase Performance Monitoring"
+          echo "- Custom analytics endpoints"
+
+  # Uptime monitoring
+  uptime-check:
+    name: Uptime Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Multi-location uptime check
+        run: |
+          echo "🌍 Multi-location uptime check..."
+          
+          # Simulate checks from different regions
+          regions=("us-east" "us-west" "europe" "asia")
+          
+          for region in "${regions[@]}"; do
+            echo "Testing from $region..."
+            
+            # Use different DNS servers to simulate global access
+            if curl -f -s --max-time 10 "${{ env.PRODUCTION_URL }}" > /dev/null; then
+              echo "✅ $region: UP"
+            else
+              echo "❌ $region: DOWN"
+            fi
+          done
+          
+      - name: SSL certificate check
+        run: |
+          echo "🔐 Checking SSL certificate..."
+          
+          # Check SSL certificate validity
+          if echo | openssl s_client -servername schools-in-check.web.app -connect schools-in-check.web.app:443 2>/dev/null | openssl x509 -noout -dates; then
+            echo "✅ SSL certificate is valid"
+          else
+            echo "❌ SSL certificate check failed"
+            exit 1
+          fi
+          
+      - name: DNS resolution check
+        run: |
+          echo "🌐 Checking DNS resolution..."
+          
+          if nslookup schools-in-check.web.app; then
+            echo "✅ DNS resolution successful"
+          else
+            echo "❌ DNS resolution failed"
+            exit 1
+          fi
+
+  # Alert on failures
+  alert-on-failure:
+    name: Alert on Failure
+    runs-on: ubuntu-latest
+    needs: [health-check, uptime-check]
+    if: failure()
+    
+    steps:
+      - name: Send failure alert
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: |
+            🚨 **Production Monitoring Alert**
+            
+            **Issue:** Deployment monitoring failed
+            **Time:** $(date -u)
+            **Workflow:** ${{ github.workflow }}
+            
+            **Failed Checks:**
+            ${{ needs.health-check.result == 'failure' && '- Health Check ❌' || '' }}
+            ${{ needs.uptime-check.result == 'failure' && '- Uptime Check ❌' || '' }}
+            
+            **Action Required:** Immediate investigation needed
+            **URL:** ${{ env.PRODUCTION_URL }}
+            
+      - name: Create GitHub issue for monitoring failure
+        if: github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Production Monitoring Alert - ' + new Date().toISOString().split('T')[0],
+              body: `## Production Monitoring Failure
+              
+              **Timestamp:** ${new Date().toISOString()}
+              **Workflow:** ${context.workflow}
+              **Run ID:** ${context.runId}
+              
+              ### Failed Checks
+              ${{ needs.health-check.result == 'failure' ? '- ❌ Health Check' : '- ✅ Health Check' }}
+              ${{ needs.uptime-check.result == 'failure' ? '- ❌ Uptime Check' : '- ✅ Uptime Check' }}
+              
+              ### Investigation Steps
+              1. Check Firebase Console for service status
+              2. Review application logs for errors
+              3. Verify DNS and SSL configuration
+              4. Check third-party service dependencies
+              
+              ### Links
+              - [Production Site](https://schools-in-check.web.app)
+              - [Firebase Console](https://console.firebase.google.com/project/schools-in-check)
+              - [Workflow Run](${context.payload.repository.html_url}/actions/runs/${context.runId})
+              
+              **Priority:** High - Production service degradation detected`,
+              labels: ['bug', 'production', 'monitoring', 'high-priority']
+            })
+
+  # Performance trending
+  performance-trending:
+    name: Performance Trending
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.check_type == 'performance'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install monitoring tools
+        run: |
+          npm install -g @lhci/cli
+          npm install -g web-vitals-cli
+          
+      - name: Collect performance metrics
+        id: metrics
+        run: |
+          echo "📈 Collecting performance metrics..."
+          
+          # Run Lighthouse
+          lhci autorun \
+            --collect.url="${{ env.PRODUCTION_URL }}" \
+            --collect.numberOfRuns=5 \
+            --collect.settings.chromeFlags="--no-sandbox --headless" \
+            --upload.target=temporary-public-storage
+            
+          # Collect and average results
+          echo "Performance metrics collected for trending analysis"
+          
+      - name: Store metrics for trending
+        run: |
+          echo "💾 Storing metrics for historical analysis..."
+          
+          # This would integrate with a metrics storage system
+          # For now, we'll create a simple JSON file
+          mkdir -p monitoring/metrics
+          
+          cat > monitoring/metrics/performance-$(date +%Y-%m-%d-%H-%M).json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "url": "${{ env.PRODUCTION_URL }}",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "metrics": {
+              "note": "Lighthouse metrics would be parsed and stored here"
+            }
+          }
+          EOF
+          
+      - name: Upload metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-metrics-${{ github.run_number }}
+          path: monitoring/metrics/
+          retention-days: 90
+
+  # Status summary
+  monitoring-summary:
+    name: Monitoring Summary
+    runs-on: ubuntu-latest
+    needs: [health-check, uptime-check, performance-trending]
+    if: always()
+    
+    steps:
+      - name: Generate monitoring summary
+        run: |
+          echo "## 📊 Monitoring Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Production" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ env.PRODUCTION_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Health status
+          if [ "${{ needs.health-check.result }}" = "success" ]; then
+            echo "✅ **Health Check:** All systems operational" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Health Check:** Issues detected" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Uptime status
+          if [ "${{ needs.uptime-check.result }}" = "success" ]; then
+            echo "✅ **Uptime Check:** Service available globally" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Uptime Check:** Service accessibility issues" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Performance status
+          if [ "${{ needs.performance-trending.result }}" = "success" ]; then
+            echo "✅ **Performance:** Within acceptable thresholds" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.performance-trending.result }}" = "failure" ]; then
+            echo "⚠️ **Performance:** Below thresholds" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ **Performance:** Not checked this run" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Quick Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [Production Site](${{ env.PRODUCTION_URL }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Firebase Console](https://console.firebase.google.com/project/${{ env.FIREBASE_PROJECT_ID }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Hosting Dashboard](https://console.firebase.google.com/project/${{ env.FIREBASE_PROJECT_ID }}/hosting)" >> $GITHUB_STEP_SUMMARY

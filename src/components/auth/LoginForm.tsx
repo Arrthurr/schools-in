@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { useId } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,8 +33,8 @@ export function LoginForm() {
 
   // Accessibility hooks
   const { announce } = useAnnouncement();
-  const formId = ARIA.useId("login-form");
-  const errorId = ARIA.useId("login-error");
+  const formId = useId();
+  const errorId = useId();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

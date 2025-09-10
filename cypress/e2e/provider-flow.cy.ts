@@ -4,7 +4,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
   beforeEach(() => {
     // Mock Firebase auth and firestore
     cy.login("provider@test.com", "password", { role: "provider" });
-    
+
     // Mock school data consistently
     cy.intercept("GET", "/api/locations?providerId=*", {
       statusCode: 200,
@@ -16,30 +16,30 @@ describe("Provider Check-In/Check-Out Flow", () => {
             address: "123 Main St, Anytown, USA",
             coordinates: {
               lat: 34.0522,
-              lng: -118.2437
+              lng: -118.2437,
             },
             radius: 500,
-            providerId: "provider123"
+            providerId: "provider123",
           },
           {
-            id: "school2", 
+            id: "school2",
             name: "Test School 2",
             address: "456 Oak Ave, Anytown, USA",
             coordinates: {
               lat: 34.0532,
-              lng: -118.2447
+              lng: -118.2447,
             },
             radius: 300,
-            providerId: "provider123"
-          }
-        ]
-      }
+            providerId: "provider123",
+          },
+        ],
+      },
     }).as("getSchools");
 
     // Mock session data
     cy.intercept("GET", "/api/sessions?providerId=*", {
       statusCode: 200,
-      body: { sessions: [] }
+      body: { sessions: [] },
     }).as("getSessions");
 
     cy.visit("/dashboard");
@@ -57,7 +57,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
 
       // Verify GPS loading states
       cy.contains("Getting your location").should("be.visible");
-      
+
       // Mock successful check-in API call
       cy.intercept("POST", "/api/sessions", {
         statusCode: 201,
@@ -67,8 +67,8 @@ describe("Provider Check-In/Check-Out Flow", () => {
           checkInTime: new Date().toISOString(),
           schoolId: "school1",
           providerId: "provider123",
-          location: { lat: 34.0522, lng: -118.2437 }
-        }
+          location: { lat: 34.0522, lng: -118.2437 },
+        },
       }).as("checkIn");
 
       // Should show confirmation dialog
@@ -82,7 +82,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
       cy.contains("Session Active").should("be.visible");
       cy.contains("Check Out").should("be.visible");
       cy.contains("Test School 1").should("be.visible");
-      
+
       // Session timer should be visible and updating
       cy.get('[role="timer"]').should("be.visible");
 
@@ -97,8 +97,8 @@ describe("Provider Check-In/Check-Out Flow", () => {
           status: "completed",
           checkInTime: new Date(Date.now() - 60000).toISOString(),
           checkOutTime: new Date().toISOString(),
-          duration: 60000
-        }
+          duration: 60000,
+        },
       }).as("checkOut");
 
       // Confirm check-out
@@ -114,7 +114,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
 
     it("should show session timer during active session", () => {
       cy.mockGeolocation(34.0522, -118.2437);
-      
+
       // Mock active session response
       cy.intercept("POST", "/api/sessions", {
         statusCode: 201,
@@ -122,8 +122,8 @@ describe("Provider Check-In/Check-Out Flow", () => {
           id: "session123",
           status: "active",
           checkInTime: new Date(Date.now() - 30000).toISOString(), // 30 seconds ago
-          schoolId: "school1"
-        }
+          schoolId: "school1",
+        },
       }).as("checkIn");
 
       cy.contains("Test School 1").click();
@@ -140,7 +140,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
   describe("Location-Based Validation", () => {
     it("should prevent check-in when outside school radius", () => {
       // Mock location far from any school
-      cy.mockGeolocation(35.0000, -119.0000);
+      cy.mockGeolocation(35.0, -119.0);
 
       cy.contains("Test School 1").click();
       cy.contains("button", "Check In").click();
@@ -149,16 +149,16 @@ describe("Provider Check-In/Check-Out Flow", () => {
       cy.contains("Out of Range").should("be.visible");
       cy.contains("You are too far from the school").should("be.visible");
       cy.contains("Distance:").should("be.visible");
-      
+
       // Check-in should be disabled
       cy.contains("button", "Check In").should("be.disabled");
     });
 
     it("should show distance information in school detail view", () => {
-      cy.mockGeolocation(34.0525, -118.2440); // Slightly offset from school
+      cy.mockGeolocation(34.0525, -118.244); // Slightly offset from school
 
       cy.contains("Test School 1").click();
-      
+
       // Should show distance and status
       cy.contains("Distance:").should("be.visible");
       cy.contains("m away").should("be.visible");
@@ -168,9 +168,13 @@ describe("Provider Check-In/Check-Out Flow", () => {
     it("should handle GPS permission denied gracefully", () => {
       // Mock permission denied
       cy.window().then((win) => {
-        cy.stub(win.navigator.geolocation, "getCurrentPosition", (success, error) => {
-          error({ code: 1, message: "User denied Geolocation" });
-        });
+        cy.stub(win.navigator.geolocation, "getCurrentPosition").callsFake(
+          (success, error) => {
+            if (error) {
+              error({ code: 1, message: "User denied Geolocation" });
+            }
+          }
+        );
       });
 
       cy.contains("Test School 1").click();
@@ -185,11 +189,15 @@ describe("Provider Check-In/Check-Out Flow", () => {
     it("should handle GPS timeout gracefully", () => {
       // Mock GPS timeout
       cy.window().then((win) => {
-        cy.stub(win.navigator.geolocation, "getCurrentPosition", (success, error) => {
-          setTimeout(() => {
-            error({ code: 3, message: "Timeout expired" });
-          }, 100);
-        });
+        cy.stub(win.navigator.geolocation, "getCurrentPosition").callsFake(
+          (success, error) => {
+            setTimeout(() => {
+              if (error) {
+                error({ code: 3, message: "Timeout expired" });
+              }
+            }, 100);
+          }
+        );
       });
 
       cy.contains("Test School 1").click();
@@ -207,7 +215,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
 
       cy.intercept("POST", "/api/sessions", {
         statusCode: 500,
-        body: { error: "Internal server error" }
+        body: { error: "Internal server error" },
       }).as("checkInError");
 
       cy.contains("Test School 1").click();
@@ -219,7 +227,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
       // Should show error message
       cy.contains("Check-in failed").should("be.visible");
       cy.contains("Please try again").should("be.visible");
-      
+
       // Should remain in check-in state
       cy.contains("button", "Check In").should("be.visible");
     });
@@ -233,8 +241,8 @@ describe("Provider Check-In/Check-Out Flow", () => {
         body: {
           id: "session123",
           status: "active",
-          checkInTime: new Date().toISOString()
-        }
+          checkInTime: new Date().toISOString(),
+        },
       }).as("checkIn");
 
       cy.contains("Test School 1").click();
@@ -245,7 +253,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
       // Mock check-out error
       cy.intercept("PUT", "/api/sessions/session123", {
         statusCode: 500,
-        body: { error: "Server error" }
+        body: { error: "Server error" },
       }).as("checkOutError");
 
       cy.contains("button", "Check Out").click();
@@ -263,7 +271,9 @@ describe("Provider Check-In/Check-Out Flow", () => {
       cy.mockGeolocation(34.0522, -118.2437);
 
       // Mock network error
-      cy.intercept("POST", "/api/sessions", { forceNetworkError: true }).as("networkError");
+      cy.intercept("POST", "/api/sessions", { forceNetworkError: true }).as(
+        "networkError"
+      );
 
       cy.contains("Test School 1").click();
       cy.contains("button", "Check In").click();
@@ -288,15 +298,17 @@ describe("Provider Check-In/Check-Out Flow", () => {
 
     it("should allow searching schools", () => {
       // Add search input (if exists)
-      cy.get('input[placeholder*="Search"]').should("be.visible").type("Test School 1");
-      
+      cy.get('input[placeholder*="Search"]')
+        .should("be.visible")
+        .type("Test School 1");
+
       cy.contains("Test School 1").should("be.visible");
       cy.contains("Test School 2").should("not.be.visible");
     });
 
     it("should show school details when clicked", () => {
       cy.contains("Test School 1").click();
-      
+
       // Should show school details
       cy.contains("School Details").should("be.visible");
       cy.contains("123 Main St, Anytown, USA").should("be.visible");
@@ -321,8 +333,8 @@ describe("Provider Check-In/Check-Out Flow", () => {
           id: "session123",
           status: "active",
           checkInTime: new Date().toISOString(),
-          schoolId: "school1"
-        }
+          schoolId: "school1",
+        },
       }).as("checkIn");
 
       cy.contains("Test School 1").click();
@@ -342,26 +354,26 @@ describe("Provider Check-In/Check-Out Flow", () => {
 
       // Mobile sidebar should be hidden initially
       cy.get('[data-testid="mobile-sidebar"]').should("not.be.visible");
-      
+
       // Mobile menu button should be visible
       cy.get('button[aria-label="Open menu"]').should("be.visible").click();
-      
+
       // Sidebar should open
       cy.get('[data-testid="mobile-sidebar"]').should("be.visible");
-      
+
       // School list should be responsive
       cy.contains("Test School 1").should("be.visible");
     });
 
     it("should handle touch interactions on mobile", () => {
       cy.setMobileViewport();
-      
+
       cy.mockGeolocation(34.0522, -118.2437);
-      
+
       // Touch events should work for check-in
       cy.contains("Test School 1").click();
       cy.contains("button", "Check In").click();
-      
+
       cy.contains("Confirm Check-In").should("be.visible");
     });
   });
@@ -371,7 +383,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
       // Tab through check-in button
       cy.get("body").tab();
       cy.focused().should("contain", "Check In");
-      
+
       // Enter key should trigger check-in
       cy.focused().type("{enter}");
       cy.contains("Getting your location").should("be.visible");
@@ -385,10 +397,10 @@ describe("Provider Check-In/Check-Out Flow", () => {
 
     it("should provide screen reader announcements", () => {
       cy.mockGeolocation(34.0522, -118.2437);
-      
+
       cy.contains("Test School 1").click();
       cy.contains("button", "Check In").click();
-      
+
       // Screen reader announcements should exist
       cy.get('[aria-live="polite"]').should("exist");
       cy.get('[role="status"]').should("exist");
@@ -399,21 +411,24 @@ describe("Provider Check-In/Check-Out Flow", () => {
     it("should show loading states during GPS operations", () => {
       // Delay geolocation response
       cy.window().then((win) => {
-        cy.stub(win.navigator.geolocation, "getCurrentPosition", (cb) => {
-          setTimeout(() => {
-            cb({
-              coords: {
-                latitude: 34.0522,
-                longitude: -118.2437,
-                accuracy: 20,
-                altitude: null,
-                altitudeAccuracy: null,
-                heading: null,
-                speed: null,
-              },
-            });
-          }, 1000);
-        });
+        cy.stub(win.navigator.geolocation, "getCurrentPosition").callsFake(
+          (cb) => {
+            setTimeout(() => {
+              cb({
+                coords: {
+                  latitude: 34.0522,
+                  longitude: -118.2437,
+                  accuracy: 20,
+                  altitude: null,
+                  altitudeAccuracy: null,
+                  heading: null,
+                  speed: null,
+                },
+                timestamp: Date.now(),
+              });
+            }, 1000);
+          }
+        );
       });
 
       cy.contains("Test School 1").click();
@@ -431,7 +446,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
       cy.intercept("POST", "/api/sessions", {
         statusCode: 201,
         body: { id: "session123", status: "active" },
-        delay: 1000
+        delay: 1000,
       }).as("slowCheckIn");
 
       cy.contains("Test School 1").click();

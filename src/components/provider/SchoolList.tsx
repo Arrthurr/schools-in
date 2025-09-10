@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useLocation } from "../../lib/hooks/useLocation";
 import { SchoolService, School } from "../../lib/services/schoolService";
@@ -58,7 +58,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
   // Accessibility hooks
   const { announce } = useAnnouncement();
-  const searchInputId = ARIA.useId("school-search");
+  const searchInputId = useId();
 
   // Load assigned schools
   useEffect(() => {

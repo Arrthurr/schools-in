@@ -52,6 +52,11 @@ export const useSession = (): UseSessionReturn => {
         return;
       }
 
+      if (currentSession) {
+        setError("You already have an active session. Please check out first.");
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
@@ -84,7 +89,7 @@ export const useSession = (): UseSessionReturn => {
         setLoading(false);
       }
     },
-    [user]
+    [user, currentSession]
   );
 
   const checkOut = useCallback(

@@ -1,5 +1,5 @@
 // Accessibility testing utilities
-import { ReactWrapper } from 'enzyme';
+// Accessibility testing utilities - using React Testing Library types instead of Enzyme
 
 export interface AccessibilityViolation {
   id: string;
@@ -309,7 +309,7 @@ export const accessibilityTester = AccessibilityTester.getInstance();
 
 // Jest matchers (if using Jest)
 if (typeof expect !== 'undefined') {
-  expect.extend({
+  (expect as any).extend({
     async toBeAccessible(element: HTMLElement | string) {
       try {
         await accessibilityTester.expectNoViolations(element);

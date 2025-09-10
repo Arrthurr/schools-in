@@ -43,22 +43,22 @@ Cypress.Commands.add("visitAndWaitForLoad", (url) => {
 });
 
 // Enhanced accessibility testing with axe-core
-Cypress.Commands.add("checkA11y", (context, options) => {
+Cypress.Commands.overwrite("checkA11y", (originalFn, context, options) => {
   cy.injectAxe();
   cy.configureAxe({
     rules: [
       // WCAG 2.1 AA rules
-      { id: 'color-contrast', enabled: true },
-      { id: 'focus-order-semantics', enabled: true },
-      { id: 'keyboard-navigation', enabled: true },
-      { id: 'aria-labels', enabled: true },
-      { id: 'heading-order', enabled: true },
-      { id: 'landmark-roles', enabled: true }
+      { id: "color-contrast", enabled: true },
+      { id: "focus-order-semantics", enabled: true },
+      { id: "keyboard-navigation", enabled: true },
+      { id: "aria-labels", enabled: true },
+      { id: "heading-order", enabled: true },
+      { id: "landmark-roles", enabled: true },
     ],
-    tags: ['wcag2a', 'wcag2aa', 'wcag21aa']
+    tags: ["wcag2a", "wcag2aa", "wcag21aa"],
   });
-  
-  cy.checkA11y(context, options);
+
+  originalFn(context, options);
 });
 
 // Custom command for mobile viewport testing
@@ -119,7 +119,7 @@ Cypress.Commands.add("shouldHaveActiveSession", (schoolName) => {
   cy.get('[role="timer"]').should("be.visible");
 });
 
-// Custom command to check for inactive session state  
+// Custom command to check for inactive session state
 Cypress.Commands.add("shouldHaveInactiveSession", () => {
   cy.contains("Check In").should("be.visible");
   cy.contains("Session Active").should("not.exist");
@@ -130,31 +130,35 @@ Cypress.Commands.add("shouldHaveInactiveSession", () => {
 Cypress.Commands.add("mockApiError", (method, url, statusCode = 500) => {
   cy.intercept(method, url, {
     statusCode,
-    body: { error: "Mocked API error" }
+    body: { error: "Mocked API error" },
   });
 });
 
 // Performance testing commands
 Cypress.Commands.add("measurePageLoad", (url) => {
-  cy.window().its('performance').then((perf) => {
-    const startTime = perf.now();
-    
-    cy.visit(url);
-    cy.get("main").should("be.visible");
-    
-    cy.window().its('performance').then((endPerf) => {
-      const endTime = endPerf.now();
-      const loadTime = endTime - startTime;
-      
-      cy.log(`Page load time: ${loadTime}ms`);
-      
-      // Assert reasonable load time (under 2 seconds)
-      expect(loadTime).to.be.lessThan(2000);
-      
-      // Store for reporting
-      Cypress.env('lastPageLoadTime', loadTime);
+  cy.window()
+    .its("performance")
+    .then((perf) => {
+      const startTime = perf.now();
+
+      cy.visit(url);
+      cy.get("main").should("be.visible");
+
+      cy.window()
+        .its("performance")
+        .then((endPerf) => {
+          const endTime = endPerf.now();
+          const loadTime = endTime - startTime;
+
+          cy.log(`Page load time: ${loadTime}ms`);
+
+          // Assert reasonable load time (under 2 seconds)
+          expect(loadTime).to.be.lessThan(2000);
+
+          // Store for reporting
+          Cypress.env("lastPageLoadTime", loadTime);
+        });
     });
-  });
 });
 
 Cypress.Commands.add("measureWebVitals", () => {
@@ -162,18 +166,18 @@ Cypress.Commands.add("measureWebVitals", () => {
     const observer = new win.PerformanceObserver((list) => {
       const entries = list.getEntries();
       entries.forEach((entry) => {
-        if (entry.name === 'first-contentful-paint') {
+        if (entry.name === "first-contentful-paint") {
           cy.log(`FCP: ${entry.startTime}ms`);
           expect(entry.startTime).to.be.lessThan(1800);
         }
-        if (entry.name === 'largest-contentful-paint') {
+        if (entry.name === "largest-contentful-paint") {
           cy.log(`LCP: ${entry.startTime}ms`);
           expect(entry.startTime).to.be.lessThan(2500);
         }
       });
     });
-    
-    observer.observe({ entryTypes: ['paint', 'largest-contentful-paint'] });
+
+    observer.observe({ entryTypes: ["paint", "largest-contentful-paint"] });
   });
 });
 
@@ -181,11 +185,13 @@ Cypress.Commands.add("checkMemoryUsage", () => {
   cy.window().then((win) => {
     if (win.performance && win.performance.memory) {
       const memory = win.performance.memory;
-      cy.log(`Memory usage: ${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB`);
-      
+      cy.log(
+        `Memory usage: ${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB`
+      );
+
       // Alert if memory usage is excessive (over 50MB)
       if (memory.usedJSHeapSize > 50 * 1024 * 1024) {
-        cy.log('WARNING: High memory usage detected');
+        cy.log("WARNING: High memory usage detected");
       }
     }
   });
@@ -194,21 +200,21 @@ Cypress.Commands.add("checkMemoryUsage", () => {
 Cypress.Commands.add("lighthouse", (url, options = {}) => {
   // Basic lighthouse-like checks in Cypress
   cy.visit(url);
-  
+
   // Performance checks
   cy.measureWebVitals();
-  
+
   // Accessibility checks
   cy.checkA11y();
-  
+
   // SEO checks
-  cy.get('title').should('exist').should('not.be.empty');
-  cy.get('meta[name="description"]').should('exist');
-  
+  cy.get("title").should("exist").should("not.be.empty");
+  cy.get('meta[name="description"]').should("exist");
+
   // Best practices
-  cy.get('img').each(($img) => {
-    cy.wrap($img).should('have.attr', 'alt');
+  cy.get("img").each(($img) => {
+    cy.wrap($img).should("have.attr", "alt");
   });
-  
+
   cy.checkMemoryUsage();
 });

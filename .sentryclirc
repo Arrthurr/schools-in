@@ -1,0 +1,3 @@
+# .sentryclirc
+[auth]
+token = YOUR_SENTRY_AUTH_TOKEN

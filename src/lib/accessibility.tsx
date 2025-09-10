@@ -116,22 +116,37 @@ export function useFocusTrap(containerRef: React.RefObject<HTMLElement>) {
 
 // Announce content changes to screen readers
 export function useAnnouncement() {
-  const [announcement, setAnnouncement] = React.useState("");
-
   const announce = React.useCallback(
     (message: string, politeness: "polite" | "assertive" = "polite") => {
-      setAnnouncement("");
-      setTimeout(() => setAnnouncement(message), 100);
+      const region = document.getElementById("announcement-region");
+      if (region) {
+        // By creating a new element each time, we ensure that screen readers announce the message,
+        // even if the text content is the same as the previous one.
+        const newAnnouncement = document.createElement("div");
+        newAnnouncement.textContent = message;
+        newAnnouncement.setAttribute("role", "log");
+        newAnnouncement.setAttribute("aria-live", politeness);
+        newAnnouncement.setAttribute("aria-atomic", "true");
+
+        // Clear previous announcements
+        while (region.firstChild) {
+          region.removeChild(region.firstChild);
+        }
+
+        region.appendChild(newAnnouncement);
+
+        // Clean up the announcement after a short delay to avoid cluttering the DOM
+        setTimeout(() => {
+          if (region.contains(newAnnouncement)) {
+            region.removeChild(newAnnouncement);
+          }
+        }, 5000); // Keep it long enough for screen readers to pick up
+      }
     },
     []
   );
 
-  const AnnouncementRegion = React.useCallback(
-    () => <LiveRegion politeness="polite">{announcement}</LiveRegion>,
-    [announcement]
-  );
-
-  return { announce, AnnouncementRegion };
+  return { announce };
 }
 
 // High contrast mode detection
@@ -311,7 +326,39 @@ export const ARIA = {
     "aria-setsize": itemCount,
     "aria-posinset": index + 1,
   }),
+
+  // Additional utility methods
+  live: (politeness: "polite" | "assertive" | "off" = "polite") => ({
+    "aria-live": politeness,
+    "aria-atomic": "true",
+  }),
+  label: (text: string) => ({
+    "aria-label": text,
+  }),
+  describedBy: (id: string) => ({
+    "aria-describedby": id,
+  }),
 };
+
+// Standalone announcement region for screen readers
+export const AnnouncementRegion = () => (
+  <div
+    id="announcement-region"
+    style={{
+      position: "absolute",
+      width: "1px",
+      height: "1px",
+      padding: "0",
+      margin: "-1px",
+      overflow: "hidden",
+      clip: "rect(0, 0, 0, 0)",
+      whiteSpace: "nowrap",
+      border: "0",
+    }}
+  />
+);
+
+
 
 export default {
   ScreenReaderOnly,

@@ -1,10 +1,78 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidImageFile() {
+      return request.resource.contentType.matches('image/.*') &&
+             request.resource.size < 5 * 1024 * 1024; // 5MB max
+    }
+
+    function isValidDocumentFile() {
+      return request.resource.contentType in [
+               'application/pdf',
+               'application/msword', 
+               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+               'text/plain'
+             ] &&
+             request.resource.size < 10 * 1024 * 1024; // 10MB max
+    }
+
+    // User profile images
+    match /users/{userId}/profile/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidImageFile();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // School/Location images
+    match /locations/{locationId}/images/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidImageFile();
+      allow delete: if isAdmin();
+    }
+
+    // Session attachments (photos, documents)
+    match /sessions/{sessionId}/attachments/{fileName} {
+      allow read: if isAuthenticated() &&
+                     (isOwner(firestore.get(/databases/(default)/documents/sessions/$(sessionId)).data.userId) || 
+                      isAdmin());
+      
+      allow write: if isAuthenticated() &&
+                      isOwner(firestore.get(/databases/(default)/documents/sessions/$(sessionId)).data.userId) &&
+                      (isValidImageFile() || isValidDocumentFile());
+      
+      allow delete: if isAuthenticated() &&
+                       (isOwner(firestore.get(/databases/(default)/documents/sessions/$(sessionId)).data.userId) || 
+                        isAdmin());
+    }
+
+    // System files (admin only)
+    match /system/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Public assets (read-only)
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Default deny all for unmatched paths
     match /{allPaths=**} {
       allow read, write: if false;
     }

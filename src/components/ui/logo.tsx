@@ -1,6 +1,6 @@
 import * as React from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { OptimizedImage } from "./optimized-image";
 
 interface LogoProps {
   size?: "sm" | "md" | "lg" | "xl";
@@ -26,13 +26,15 @@ export function Logo({
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      <Image
+      <OptimizedImage
         src="/DMDL_logo.png"
         alt="DMDL Schools-In Logo"
         width={width}
         height={height}
         priority={priority}
+        quality={90}
         className="object-contain"
+        loading={priority ? "eager" : "lazy"}
       />
       {showText && (
         <span className={cn("font-bold text-brand-primary", textSize)}>
