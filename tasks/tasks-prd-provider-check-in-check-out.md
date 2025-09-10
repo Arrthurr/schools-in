@@ -111,6 +111,15 @@
 - `lighthouse.config.js` - Lighthouse CI configuration with performance budgets, accessibility requirements, and automated auditing setup
 - `.github/workflows/performance-accessibility.yml` - GitHub Actions workflow for automated performance and accessibility testing in CI/CD pipeline
 - `docs/performance-accessibility-testing.md` - Complete guide for performance and accessibility testing including standards, tools, monitoring, and troubleshooting
+- `.github/workflows/ci-cd.yml` - Main CI/CD pipeline with comprehensive testing, building, and deployment automation for all environments
+- `.github/workflows/feature-branch.yml` - Fast validation workflow for feature branches with quick tests and build verification
+- `.github/workflows/release.yml` - Production release workflow with comprehensive testing, staging deployment, and production deployment
+- `.github/CODEOWNERS` - Code ownership configuration for automated review assignments and approval requirements
+- `.github/pull_request_template.md` - Comprehensive PR template with testing, security, performance, and accessibility checklists
+- `tests/firestore.rules.test.js` - Firebase Firestore security rules unit tests with comprehensive access control validation
+- `tests/storage.rules.test.js` - Firebase Storage security rules unit tests with file access and permission validation
+- `audit-ci.json` - Security audit configuration for CI/CD pipeline with vulnerability thresholds and reporting
+- `docs/ci-cd-guide.md` - Complete CI/CD documentation including workflows, environments, monitoring, troubleshooting, and best practices
 
 ### Notes
 
@@ -247,7 +256,7 @@
   - [x] 13.4 Write E2E tests for provider check-in/out flow
   - [x] 13.5 Create E2E tests for admin management workflows
   - [x] 13.6 Add performance and accessibility testing
-  - [ ] 13.7 Set up CI/CD pipeline with automated testing
+  - [x] 13.7 Set up CI/CD pipeline with automated testing
 
 - [ ] 14.0 Error Handling and Edge Cases
 

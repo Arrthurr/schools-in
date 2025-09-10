@@ -1,0 +1,29 @@
+# Global owners
+* @schools-in-team
+
+# Frontend components
+/src/components/ @frontend-team @schools-in-team
+
+# Backend/API routes
+/src/app/api/ @backend-team @schools-in-team
+
+# Firebase configuration
+firebase.json @backend-team @schools-in-team
+firestore.rules @backend-team @schools-in-team  
+storage.rules @backend-team @schools-in-team
+
+# CI/CD workflows
+/.github/workflows/ @devops-team @schools-in-team
+
+# Performance and accessibility
+/cypress/e2e/performance-accessibility.cy.ts @qa-team @schools-in-team
+/src/lib/performance/ @performance-team @schools-in-team
+/src/lib/testing/ @qa-team @schools-in-team
+
+# Documentation
+/docs/ @tech-writers @schools-in-team
+README.md @tech-writers @schools-in-team
+
+# Security-sensitive files
+/src/lib/firebase/ @security-team @backend-team @schools-in-team
+/.env* @security-team @backend-team @schools-in-team

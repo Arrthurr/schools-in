@@ -52,6 +52,28 @@ const nextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  
+  // Firebase Hosting configuration
+  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
+  trailingSlash: true,
+  images: {
+    unoptimized: process.env.NODE_ENV === 'production',
+  },
+  
+  // Performance optimizations
+  swcMinify: true,
+  
+  // Bundle analyzer
+  ...(process.env.ANALYZE === 'true' && {
+    webpack: (config) => {
+      config.plugins.push(
+        new (require('@next/bundle-analyzer'))({
+          enabled: true,
+        })
+      );
+      return config;
+    },
+  }),
 };
 
 module.exports = withPWA(nextConfig);

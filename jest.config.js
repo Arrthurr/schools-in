@@ -48,6 +48,23 @@ const config = {
 
   // Restore mocks after each test
   restoreMocks: true,
+
+  // CI Configuration
+  ...(process.env.CI && {
+    reporters: [
+      'default',
+      ['jest-junit', {
+        outputDirectory: 'coverage',
+        outputName: 'junit.xml',
+        classNameTemplate: '{classname}',
+        titleTemplate: '{title}',
+        ancestorSeparator: ' › ',
+        usePathForSuiteName: true,
+      }],
+    ],
+    collectCoverage: true,
+    coverageReporters: ['text', 'lcov', 'clover', 'json'],
+  }),
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

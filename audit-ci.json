@@ -1,0 +1,11 @@
+{
+  "low": true,
+  "moderate": true,
+  "high": true,
+  "critical": true,
+  "report-type": "full",
+  "advisories": [],
+  "whitelist": [],
+  "skip-dev": false,
+  "output-format": "json"
+}
