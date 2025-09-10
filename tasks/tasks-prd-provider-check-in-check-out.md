@@ -104,6 +104,13 @@
 - `jest.config.js` - Jest configuration for unit tests
 - `cypress.config.js` - Cypress configuration for E2E tests
 - `docs/design-system.md` - Comprehensive design system documentation with brand colors, component guidelines, and implementation notes for consistent UI/UX
+- `cypress/e2e/performance-accessibility.cy.ts` - Comprehensive performance and accessibility testing suite covering Core Web Vitals, WCAG 2.1 AA compliance, mobile performance, and regression testing
+- `src/lib/performance/webVitals.ts` - Web Vitals monitoring utility with Core Web Vitals tracking, performance alerts, Firebase integration, and real-time metrics collection
+- `src/components/dev/PerformanceMonitor.tsx` - Development performance monitoring component with live metrics display, export functionality, and performance grade calculation
+- `src/lib/testing/accessibilityUtils.ts` - Accessibility testing utilities with WCAG 2.1 AA compliance checking, axe-core integration, and Jest matchers
+- `lighthouse.config.js` - Lighthouse CI configuration with performance budgets, accessibility requirements, and automated auditing setup
+- `.github/workflows/performance-accessibility.yml` - GitHub Actions workflow for automated performance and accessibility testing in CI/CD pipeline
+- `docs/performance-accessibility-testing.md` - Complete guide for performance and accessibility testing including standards, tools, monitoring, and troubleshooting
 
 ### Notes
 
@@ -239,7 +246,7 @@
   - [x] 13.3 Implement API route testing with mocked Firebase
   - [x] 13.4 Write E2E tests for provider check-in/out flow
   - [x] 13.5 Create E2E tests for admin management workflows
-  - [ ] 13.6 Add performance and accessibility testing
+  - [x] 13.6 Add performance and accessibility testing
   - [ ] 13.7 Set up CI/CD pipeline with automated testing
 
 - [ ] 14.0 Error Handling and Edge Cases

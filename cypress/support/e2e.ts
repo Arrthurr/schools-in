@@ -91,6 +91,47 @@ declare global {
        * @param statusCode - HTTP status code
        */
       mockApiError(method: string, url: string, statusCode?: number): Chainable<void>
+      
+      /**
+       * Enhanced accessibility testing with axe-core
+       * @param context - Element or selector to test
+       * @param options - Axe options
+       */
+      checkA11y(context?: string | Node, options?: any): Chainable<void>
+      
+      /**
+       * Inject axe-core for accessibility testing
+       */
+      injectAxe(): Chainable<void>
+      
+      /**
+       * Configure axe rules and settings
+       * @param config - Axe configuration
+       */
+      configureAxe(config: any): Chainable<void>
+      
+      /**
+       * Measure page load time
+       * @param url - URL to visit and measure
+       */
+      measurePageLoad(url: string): Chainable<void>
+      
+      /**
+       * Measure Core Web Vitals (FCP, LCP, etc.)
+       */
+      measureWebVitals(): Chainable<void>
+      
+      /**
+       * Check memory usage
+       */
+      checkMemoryUsage(): Chainable<void>
+      
+      /**
+       * Run comprehensive lighthouse-like checks
+       * @param url - URL to test
+       * @param options - Testing options
+       */
+      lighthouse(url: string, options?: any): Chainable<void>
     }
   }
 }
