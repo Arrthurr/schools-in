@@ -162,6 +162,11 @@ export default function DashboardPage() {
                 <a
                   key={item.name}
                   href={item.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // Handle navigation, for now just log
+                    console.log(`Navigating to ${item.href}`);
+                  }}
                   className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     item.current
                       ? "bg-brand-primary text-white"

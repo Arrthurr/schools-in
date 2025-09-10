@@ -1,0 +1,24 @@
+{
+  "schools": [
+    {
+      "id": "school1",
+      "name": "Test School 1",
+      "address": "123 Main St, Anytown, USA",
+      "coordinates": {
+        "lat": 34.0522,
+        "lng": -118.2437
+      },
+      "radius": 500
+    },
+    {
+      "id": "school2",
+      "name": "Test School 2",
+      "address": "456 Oak Ave, Anytown, USA",
+      "coordinates": {
+        "lat": 34.0532,
+        "lng": -118.2447
+      },
+      "radius": 500
+    }
+  ]
+}

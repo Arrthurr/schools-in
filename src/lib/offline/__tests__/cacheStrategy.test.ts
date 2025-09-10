@@ -252,7 +252,11 @@ describe("CacheStrategy", () => {
 
     it("should handle preload errors gracefully", async () => {
       const userId = "test-user-123";
-      mockDB.transaction.mockRejectedValue(new Error("Cache error"));
+
+      // Make the transaction throw synchronously so the caller's try/catch can handle it
+      mockDB.transaction.mockImplementationOnce(() => {
+        throw new Error("Cache error");
+      });
 
       // Should not throw error
       await expect(preloadCriticalData(userId)).resolves.not.toThrow();
