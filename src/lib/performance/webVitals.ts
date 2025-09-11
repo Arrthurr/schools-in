@@ -96,9 +96,12 @@ class WebVitalsMonitor {
       console.log(`[Web Vitals] ${metric.name}:`, webVitalsMetric);
     }
 
-    // Send real-time alerts for poor performance
-    if (webVitalsMetric.rating === 'poor') {
-      this.sendAlert(webVitalsMetric);
+    // Add Sentry breadcrumb for non-good metrics, and alert for poor metrics
+    if (webVitalsMetric.rating !== 'good') {
+      this.sendSentryBreadcrumb(webVitalsMetric);
+      if (webVitalsMetric.rating === 'poor') {
+        this.sendAlert(webVitalsMetric);
+      }
     }
   }
 
@@ -176,6 +179,35 @@ class WebVitalsMonitor {
         url: window.location.href,
         timestamp: metric.timestamp,
       });
+    }
+  }
+
+  private sendSentryBreadcrumb(metric: WebVitalsMetric) {
+    const S = (window as any).Sentry;
+    if (!S) return;
+    try {
+      S.addBreadcrumb?.({
+        category: 'performance',
+        level: metric.rating === 'poor' ? 'warning' : 'info',
+        message: `${metric.name}=${Math.round(metric.value)} (${metric.rating})`,
+        data: {
+          name: metric.name,
+          value: Math.round(metric.value),
+          rating: metric.rating,
+          delta: Math.round(metric.delta),
+          page: window.location.pathname,
+        },
+      });
+      S.setContext?.('web_vitals', {
+        [metric.name]: {
+          value: Math.round(metric.value),
+          rating: metric.rating,
+          delta: Math.round(metric.delta),
+        },
+      });
+      S.setTag?.('last_slow_metric', metric.name);
+    } catch {
+      // ignore
     }
   }
 

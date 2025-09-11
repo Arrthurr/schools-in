@@ -311,6 +311,6 @@
   - [ ] 15.6 Add performance monitoring and analytics
     - [x] 15.6.1 Integrate Google Analytics 4 (gtag) with route change tracking
     - [x] 15.6.2 Wire Web Vitals to GA and custom endpoint
-    - [x] 15.6.3 Enable Firebase Performance Monitoring and custom traces
-    - [ ] 15.6.4 Add Sentry performance breadcrumbs for slow vitals
+  - [x] 15.6.3 Enable Firebase Performance Monitoring and custom traces
+  - [x] 15.6.4 Add Sentry performance breadcrumbs for slow vitals
   - [ ] 15.7 Conduct final testing and user acceptance testing
