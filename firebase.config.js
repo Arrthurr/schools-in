@@ -1,21 +1,25 @@
 // Firebase SDK configuration and initialization
 // Production-ready configuration with enhanced features
 
-import { initializeApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
-import { getPerformance } from 'firebase/performance';
-import { getAnalytics, isSupported } from 'firebase/analytics';
+import { initializeApp } from "firebase/app";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+import {
+  getFirestore,
+  connectFirestoreEmulator,
+  enableMultiTabIndexedDbPersistence,
+} from "firebase/firestore";
+import { getStorage, connectStorageEmulator } from "firebase/storage";
+import { getPerformance } from "firebase/performance";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Production Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyB5GTFpkeRk7dIJL0hm1Xr5SBX_RQnqt_A",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "schools-in-check.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "schools-in-check",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "schools-in-check.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "227078219689",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:227078219689:web:71408317e8899ed6fe46b8",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase
@@ -32,45 +36,47 @@ export const storage = getStorage(app);
 
 // Initialize Firebase Performance Monitoring (production only)
 export let performance: any = null;
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
   try {
     performance = getPerformance(app);
   } catch (error) {
-    console.warn('Failed to initialize Firebase Performance:', error);
+    console.warn("Failed to initialize Firebase Performance:", error);
   }
 }
 
 // Initialize Firebase Analytics (production only)
 export let analytics: any = null;
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-  isSupported().then((supported) => {
-    if (supported) {
-      analytics = getAnalytics(app);
-    }
-  }).catch(error => {
-    console.warn('Failed to initialize Firebase Analytics:', error);
-  });
+if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+  isSupported()
+    .then((supported) => {
+      if (supported) {
+        analytics = getAnalytics(app);
+      }
+    })
+    .catch((error) => {
+      console.warn("Failed to initialize Firebase Analytics:", error);
+    });
 }
 
 // Development emulators
-if (process.env.NODE_ENV === 'development') {
-  connectAuthEmulator(auth, 'http://localhost:9099');
-  connectFirestoreEmulator(db, 'localhost', 8080);
-  connectStorageEmulator(storage, 'localhost', 9199);
+if (process.env.NODE_ENV === "development") {
+  connectAuthEmulator(auth, "http://localhost:9099");
+  connectFirestoreEmulator(db, "localhost", 8080);
+  connectStorageEmulator(storage, "localhost", 9199);
 }
 
 // Enable offline persistence in production
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
   try {
     enableMultiTabIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('Firebase persistence failed: Multiple tabs open');
-      } else if (err.code === 'unimplemented') {
-        console.warn('Firebase persistence not supported by browser');
+      if (err.code === "failed-precondition") {
+        console.warn("Firebase persistence failed: Multiple tabs open");
+      } else if (err.code === "unimplemented") {
+        console.warn("Firebase persistence not supported by browser");
       }
     });
   } catch (error) {
-    console.warn('Failed to enable Firebase persistence:', error);
+    console.warn("Failed to enable Firebase persistence:", error);
   }
 }
 
