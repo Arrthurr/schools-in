@@ -208,20 +208,18 @@ class WebVitalsMonitor {
 
   private sendToFirebasePerformance(report: WebVitalsReport) {
     // Firebase Performance Monitoring integration
-    if (typeof performance !== 'undefined' && 'mark' in performance) {
+    try {
+      const { startTrace } = require('../firebase/perf');
       report.metrics.forEach(metric => {
-        // Create custom performance marks
-        performance.mark(`web-vitals-${metric.name.toLowerCase()}-${metric.value}`);
-        
-        // Send custom trace (if Firebase Performance is initialized)
-        if ((window as any).firebase && (window as any).firebase.performance) {
-          const trace = (window as any).firebase.performance().trace(`web_vitals_${metric.name}`);
-          trace.putAttribute('rating', metric.rating);
-          trace.putAttribute('page', report.page);
-          trace.putMetric('value', Math.round(metric.value));
-          trace.stop();
-        }
+        // Create a custom trace per metric when perf is enabled (prod only)
+        const trace = startTrace(`web_vitals_${metric.name}`);
+        trace.putAttribute('rating', metric.rating);
+        trace.putAttribute('page', report.page);
+        trace.putMetric('value', Math.round(metric.value));
+        trace.stop();
       });
+    } catch {
+      // ignore if perf module not available
     }
   }
 

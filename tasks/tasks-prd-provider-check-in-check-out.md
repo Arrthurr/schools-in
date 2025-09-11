@@ -111,6 +111,7 @@
 - `src/components/analytics/WebVitalsInit.tsx` - Initializes Web Vitals and associates user id when available
 - `src/app/api/analytics/web-vitals/route.ts` - API endpoint to receive Web Vitals reports
 - `src/components/dev/PerformanceMonitor.tsx` - Development performance monitoring component with live metrics display, export functionality, and performance grade calculation
+- `src/lib/firebase/perf.ts` - Firebase Performance helper with safe no-op for non-production
 - `src/lib/testing/accessibilityUtils.ts` - Accessibility testing utilities with WCAG 2.1 AA compliance checking, axe-core integration, and Jest matchers
 - `lighthouse.config.js` - Lighthouse CI configuration with performance budgets, accessibility requirements, and automated auditing setup
 - `.github/workflows/performance-accessibility.yml` - GitHub Actions workflow for automated performance and accessibility testing in CI/CD pipeline
@@ -309,7 +310,7 @@
   - [x] 15.5 Set up deployment pipeline (Firebase Hosting)
   - [ ] 15.6 Add performance monitoring and analytics
     - [x] 15.6.1 Integrate Google Analytics 4 (gtag) with route change tracking
-  - [x] 15.6.2 Wire Web Vitals to GA and custom endpoint
-    - [ ] 15.6.3 Enable Firebase Performance Monitoring and custom traces
+    - [x] 15.6.2 Wire Web Vitals to GA and custom endpoint
+    - [x] 15.6.3 Enable Firebase Performance Monitoring and custom traces
     - [ ] 15.6.4 Add Sentry performance breadcrumbs for slow vitals
   - [ ] 15.7 Conduct final testing and user acceptance testing
