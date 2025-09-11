@@ -154,6 +154,7 @@
 - `src/components/admin/DeploymentStatus.tsx` - Admin dashboard deployment status component with real-time health monitoring
 - `docs/production-deployment-guide.md` - Complete production deployment documentation with procedures and troubleshooting
 - `docs/production-readiness-checklist.md` - Production readiness checklist with validation and verification steps
+- `docs/uat-checklist.md` - User Acceptance Testing checklist for provider/admin flows, PWA/offline, performance, accessibility, and monitoring
 
 ### Notes
 
@@ -314,3 +315,8 @@
   - [x] 15.6.3 Enable Firebase Performance Monitoring and custom traces
   - [x] 15.6.4 Add Sentry performance breadcrumbs for slow vitals
   - [ ] 15.7 Conduct final testing and user acceptance testing
+    - [ ] 15.7.1 Execute UAT scenarios for Provider flows
+    - [ ] 15.7.2 Execute UAT scenarios for Admin flows
+    - [ ] 15.7.3 Validate PWA/offline behavior on mobile and desktop
+    - [ ] 15.7.4 Confirm performance thresholds and accessibility checks
+    - [ ] 15.7.5 Verify analytics, performance traces, and Sentry breadcrumbs in staging
