@@ -108,12 +108,9 @@ class WebVitalsMonitor {
       console.log(`[Web Vitals] ${metric.name}:`, webVitalsMetric);
     }
 
-    // Add Sentry breadcrumb for non-good metrics, and alert for poor metrics
-    if (webVitalsMetric.rating !== "good") {
-      this.sendSentryBreadcrumb(webVitalsMetric);
-      if (webVitalsMetric.rating === "poor") {
-        this.sendAlert(webVitalsMetric);
-      }
+    // Send real-time alerts for poor performance
+    if (webVitalsMetric.rating === "poor") {
+      this.sendAlert(webVitalsMetric);
     }
   }
 
@@ -213,37 +210,6 @@ class WebVitalsMonitor {
     }
   }
 
-  private sendSentryBreadcrumb(metric: WebVitalsMetric) {
-    const S = (window as any).Sentry;
-    if (!S) return;
-    try {
-      S.addBreadcrumb?.({
-        category: "performance",
-        level: metric.rating === "poor" ? "warning" : "info",
-        message: `${metric.name}=${Math.round(metric.value)} (${
-          metric.rating
-        })`,
-        data: {
-          name: metric.name,
-          value: Math.round(metric.value),
-          rating: metric.rating,
-          delta: Math.round(metric.delta),
-          page: window.location.pathname,
-        },
-      });
-      S.setContext?.("web_vitals", {
-        [metric.name]: {
-          value: Math.round(metric.value),
-          rating: metric.rating,
-          delta: Math.round(metric.delta),
-        },
-      });
-      S.setTag?.("last_slow_metric", metric.name);
-    } catch {
-      // ignore
-    }
-  }
-
   private sendToAnalytics(report: WebVitalsReport) {
     // Google Analytics 4 integration
     if (typeof window !== "undefined" && (window as any).gtag) {
@@ -273,18 +239,24 @@ class WebVitalsMonitor {
 
   private sendToFirebasePerformance(report: WebVitalsReport) {
     // Firebase Performance Monitoring integration
-    try {
-      const { startTrace } = require("../firebase/perf");
+    if (typeof performance !== "undefined" && "mark" in performance) {
       report.metrics.forEach((metric) => {
-        // Create a custom trace per metric when perf is enabled (prod only)
-        const trace = startTrace(`web_vitals_${metric.name}`);
-        trace.putAttribute("rating", metric.rating);
-        trace.putAttribute("page", report.page);
-        trace.putMetric("value", Math.round(metric.value));
-        trace.stop();
+        // Create custom performance marks
+        performance.mark(
+          `web-vitals-${metric.name.toLowerCase()}-${metric.value}`
+        );
+
+        // Send custom trace (if Firebase Performance is initialized)
+        if ((window as any).firebase && (window as any).firebase.performance) {
+          const trace = (window as any).firebase
+            .performance()
+            .trace(`web_vitals_${metric.name}`);
+          trace.putAttribute("rating", metric.rating);
+          trace.putAttribute("page", report.page);
+          trace.putMetric("value", Math.round(metric.value));
+          trace.stop();
+        }
       });
-    } catch {
-      // ignore if perf module not available
     }
   }
 

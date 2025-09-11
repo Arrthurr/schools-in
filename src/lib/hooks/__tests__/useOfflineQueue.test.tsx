@@ -161,7 +161,7 @@ describe("useOfflineQueue", () => {
 
       // Wait for initialization
       await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       });
 
       await act(async () => {
@@ -357,11 +357,15 @@ describe("useOfflineQueue", () => {
 
       // Wait for initialization
       await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       });
 
       await act(async () => {
-        const actionId = await result.current.addCheckIn("school123", "user123", mockLocationData);
+        const actionId = await result.current.addCheckIn(
+          "school123",
+          "user123",
+          mockLocationData
+        );
         expect(actionId).toBeNull();
       });
 
