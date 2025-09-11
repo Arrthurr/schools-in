@@ -13,6 +13,7 @@ import { OfflineStatusBar } from "@/components/offline/OfflineStatusBar";
 import { OfflineStatusIndicator } from "@/components/offline/OfflineStatusIndicator";
 import { Toaster } from "@/components/ui/toaster";
 import { Logo } from "../ui/logo";
+import AnalyticsProvider from "@/components/analytics/AnalyticsProvider";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <OfflineMessagingProvider enableToasts={true} enableNotifications={true}>
       <div className="flex flex-col min-h-screen">
+  <AnalyticsProvider />
         <Header />
         <OfflineStatusBar variant="compact" position="top" />
         <PWAUpdatePrompt />
