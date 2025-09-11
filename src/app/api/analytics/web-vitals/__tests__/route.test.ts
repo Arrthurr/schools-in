@@ -25,8 +25,8 @@ describe("API /api/analytics/web-vitals", () => {
     const res = await POST(req);
     const body = await res.json();
 
-  expect(res.status).toEqual(400);
-  expect(String(body.error)).toMatch(/Invalid payload/);
+    expect(res.status).toEqual(400);
+    expect(String(body.error)).toMatch(/Invalid payload/);
   });
 
   it("accepts valid payloads", async () => {
@@ -42,7 +42,7 @@ describe("API /api/analytics/web-vitals", () => {
     const res = await POST(req);
     const body = await res.json();
 
-  expect(res.status).toEqual(200);
-  expect(Boolean(body.ok)).toBe(true);
+    expect(res.status).toEqual(200);
+    expect(Boolean(body.ok)).toBe(true);
   });
 });

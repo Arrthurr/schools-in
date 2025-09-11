@@ -147,7 +147,7 @@
 - `scripts/deploy-production.sh` - Automated production deployment script with validation and testing
 - `scripts/rollback-deployment.sh` - Emergency rollback utility for quick deployment recovery
 - `.github/workflows/firebase-hosting-deploy.yml` - Enhanced Firebase Hosting deployment pipeline with multi-environment support
-- `.github/workflows/staging-deploy.yml` - Staging environment deployment with auto-promotion capabilities  
+- `.github/workflows/staging-deploy.yml` - Staging environment deployment with auto-promotion capabilities
 - `.github/workflows/deployment-monitor.yml` - Continuous deployment monitoring with health checks and alerts
 - `src/lib/deployment/hostingUtils.ts` - Firebase Hosting utilities for deployment management and health monitoring
 - `src/lib/deployment/configManager.ts` - Multi-environment deployment configuration management
@@ -155,7 +155,7 @@
 - `docs/production-deployment-guide.md` - Complete production deployment documentation with procedures and troubleshooting
 - `docs/production-readiness-checklist.md` - Production readiness checklist with validation and verification steps
 - `docs/uat-checklist.md` - User Acceptance Testing checklist for provider/admin flows, PWA/offline, performance, accessibility, and monitoring
- - `docs/uat-runs/provider-uat-2025-09-11.md` - UAT run log for Provider flows (2025-09-11)
+- `docs/uat-runs/provider-uat-2025-09-11.md` - UAT run log for Provider flows (2025-09-11)
 
 ### Notes
 

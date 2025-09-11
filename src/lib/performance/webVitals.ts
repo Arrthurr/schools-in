@@ -1,13 +1,18 @@
 // Web Vitals monitoring utility
-import { onCLS, onINP, onFCP, onLCP, onTTFB } from 'web-vitals';
+import { onCLS, onINP, onFCP, onLCP, onTTFB } from "web-vitals";
 
 export interface WebVitalsMetric {
-  name: 'CLS' | 'INP' | 'FCP' | 'LCP' | 'TTFB';
+  name: "CLS" | "INP" | "FCP" | "LCP" | "TTFB";
   value: number;
   delta: number;
   id: string;
-  rating: 'good' | 'needs-improvement' | 'poor';
-  navigationType: 'navigate' | 'reload' | 'back-forward' | 'back-forward-cache' | 'prerender';
+  rating: "good" | "needs-improvement" | "poor";
+  navigationType:
+    | "navigate"
+    | "reload"
+    | "back-forward"
+    | "back-forward-cache"
+    | "prerender";
   timestamp: number;
   url: string;
   userAgent: string;
@@ -33,8 +38,8 @@ export interface WebVitalsReport {
 // Performance thresholds (based on Core Web Vitals recommendations)
 export const PERFORMANCE_THRESHOLDS = {
   LCP: { good: 2500, needsImprovement: 4000 }, // Largest Contentful Paint
-  INP: { good: 200, needsImprovement: 500 },   // Interaction to Next Paint
-  CLS: { good: 0.1, needsImprovement: 0.25 },  // Cumulative Layout Shift
+  INP: { good: 200, needsImprovement: 500 }, // Interaction to Next Paint
+  CLS: { good: 0.1, needsImprovement: 0.25 }, // Cumulative Layout Shift
   FCP: { good: 1800, needsImprovement: 3000 }, // First Contentful Paint
   TTFB: { good: 800, needsImprovement: 1800 }, // Time to First Byte
 } as const;
@@ -47,7 +52,7 @@ class WebVitalsMonitor {
 
   constructor() {
     this.sessionId = this.generateSessionId();
-    this.isProduction = process.env.NODE_ENV === 'production';
+    this.isProduction = process.env.NODE_ENV === "production";
     this.initialize();
   }
 
@@ -64,14 +69,14 @@ class WebVitalsMonitor {
     onTTFB(this.handleMetric.bind(this));
 
     // Set up page visibility change handler
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
         this.sendReport();
       }
     });
 
     // Set up beforeunload handler
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener("beforeunload", () => {
       this.sendReport();
     });
   }
@@ -83,7 +88,14 @@ class WebVitalsMonitor {
       delta: metric.delta,
       id: metric.id,
       rating: this.getRating(metric.name, metric.value),
-      navigationType: this.normalizeNavigationType((performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type) || 'navigate',
+      navigationType:
+        this.normalizeNavigationType(
+          (
+            performance.getEntriesByType(
+              "navigation"
+            )[0] as PerformanceNavigationTiming
+          )?.type
+        ) || "navigate",
       timestamp: Date.now(),
       url: window.location.href,
       userAgent: navigator.userAgent,
@@ -97,36 +109,55 @@ class WebVitalsMonitor {
     }
 
     // Add Sentry breadcrumb for non-good metrics, and alert for poor metrics
-    if (webVitalsMetric.rating !== 'good') {
+    if (webVitalsMetric.rating !== "good") {
       this.sendSentryBreadcrumb(webVitalsMetric);
-      if (webVitalsMetric.rating === 'poor') {
+      if (webVitalsMetric.rating === "poor") {
         this.sendAlert(webVitalsMetric);
       }
     }
   }
 
-  private normalizeNavigationType(type: string): 'navigate' | 'reload' | 'back-forward' | 'back-forward-cache' | 'prerender' {
+  private normalizeNavigationType(
+    type: string
+  ):
+    | "navigate"
+    | "reload"
+    | "back-forward"
+    | "back-forward-cache"
+    | "prerender" {
     switch (type) {
-      case 'back_forward':
-        return 'back-forward';
-      case 'back_forward_cache':
-        return 'back-forward-cache';
+      case "back_forward":
+        return "back-forward";
+      case "back_forward_cache":
+        return "back-forward-cache";
       default:
-        return type as 'navigate' | 'reload' | 'back-forward' | 'back-forward-cache' | 'prerender';
+        return type as
+          | "navigate"
+          | "reload"
+          | "back-forward"
+          | "back-forward-cache"
+          | "prerender";
     }
   }
 
-  private getRating(name: string, value: number): 'good' | 'needs-improvement' | 'poor' {
-    const thresholds = PERFORMANCE_THRESHOLDS[name as keyof typeof PERFORMANCE_THRESHOLDS];
-    if (!thresholds) return 'good';
+  private getRating(
+    name: string,
+    value: number
+  ): "good" | "needs-improvement" | "poor" {
+    const thresholds =
+      PERFORMANCE_THRESHOLDS[name as keyof typeof PERFORMANCE_THRESHOLDS];
+    if (!thresholds) return "good";
 
-    if (value <= thresholds.good) return 'good';
-    if (value <= thresholds.needsImprovement) return 'needs-improvement';
-    return 'poor';
+    if (value <= thresholds.good) return "good";
+    if (value <= thresholds.needsImprovement) return "needs-improvement";
+    return "poor";
   }
 
   private getConnectionInfo() {
-    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    const connection =
+      (navigator as any).connection ||
+      (navigator as any).mozConnection ||
+      (navigator as any).webkitConnection;
     if (!connection) return undefined;
 
     return {
@@ -167,12 +198,12 @@ class WebVitalsMonitor {
 
   private sendAlert(metric: WebVitalsMetric) {
     console.warn(`[Performance Alert] Poor ${metric.name}: ${metric.value}ms`);
-    
+
     // In production, send to monitoring service
     if (this.isProduction) {
       // Send to error reporting service
       this.sendToErrorReporting({
-        type: 'performance-alert',
+        type: "performance-alert",
         metric: metric.name,
         value: metric.value,
         rating: metric.rating,
@@ -187,9 +218,11 @@ class WebVitalsMonitor {
     if (!S) return;
     try {
       S.addBreadcrumb?.({
-        category: 'performance',
-        level: metric.rating === 'poor' ? 'warning' : 'info',
-        message: `${metric.name}=${Math.round(metric.value)} (${metric.rating})`,
+        category: "performance",
+        level: metric.rating === "poor" ? "warning" : "info",
+        message: `${metric.name}=${Math.round(metric.value)} (${
+          metric.rating
+        })`,
         data: {
           name: metric.name,
           value: Math.round(metric.value),
@@ -198,14 +231,14 @@ class WebVitalsMonitor {
           page: window.location.pathname,
         },
       });
-      S.setContext?.('web_vitals', {
+      S.setContext?.("web_vitals", {
         [metric.name]: {
           value: Math.round(metric.value),
           rating: metric.rating,
           delta: Math.round(metric.delta),
         },
       });
-      S.setTag?.('last_slow_metric', metric.name);
+      S.setTag?.("last_slow_metric", metric.name);
     } catch {
       // ignore
     }
@@ -213,10 +246,10 @@ class WebVitalsMonitor {
 
   private sendToAnalytics(report: WebVitalsReport) {
     // Google Analytics 4 integration
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      report.metrics.forEach(metric => {
-        (window as any).gtag('event', 'web_vitals', {
-          event_category: 'Web Vitals',
+    if (typeof window !== "undefined" && (window as any).gtag) {
+      report.metrics.forEach((metric) => {
+        (window as any).gtag("event", "web_vitals", {
+          event_category: "Web Vitals",
           event_label: metric.name,
           value: Math.round(metric.value),
           custom_map: {
@@ -228,26 +261,26 @@ class WebVitalsMonitor {
     }
 
     // Send to custom analytics endpoint
-    fetch('/api/analytics/web-vitals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    fetch("/api/analytics/web-vitals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(report),
       keepalive: true,
-    }).catch(err => {
-      console.warn('Failed to send Web Vitals report:', err);
+    }).catch((err) => {
+      console.warn("Failed to send Web Vitals report:", err);
     });
   }
 
   private sendToFirebasePerformance(report: WebVitalsReport) {
     // Firebase Performance Monitoring integration
     try {
-      const { startTrace } = require('../firebase/perf');
-      report.metrics.forEach(metric => {
+      const { startTrace } = require("../firebase/perf");
+      report.metrics.forEach((metric) => {
         // Create a custom trace per metric when perf is enabled (prod only)
         const trace = startTrace(`web_vitals_${metric.name}`);
-        trace.putAttribute('rating', metric.rating);
-        trace.putAttribute('page', report.page);
-        trace.putMetric('value', Math.round(metric.value));
+        trace.putAttribute("rating", metric.rating);
+        trace.putAttribute("page", report.page);
+        trace.putMetric("value", Math.round(metric.value));
         trace.stop();
       });
     } catch {
@@ -258,8 +291,8 @@ class WebVitalsMonitor {
   private sendToErrorReporting(error: any) {
     // Send to error reporting service (e.g., Sentry)
     if ((window as any).Sentry) {
-      (window as any).Sentry.captureMessage('Performance Alert', {
-        level: 'warning',
+      (window as any).Sentry.captureMessage("Performance Alert", {
+        level: "warning",
         extra: error,
       });
     }
@@ -274,39 +307,46 @@ class WebVitalsMonitor {
     return Array.from(this.metrics.values());
   }
 
-  public getMetric(name: keyof typeof PERFORMANCE_THRESHOLDS): WebVitalsMetric | undefined {
+  public getMetric(
+    name: keyof typeof PERFORMANCE_THRESHOLDS
+  ): WebVitalsMetric | undefined {
     return this.metrics.get(name);
   }
 
   public getAllMetrics(): { [key: string]: number } {
     // Return the current collected metrics
     const result: { [key: string]: number } = {};
-    this.metrics.forEach(metric => {
+    this.metrics.forEach((metric) => {
       result[metric.name] = metric.value;
     });
     return result;
   }
 
-  public getPerformanceGrade(): 'A' | 'B' | 'C' | 'D' | 'F' {
+  public getPerformanceGrade(): "A" | "B" | "C" | "D" | "F" {
     const metrics = this.getCurrentMetrics();
-    if (metrics.length === 0) return 'F';
+    if (metrics.length === 0) return "F";
 
-    const scores = metrics.map(metric => {
+    const scores = metrics.map((metric) => {
       switch (metric.rating) {
-        case 'good': return 3;
-        case 'needs-improvement': return 2;
-        case 'poor': return 1;
-        default: return 0;
+        case "good":
+          return 3;
+        case "needs-improvement":
+          return 2;
+        case "poor":
+          return 1;
+        default:
+          return 0;
       }
     });
 
-    const averageScore = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
+    const averageScore =
+      scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
 
-    if (averageScore >= 2.8) return 'A';
-    if (averageScore >= 2.4) return 'B';
-    if (averageScore >= 2.0) return 'C';
-    if (averageScore >= 1.5) return 'D';
-    return 'F';
+    if (averageScore >= 2.8) return "A";
+    if (averageScore >= 2.4) return "B";
+    if (averageScore >= 2.0) return "C";
+    if (averageScore >= 1.5) return "D";
+    return "F";
   }
 }
 
@@ -316,18 +356,18 @@ export const webVitalsMonitor = new WebVitalsMonitor();
 // Convenience function for manual tracking
 export function trackWebVitals(callback?: (report: WebVitalsReport) => void) {
   const monitor = new WebVitalsMonitor();
-  
+
   if (callback) {
     // Return current metrics after a short delay
     setTimeout(() => {
       callback(monitor.generateReport());
     }, 1000);
   }
-  
+
   return monitor;
 }
 
 // Export for global access
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   (window as any).webVitalsMonitor = webVitalsMonitor;
 }

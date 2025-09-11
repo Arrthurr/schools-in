@@ -19,6 +19,7 @@ import { signInWithEmail, signInWithGoogle } from "@/lib/firebase/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadingButton } from "@/components/ui/loading";
 import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
+import { useAnalytics } from "@/lib/hooks/useAnalytics";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -30,6 +31,7 @@ const formSchema = z.object({
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { trackLogin, trackError } = useAnalytics();
 
   // Accessibility hooks
   const { announce } = useAnnouncement();
@@ -48,11 +50,26 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
+    const startTime = performance.now();
     try {
       await signInWithEmail(values.email, values.password);
+      const loginTime = performance.now() - startTime;
+      
+      // Track successful email login
+      trackLogin('email');
+      
       announce("Successfully signed in", "polite");
     } catch (error: any) {
+      const loginTime = performance.now() - startTime;
       const errorMessage = error.message;
+      
+      // Track failed email login
+      trackError(new Error(`Email login failed: ${errorMessage}`), {
+        login_method: 'email',
+        login_duration: loginTime,
+        error_code: error.code,
+      }, 'medium');
+      
       setError(errorMessage);
       announce(`Sign in failed: ${errorMessage}`, "assertive");
     } finally {
@@ -64,11 +81,26 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
+    const startTime = performance.now();
     try {
       await signInWithGoogle();
+      const loginTime = performance.now() - startTime;
+      
+      // Track successful Google login
+      trackLogin('google');
+      
       announce("Successfully signed in with Google", "polite");
     } catch (error: any) {
+      const loginTime = performance.now() - startTime;
       const errorMessage = error.message;
+      
+      // Track failed Google login
+      trackError(new Error(`Google login failed: ${errorMessage}`), {
+        login_method: 'google',
+        login_duration: loginTime,
+        error_code: error.code,
+      }, 'medium');
+      
       setError(errorMessage);
       announce(`Google sign in failed: ${errorMessage}`, "assertive");
     } finally {

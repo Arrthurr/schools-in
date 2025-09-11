@@ -14,6 +14,7 @@ import {
 import { MapPin, Loader2, AlertCircle, Clock, Navigation } from "lucide-react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useSession } from "../../lib/hooks/useSession";
+import { useAnalytics } from "../../lib/hooks/useAnalytics";
 import {
   locationService,
   isWithinRadius,
@@ -59,6 +60,14 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     error: sessionError,
     currentSession,
   } = useSession();
+  const { 
+    trackCheckIn, 
+    trackCheckOut, 
+    trackCheckInDuration, 
+    trackLocationEvent, 
+    trackError,
+    trackPerformance 
+  } = useAnalytics();
 
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -80,6 +89,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       return;
     }
 
+    const startTime = performance.now();
     setIsGettingLocation(true);
     setLocationError(null);
     announce("Attempting to get your location...");
@@ -90,6 +100,13 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         timeout: 15000,
         maximumAge: 0,
       });
+      
+      const locationTime = performance.now() - startTime;
+      trackPerformance('gps_acquisition_time', locationTime, {
+        accuracy: location.accuracy?.toString() || 'unknown',
+        school_id: school.id,
+      });
+
       setUserLocation(location);
       onLocationUpdate?.(location);
       setLocationAccuracy(location.accuracy ?? null);
@@ -109,6 +126,15 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       setDistance(dist);
       setIsWithinRange(inRange);
 
+      // Track location view event
+      trackLocationEvent('view', {
+        locationId: school.id,
+        locationName: school.name,
+        accuracy: location.accuracy,
+        distance: dist,
+        gpsTime: locationTime,
+      });
+
       if (inRange) {
         announce("You are within range for check-in.");
         setShowConfirmDialog(true);
@@ -120,9 +146,25 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
           message: errorMessage,
         });
         announce(errorMessage);
+        
+        // Track failed check-in attempt
+        trackError(new Error('Check-in failed: Out of range'), {
+          school_id: school.id,
+          distance: dist,
+          required_radius: school.radius,
+        }, 'low');
       }
     } catch (error: any) {
       const err = error as CustomLocationError;
+      const locationTime = performance.now() - startTime;
+      
+      // Track location acquisition failure
+      trackError(new Error(`Location error: ${err.message}`), {
+        school_id: school.id,
+        gps_time: locationTime,
+        error_code: err.code,
+      }, 'medium');
+      
       setLocationError({ message: err.message, code: err.code });
       setIsWithinRange(false);
       setUserLocation(null);
@@ -130,16 +172,42 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     } finally {
       setIsGettingLocation(false);
     }
-  }, [user, onLocationUpdate, school.gpsCoordinates, school.radius, announce]);
+  }, [user, onLocationUpdate, school.gpsCoordinates, school.radius, school.id, school.name, announce, trackPerformance, trackLocationEvent, trackError]);
 
   const handleConfirmCheckIn = async () => {
     if (!user || !userLocation) return;
 
+    const startTime = performance.now();
     try {
       await checkIn(school.id, userLocation);
+      const checkInDuration = performance.now() - startTime;
+      
+      // Track successful check-in
+      trackCheckIn({
+        locationId: school.id,
+        locationName: school.name,
+        accuracy: locationAccuracy,
+        distance: distance,
+        gpsTime: checkInDuration,
+      });
+      
+      // Track check-in performance
+      trackCheckInDuration(checkInDuration);
+      
       setShowConfirmDialog(false);
+      announce(`Successfully checked in to ${school.name}`);
     } catch (error) {
+      const checkInDuration = performance.now() - startTime;
+      
+      // Track failed check-in
+      trackError(new Error('Check-in failed'), {
+        school_id: school.id,
+        check_in_duration: checkInDuration,
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+      }, 'high');
+      
       setLocationError({ message: "Failed to check in. Please try again." });
+      announce("Failed to check in. Please try again.", "assertive");
     }
   };
 
@@ -162,16 +230,40 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   const handleConfirmCheckOut = async () => {
     if (!user || !currentSessionId) return;
 
+    const startTime = performance.now();
     try {
       const locationForCheckout = userLocation || {
         latitude: school.gpsCoordinates.latitude,
         longitude: school.gpsCoordinates.longitude,
         accuracy: 0,
       };
+      
       await checkOut(currentSessionId, locationForCheckout);
+      const checkOutDuration = performance.now() - startTime;
+      
+      // Track successful check-out
+      trackCheckOut({
+        locationId: school.id,
+        locationName: school.name,
+        sessionDuration: sessionDuration || 0,
+        checkOutDuration: checkOutDuration,
+      });
+      
       setShowCheckOutDialog(false);
+      announce(`Successfully checked out from ${school.name}`);
     } catch (error) {
+      const checkOutDuration = performance.now() - startTime;
+      
+      // Track failed check-out
+      trackError(new Error('Check-out failed'), {
+        school_id: school.id,
+        session_id: currentSessionId,
+        check_out_duration: checkOutDuration,
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+      }, 'high');
+      
       setLocationError({ message: "Failed to check out. Please try again." });
+      announce("Failed to check out. Please try again.", "assertive");
     }
   };
 

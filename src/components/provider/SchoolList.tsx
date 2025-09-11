@@ -3,6 +3,7 @@
 import { useState, useEffect, useId } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useLocation } from "../../lib/hooks/useLocation";
+import { useAnalytics } from "../../lib/hooks/useAnalytics";
 import { SchoolService, School } from "../../lib/services/schoolService";
 import {
   Card,
@@ -50,6 +51,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 }) => {
   const { user } = useAuth();
   const { location, loading: locationLoading, getLocation } = useLocation();
+  const { trackLocationLoadTime, trackSearch, trackError } = useAnalytics();
   const [schools, setSchools] = useState<School[]>([]);
   const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +67,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     const loadSchools = async () => {
       if (!user?.uid) return;
 
+      const startTime = performance.now();
       setLoading(true);
       setError(null);
 
@@ -72,14 +75,28 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         const assignedSchools = await SchoolService.getAssignedSchools(
           user.uid
         );
+        const loadTime = performance.now() - startTime;
+        
+        // Track loading performance
+        trackLocationLoadTime(loadTime);
+        
         setSchools(assignedSchools);
         setFilteredSchools(assignedSchools);
 
         // Announce results to screen readers
         announce(`${assignedSchools.length} assigned schools loaded`, "polite");
       } catch (err) {
+        const loadTime = performance.now() - startTime;
         console.error("Error loading schools:", err);
         const errorMessage = "Failed to load schools. Please try again.";
+        
+        // Track loading error
+        trackError(new Error('Failed to load schools'), {
+          user_id: user.uid,
+          load_time: loadTime,
+          error_message: err instanceof Error ? err.message : 'Unknown error',
+        }, 'high');
+        
         setError(errorMessage);
         announce(`Error: ${errorMessage}`, "assertive");
       } finally {
@@ -88,7 +105,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     };
 
     loadSchools();
-  }, [user?.uid]);
+  }, [user?.uid, trackLocationLoadTime, trackError, announce]);
 
   // Update schools with distance when location is available
   useEffect(() => {
@@ -132,11 +149,23 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     const filterSchools = async () => {
       if (!user?.uid) return;
 
+      const startTime = performance.now();
       try {
         const filtered = await SchoolService.searchSchools(
           searchQuery,
           user.uid
         );
+        const searchTime = performance.now() - startTime;
+        
+        // Track search performance
+        if (searchQuery.trim()) {
+          trackSearch(searchQuery, 'locations', {
+            count: filtered.length,
+            loadTime: searchTime,
+            fromCache: false, // SchoolService would need to provide this
+          });
+        }
+        
         setFilteredSchools(filtered);
 
         // Announce search results to screen readers
@@ -147,14 +176,23 @@ export const SchoolList: React.FC<SchoolListProps> = ({
           );
         }
       } catch (err) {
+        const searchTime = performance.now() - startTime;
         console.error("Error filtering schools:", err);
+        
+        // Track search error
+        trackError(new Error('Search failed'), {
+          search_query: searchQuery,
+          search_time: searchTime,
+          user_id: user.uid,
+        }, 'medium');
+        
         announce("Error filtering schools", "assertive");
       }
     };
 
     const timeoutId = setTimeout(filterSchools, 300); // Debounce search
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, user?.uid]);
+  }, [searchQuery, user?.uid, trackSearch, trackError, announce]);
 
   // Format distance for display
   const formatDistance = (distance?: number): string => {
