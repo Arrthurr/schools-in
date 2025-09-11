@@ -316,6 +316,7 @@
   - [x] 15.6.4 Add Sentry performance breadcrumbs for slow vitals
   - [ ] 15.7 Conduct final testing and user acceptance testing
     - [ ] 15.7.1 Execute UAT scenarios for Provider flows
+    - Run log: docs/uat-runs/provider-uat-2025-09-11.md
     - [ ] 15.7.2 Execute UAT scenarios for Admin flows
     - [ ] 15.7.3 Validate PWA/offline behavior on mobile and desktop
     - [ ] 15.7.4 Confirm performance thresholds and accessibility checks
