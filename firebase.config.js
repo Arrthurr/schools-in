@@ -35,7 +35,7 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 
 // Initialize Firebase Performance Monitoring (production only)
-export let performance: any = null;
+export let performance = null;
 if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
   try {
     performance = getPerformance(app);
@@ -45,7 +45,7 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
 }
 
 // Initialize Firebase Analytics (production only)
-export let analytics: any = null;
+export let analytics = null;
 if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
   isSupported()
     .then((supported) => {

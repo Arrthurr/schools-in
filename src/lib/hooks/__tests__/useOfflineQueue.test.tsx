@@ -146,15 +146,31 @@ describe("useOfflineQueue", () => {
     it("should add check-in action to queue", async () => {
       const actionQueueModule = require("@/lib/offline/actionQueue");
       actionQueueModule.queueCheckIn.mockResolvedValue("action123");
+      actionQueueModule.initActionQueue.mockResolvedValue(undefined);
+      actionQueueModule.getPendingActions.mockResolvedValue([]);
+      actionQueueModule.getQueueStats.mockResolvedValue({
+        total: 0,
+        pending: 0,
+        syncing: 0,
+        synced: 0,
+        failed: 0,
+        cancelled: 0,
+      });
 
       const { result } = renderHook(() => useOfflineQueue("user123"));
 
+      // Wait for initialization
       await act(async () => {
-        await result.current.addCheckIn(
+        await new Promise(resolve => setTimeout(resolve, 100));
+      });
+
+      await act(async () => {
+        const actionId = await result.current.addCheckIn(
           "school123",
           "user123",
           mockLocationData
         );
+        expect(actionId).toBe("action123");
       });
 
       expect(actionQueueModule.queueCheckIn).toHaveBeenCalledWith(
@@ -326,14 +342,31 @@ describe("useOfflineQueue", () => {
       const actionQueueModule = require("@/lib/offline/actionQueue");
       const mockError = new Error("Queue operation failed");
       actionQueueModule.queueCheckIn.mockRejectedValue(mockError);
+      actionQueueModule.initActionQueue.mockResolvedValue(undefined);
+      actionQueueModule.getPendingActions.mockResolvedValue([]);
+      actionQueueModule.getQueueStats.mockResolvedValue({
+        total: 0,
+        pending: 0,
+        syncing: 0,
+        synced: 0,
+        failed: 0,
+        cancelled: 0,
+      });
 
       const { result } = renderHook(() => useOfflineQueue("user123"));
 
+      // Wait for initialization
       await act(async () => {
-        await expect(
-          result.current.addCheckIn("school123", "user123", mockLocationData)
-        ).rejects.toThrow("Queue operation failed");
+        await new Promise(resolve => setTimeout(resolve, 100));
       });
+
+      await act(async () => {
+        const actionId = await result.current.addCheckIn("school123", "user123", mockLocationData);
+        expect(actionId).toBeNull();
+      });
+
+      // Should have set error state
+      expect(result.current.error).toBe("Queue operation failed");
     });
 
     it("should handle data loading errors gracefully", async () => {

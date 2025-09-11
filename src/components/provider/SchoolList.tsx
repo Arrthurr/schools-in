@@ -76,10 +76,10 @@ export const SchoolList: React.FC<SchoolListProps> = ({
           user.uid
         );
         const loadTime = performance.now() - startTime;
-        
+
         // Track loading performance
         trackLocationLoadTime(loadTime);
-        
+
         setSchools(assignedSchools);
         setFilteredSchools(assignedSchools);
 
@@ -89,14 +89,18 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         const loadTime = performance.now() - startTime;
         console.error("Error loading schools:", err);
         const errorMessage = "Failed to load schools. Please try again.";
-        
+
         // Track loading error
-        trackError(new Error('Failed to load schools'), {
-          user_id: user.uid,
-          load_time: loadTime,
-          error_message: err instanceof Error ? err.message : 'Unknown error',
-        }, 'high');
-        
+        trackError(
+          new Error("Failed to load schools"),
+          {
+            user_id: user.uid,
+            load_time: loadTime,
+            error_message: err instanceof Error ? err.message : "Unknown error",
+          },
+          "high"
+        );
+
         setError(errorMessage);
         announce(`Error: ${errorMessage}`, "assertive");
       } finally {
@@ -156,16 +160,16 @@ export const SchoolList: React.FC<SchoolListProps> = ({
           user.uid
         );
         const searchTime = performance.now() - startTime;
-        
+
         // Track search performance
         if (searchQuery.trim()) {
-          trackSearch(searchQuery, 'locations', {
+          trackSearch(searchQuery, "locations", {
             count: filtered.length,
             loadTime: searchTime,
             fromCache: false, // SchoolService would need to provide this
           });
         }
-        
+
         setFilteredSchools(filtered);
 
         // Announce search results to screen readers
@@ -178,14 +182,18 @@ export const SchoolList: React.FC<SchoolListProps> = ({
       } catch (err) {
         const searchTime = performance.now() - startTime;
         console.error("Error filtering schools:", err);
-        
+
         // Track search error
-        trackError(new Error('Search failed'), {
-          search_query: searchQuery,
-          search_time: searchTime,
-          user_id: user.uid,
-        }, 'medium');
-        
+        trackError(
+          new Error("Search failed"),
+          {
+            search_query: searchQuery,
+            search_time: searchTime,
+            user_id: user.uid,
+          },
+          "medium"
+        );
+
         announce("Error filtering schools", "assertive");
       }
     };

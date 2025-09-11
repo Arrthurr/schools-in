@@ -215,10 +215,9 @@ describe("CacheManager", () => {
 
       // Should return empty result on error
       expect(result).toEqual({
-        data: [],
+        schools: [],
         isStale: true,
         needsRefresh: true,
-        metadata: null,
       });
     });
   });

@@ -54,22 +54,26 @@ export function LoginForm() {
     try {
       await signInWithEmail(values.email, values.password);
       const loginTime = performance.now() - startTime;
-      
+
       // Track successful email login
-      trackLogin('email');
-      
+      trackLogin("email");
+
       announce("Successfully signed in", "polite");
     } catch (error: any) {
       const loginTime = performance.now() - startTime;
       const errorMessage = error.message;
-      
+
       // Track failed email login
-      trackError(new Error(`Email login failed: ${errorMessage}`), {
-        login_method: 'email',
-        login_duration: loginTime,
-        error_code: error.code,
-      }, 'medium');
-      
+      trackError(
+        new Error(`Email login failed: ${errorMessage}`),
+        {
+          login_method: "email",
+          login_duration: loginTime,
+          error_code: error.code,
+        },
+        "medium"
+      );
+
       setError(errorMessage);
       announce(`Sign in failed: ${errorMessage}`, "assertive");
     } finally {
@@ -85,22 +89,26 @@ export function LoginForm() {
     try {
       await signInWithGoogle();
       const loginTime = performance.now() - startTime;
-      
+
       // Track successful Google login
-      trackLogin('google');
-      
+      trackLogin("google");
+
       announce("Successfully signed in with Google", "polite");
     } catch (error: any) {
       const loginTime = performance.now() - startTime;
       const errorMessage = error.message;
-      
+
       // Track failed Google login
-      trackError(new Error(`Google login failed: ${errorMessage}`), {
-        login_method: 'google',
-        login_duration: loginTime,
-        error_code: error.code,
-      }, 'medium');
-      
+      trackError(
+        new Error(`Google login failed: ${errorMessage}`),
+        {
+          login_method: "google",
+          login_duration: loginTime,
+          error_code: error.code,
+        },
+        "medium"
+      );
+
       setError(errorMessage);
       announce(`Google sign in failed: ${errorMessage}`, "assertive");
     } finally {

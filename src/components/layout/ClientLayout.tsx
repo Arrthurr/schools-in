@@ -51,7 +51,7 @@ function Header() {
       trackLogout();
       router.push("/");
     } catch (error) {
-      console.error('Sign out failed:', error);
+      console.error("Sign out failed:", error);
     }
   };
 

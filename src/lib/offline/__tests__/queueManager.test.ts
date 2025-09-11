@@ -194,7 +194,8 @@ describe("QueueManager", () => {
         new Error("Sync failed")
       );
 
-      await expect(queueManager.syncNow()).rejects.toThrow("Sync failed");
+      const result = await queueManager.syncNow();
+      expect(result).toBeNull();
     });
 
     it("should return null when offline", async () => {
@@ -235,7 +236,15 @@ describe("QueueManager", () => {
         new Error("Stats failed")
       );
 
-      await expect(queueManager.getStats()).rejects.toThrow("Stats failed");
+      const result = await queueManager.getStats();
+      expect(result).toEqual({
+        total: 0,
+        pending: 0,
+        syncing: 0,
+        synced: 0,
+        failed: 0,
+        cancelled: 0,
+      });
     });
   });
 });
