@@ -155,6 +155,7 @@
 - `docs/production-deployment-guide.md` - Complete production deployment documentation with procedures and troubleshooting
 - `docs/production-readiness-checklist.md` - Production readiness checklist with validation and verification steps
 - `docs/uat-checklist.md` - User Acceptance Testing checklist for provider/admin flows, PWA/offline, performance, accessibility, and monitoring
+ - `docs/uat-runs/provider-uat-2025-09-11.md` - UAT run log for Provider flows (2025-09-11)
 
 ### Notes
 
@@ -317,6 +318,7 @@
   - [ ] 15.7 Conduct final testing and user acceptance testing
     - [ ] 15.7.1 Execute UAT scenarios for Provider flows
     - Run log: docs/uat-runs/provider-uat-2025-09-11.md
+    - Tester: Arthur Turnbull
     - [ ] 15.7.2 Execute UAT scenarios for Admin flows
     - [ ] 15.7.3 Validate PWA/offline behavior on mobile and desktop
     - [ ] 15.7.4 Confirm performance thresholds and accessibility checks

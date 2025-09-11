@@ -1,92 +1,110 @@
 # Provider UAT Run — 2025-09-11
 
-Status: In Progress
-
 ## Metadata
-- Commit: <fill with current commit SHA/tag>
-- Environment: Staging (<staging URL>)
-- Tester: <name>
+
+- Tester: Arthur Turnbull
+- Staging URL: TBD
+- Commit SHA: b76b65c
+- Environment: Staging
 - Devices/Browsers:
-  - macOS (Chrome, Safari)
-  - iOS (Safari, installed PWA)
-  - Android (Chrome, installed PWA)
+  - iPhone (iOS) • Safari
+  - Android • Chrome
+  - Mac • Chrome, Safari
 
-## Objectives
-Validate end-to-end Provider flows per UAT checklist, including:
-- Authentication & role-gated navigation (Provider)
-- Check-In/Check-Out with GPS validation and live timer
-- Session history accuracy
-- PWA/offline behavior for queued actions
-- Performance thresholds and accessibility smoke checks
-- Monitoring signals: GA pageviews/events, Web Vitals endpoint, Firebase Perf traces, Sentry breadcrumbs
+Note: Until a staging URL is available, perform a local dry run using the dev server and Firebase emulators.
 
-## Pre-Checks
-- [ ] Staging build deployed and healthy
-- [ ] Required env vars present (GA ID, Sentry DSN, Firebase config)
-- [ ] Test accounts seeded (Provider role with assigned schools)
-- [ ] Location services enabled on test devices
+## Pre-checks
 
-## Scenarios & Results
+- [ ] Build deployed and reachable (200 on /)
+- [ ] Test accounts available (provider, admin)
+- [ ] Firebase emulators OFF (staging)
+- [ ] Feature flags as expected
+- [ ] Clear cache before each device run
 
-### 1) Authentication & Roles
-- [ ] Login via Google OAuth
-- [ ] Login via email/password
-- [ ] Role-based navigation shows Provider dashboard
-- [ ] Session persists across refresh and new tab
-Notes:
+---
 
-### 2) Provider Flow
-- [ ] School list shows assigned schools with distance; search/filter works
-- [ ] Check-In: within geofence radius; rejects when out of range
-- [ ] Live session timer visible; status badge shows Active
-- [ ] Check-Out prompts confirmation; session finalizes with correct duration
-- [ ] Error states: permission denied, timeout, drift, no network (simulated)
-Notes:
+## Scenarios
 
-### 3) Session History
-- [ ] Completed session appears with correct timestamps & duration
-- [ ] Detail modal shows location, user, and status info
-- [ ] Filter by date/school; empty and error states
-Notes:
+### 1) Auth: Login/Logout
 
-### 5) PWA & Offline (Provider-specific)
-- [ ] Install prompt works; app installable
-- [ ] Offline app shell loads; check-in/out queued and syncs on reconnect
-- [ ] Network status indicators and offline messaging visible
-Notes:
+- Steps: Open landing → Login with Google → Verify dashboard → Logout
+- Expected: Auth succeeds; role = Provider; dashboard loads
+- Result: [Pass|Fail|Blocked]
+- Evidence: (screenshots/recording)
+- Notes:
 
-### 6) Performance (Smoke)
-- [ ] LCP ≤ 2.5s on mid-tier mobile (warm and cold)
-- [ ] INP ≤ 200ms; CLS ≤ 0.1
-- [ ] Images served optimized (WebP/AVIF) and lazy-loaded
-Evidence:
+### 2) School list & distance
 
-### 7) Accessibility (Smoke)
-- [ ] Keyboard navigation, focus ring, skip link
-- [ ] Color contrast AA; semantic roles/labels
-- [ ] Dialogs trap focus; SR announcements on key actions
-Notes:
+- Steps: Open Schools → Verify assigned schools + distance sorting
+- Expected: Schools list visible; distance computed; search works
+- Result: [Pass|Fail|Blocked]
+- Evidence:
+- Notes:
 
-### 8) Monitoring & Analytics
-- [ ] GA4 shows pageviews/events for key screens
-- [ ] Web Vitals POSTs received at /api/analytics/web-vitals
-- [ ] Firebase Performance traces present in console (prod/staging)
-- [ ] Sentry breadcrumbs for needs-improvement/poor vitals visible
-Notes:
+### 3) Check-in within radius (GPS)
 
-## Issues Found
-- ID / Title:
-  - Severity: (blocker/major/minor)
-  - Context/Repro:
-  - Expected vs Actual:
-  - Evidence (screenshots/logs):
-  - Status/Owner:
+- Steps: Select school → Allow location → Check in
+- Expected: Location validated (≤ configured radius); session starts; status shows Active
+- Result: [Pass|Fail|Blocked]
+- Evidence:
+- Notes:
 
-## Summary
-- Pass/Fail: <pending>
-- Key risks:
-- Follow-ups required before sign-off:
+### 4) Check-out & summary
 
-## Attachments
-- Screenshots: /docs/uat-runs/assets/2025-09-11/<...>
-- Logs: link to CI artifacts or console captures
+- Steps: Open Active session → Check out → Confirm
+- Expected: Session ends; duration computed; confirmation shown
+- Result: [Pass|Fail|Blocked]
+- Evidence:
+- Notes:
+
+### 5) Session history
+
+- Steps: Open History → Locate last session → Open details
+- Expected: Accurate time, location, school, status
+- Result: [Pass|Fail|Blocked]
+- Evidence:
+- Notes:
+
+### 6) Offline queue & sync
+
+- Steps: Go offline → Attempt check-in/out → Go online
+- Expected: Actions queued; sync completes; UI reconciles
+- Result: [Pass|Fail|Blocked]
+- Evidence:
+- Notes:
+
+### 7) PWA install
+
+- Steps: Add to Home Screen (mobile) or Install (desktop)
+- Expected: App installs; launches standalone; routing works
+- Result: [Pass|Fail|Blocked]
+- Evidence:
+- Notes:
+
+### 8) Performance spot-check
+
+- Steps: Cold-load dashboard; interact with schools and check-in
+- Expected thresholds: LCP ≤ 2.5s, INP ≤ 200ms, CLS ≤ 0.1
+- Result: [Pass|Fail|Blocked]
+- Evidence: (Lighthouse/Web Vitals overlay)
+- Notes:
+
+### 9) Accessibility spot-check
+
+- Steps: Run axe; keyboard-nav; focus states; landmarks
+- Expected: No critical issues; forms labeled; contrast OK
+- Result: [Pass|Fail|Blocked]
+- Evidence:
+- Notes:
+
+### 10) Monitoring signals
+
+- Steps: Navigate and perform check-in/out
+- Expected:
+  - GA4 pageviews/events present
+  - Web Vitals posted to /api/analytics/web-vitals
+  - Firebase Performance traces recorded
+  - Sentry breadcrumbs appear for slow vitals
+- Result: [Pass|Fail|Blocked]
+- Evidence:
+- Notes:
