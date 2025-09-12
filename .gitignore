@@ -52,6 +52,7 @@ database-debug.log
 pubsub-debug.log
 firebase-export-*/
 serviceAccountKey.json
+functions/
 
 # IDEs (keep .vscode/settings.json for team consistency)
 .vscode/*
