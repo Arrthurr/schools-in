@@ -140,34 +140,27 @@ const nextConfig = {
   swcMinify: true,
 };
 
+// Consolidated Sentry configuration using environment variables.
+// The Sentry Webpack Plugin will read SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT
+// from the environment (or .sentryclirc). We intentionally do not hardcode org/project here.
 module.exports = withSentryConfig(
   withBundleAnalyzer(withPWA(nextConfig)),
   {
-    // For all available options, see:
-    // https://github.com/getsentry/sentry-webpack-plugin#options
-
-    // Suppresses source map uploading logs during build
-    silent: true,
-    org: "your-org-slug",
-    project: "your-project-slug",
+    // Only print logs for uploading source maps in CI
+    silent: !process.env.CI,
   },
   {
-    // For all available options, see:
-    // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
     // Upload a larger set of source maps for prettier stack traces (increases build time)
     widenClientFileUpload: true,
-
-    // Transpiles SDK to be compatible with IE11 (increases bundle size)
+    // Transpiles SDK to be compatible with older browsers (increases bundle size)
     transpileClientSDK: true,
-
-    // Routes browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers (increases server load)
+    // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
     tunnelRoute: "/monitoring",
-
-    // Hides source maps from generated client bundles
+    // Hide source maps from generated client bundles
     hideSourceMaps: true,
-
-    // Automatically tree-shake Sentry logger statements to reduce bundle size
+    // Tree-shake Sentry logger statements to reduce bundle size
     disableLogger: true,
+    // Enable automatic instrumentation of monitors (no-op if unsupported)
+    automaticVercelMonitors: true,
   }
 );
