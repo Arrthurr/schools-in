@@ -12,7 +12,7 @@ import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getPerformance } from "firebase/performance";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
-// Production Firebase configuration
+// Production Firebase configuration. Keys are stored in environment variables for security.
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
