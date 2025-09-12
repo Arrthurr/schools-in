@@ -171,7 +171,7 @@ jobs:
     needs: [deploy-staging]
     if: github.ref == 'refs/heads/staging' && success()
     environment:
-      name: production-auto-promote
+      name: production
       url: https://schools-in-check.web.app
 
     steps:
@@ -209,16 +209,9 @@ jobs:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
 
       - name: Notify production promotion
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_COLOR: good
-          SLACK_MESSAGE: |
-            🎉 **Auto-Promotion to Production**
-
-            Staging deployment was successful and has been automatically promoted to production.
-
-            **Live URL:** https://schools-in-check.web.app
-            **Branch:** ${{ github.ref_name }}
-            **Commit:** ${{ github.sha }}
-            **Tests:** All passed ✅
+        if: success()
+        run: |
+          echo "🎉 Auto-Promotion to Production successful!"
+          echo "Live URL: https://schools-in-check.web.app"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"

@@ -165,11 +165,6 @@ jobs:
           fi
           echo "✅ Artifact structure looks good."
 
-      - name: Setup Firebase CLI
-        uses: w9jds/setup-firebase@main
-        with:
-          firebase_token: ${{ secrets.FIREBASE_TOKEN }}
-
       - name: Deploy to Firebase Hosting
         id: deploy
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -223,20 +218,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Firebase CLI
-        uses: w9jds/setup-firebase@main
-        with:
-          firebase_token: ${{ secrets.FIREBASE_TOKEN }}
-
-      - name: Validate Firestore rules
+      - name: Setup Firebase CLI and deploy rules
         run: |
-          echo "Validating Firestore rules..."
-          # Note: Firebase CLI doesn't have a built-in validate command
-          # Rules are validated during deployment
-
-      - name: Deploy Firestore rules and indexes
-        run: |
-          firebase deploy --only firestore:rules,firestore:indexes
+          npm install -g firebase-tools
+          echo "Deploying Firestore rules and indexes..."
+          firebase deploy --only firestore:rules,firestore:indexes --token "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SCHOOLS_IN_CHECK }}" --non-interactive
           echo "✅ Firestore rules and indexes deployed"
 
       - name: Deploy Storage rules
@@ -391,16 +377,11 @@ jobs:
     environment: production
 
     steps:
-      - name: Setup Firebase CLI
-        uses: w9jds/setup-firebase@main
-        with:
-          firebase_token: ${{ secrets.FIREBASE_TOKEN }}
-
-      - name: List recent deployments
-        id: list-deployments
+      - name: Setup Firebase CLI and rollback
         run: |
+          npm install -g firebase-tools
           echo "📋 Recent deployments:"
-          firebase hosting:releases:list --json | jq -r '.[0:5][] | "\(.createTime) - \(.message // "No message") - \(.version.status)"'
+          firebase hosting:releases:list --json --token "${{ secrets.FIREBASE_SERVICE_ACCOUNT_SCHOOLS_IN_CHECK }}" | jq -r '.[0:5][] | "\(.createTime) - \(.message // "No message") - \(.version.status)"'
 
       - name: Rollback to previous version
         run: |
@@ -423,16 +404,12 @@ jobs:
           echo "✅ Rollback verification successful"
 
       - name: Notify rollback
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_COLOR: warning
-          SLACK_MESSAGE: |
-            🔄 **Automatic Rollback Triggered**
-
-            Deployment failed and was automatically rolled back.
-            **Branch:** ${{ github.ref }}
-            **Commit:** ${{ github.sha }}
-            **Time:** $(date -u)
-
-            Please investigate the deployment failure.
+        run: |
+          echo "🔄 **Automatic Rollback Triggered**"
+          echo ""
+          echo "Deployment failed and was automatically rolled back."
+          echo "**Branch:** ${{ github.ref }}"
+          echo "**Commit:** ${{ github.sha }}"
+          echo "**Time:** $(date -u)"
+          echo ""
+          echo "Please investigate the deployment failure."
