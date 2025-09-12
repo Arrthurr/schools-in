@@ -77,3 +77,11 @@
 - **Caching**: Use cached services (`CachedUserService`, `CachedSchoolService`) over direct Firestore
 - **Images**: Use `OptimizedImage` or `LazyImage` instead of `<img>` tags
 - **Performance**: Prefer cached hooks (`useCachedAuth`, `useCachedSession`) for better performance
+
+## Recent Updates (as of September 2025)
+
+- The codebase is running on Next.js 14 with full TypeScript support and enhanced PWA capabilities.
+- Firebase integrations remain robust with optimized Firestore rules, hosting configurations, and multi-channel deployments (production, staging).
+- Sentry error tracking is now split into dedicated configurations for client, edge, and server environments for improved monitoring.
+- CI/CD pipelines have been strengthened with GitHub Actions for linting, testing, and deployment, ensuring a smooth development workflow on the main branch.
+- Enhanced caching mechanisms continue to deliver high performance across multi-layer caching systems and offline support.
