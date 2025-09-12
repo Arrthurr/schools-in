@@ -1,3 +1,16 @@
 # .sentryclirc
+
+# Do not store real tokens in source control. The CI should provide SENTRY_AUTH_TOKEN.
+
+[defaults]
+url = https://sentry.io/
+org = ${SENTRY_ORG}
+project = ${SENTRY_PROJECT}
+
 [auth]
-token = YOUR_SENTRY_AUTH_TOKEN
+
+# The Sentry Webpack Plugin and CLI read SENTRY_AUTH_TOKEN from env in CI.
+
+# In local development, export SENTRY_AUTH_TOKEN in your shell if you need uploads.
+
+# token = ${SENTRY_AUTH_TOKEN}

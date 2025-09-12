@@ -81,3 +81,6 @@ logs
 .env.development
 .env.test
 .env.production
+
+# Sentry Config File
+.env.sentry-build-plugin
