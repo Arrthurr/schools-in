@@ -1,15 +1,7 @@
 {
   "indexes": [
-    // User collection indexes
     {
       "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "email", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "users", 
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "role", "order": "ASCENDING" },
@@ -18,27 +10,11 @@
     },
     {
       "collectionGroup": "users",
-      "queryScope": "COLLECTION", 
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "role", "order": "ASCENDING" },
         { "fieldPath": "isActive", "order": "ASCENDING" },
         { "fieldPath": "displayName", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "lastLoginAt", "order": "DESCENDING" }
-      ]
-    },
-
-    // Location collection indexes
-    {
-      "collectionGroup": "locations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "assignedProviders", "arrayConfig": "CONTAINS" }
       ]
     },
     {
@@ -65,38 +41,12 @@
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
     },
-
-    // Session collection indexes
-    {
-      "collectionGroup": "sessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "startTime", "order": "DESCENDING" }
-      ]
-    },
     {
       "collectionGroup": "sessions",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "startTime", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "sessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "startTime", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "sessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "locationId", "order": "ASCENDING" },
         { "fieldPath": "startTime", "order": "DESCENDING" }
       ]
     },
@@ -116,42 +66,8 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "locationId", "order": "ASCENDING" },
         { "fieldPath": "startTime", "order": "DESCENDING" }
-      ]
-    },
-
-    // Rate limiting indexes
-    {
-      "collectionGroup": "rate_limits",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
-      ]
-    },
-
-    // System analytics indexes
-    {
-      "collectionGroup": "system",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "type", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     }
   ],
-  "fieldOverrides": [
-    {
-      "collectionGroup": "sessions",
-      "fieldPath": "geopoint",
-      "indexes": [
-        {
-          "queryScope": "COLLECTION",
-          "fields": [
-            { "fieldPath": "geopoint", "order": "ASCENDING" },
-            { "fieldPath": "timestamp", "order": "DESCENDING" }
-          ]
-        }
-      ]
-    }
-  ]
+  "fieldOverrides": []
 }

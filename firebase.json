@@ -28,7 +28,7 @@
         "source": "**/*.@(png|jpg|jpeg|gif|svg|webp|avif|ico)",
         "headers": [
           {
-            "key": "Cache-Control", 
+            "key": "Cache-Control",
             "value": "public,max-age=2592000"
           },
           {

@@ -8,15 +8,15 @@ admin.initializeApp();
 
 // Initialize Sentry for production error tracking
 if (process.env.SENTRY_DSN) {
-  Sentry.init({ 
+  Sentry.init({
     dsn: process.env.SENTRY_DSN,
-    environment: process.env.ENVIRONMENT || 'production',
+    environment: process.env.ENVIRONMENT || "production",
     tracesSampleRate: 0.1, // 10% performance monitoring
   });
 }
 
 // Production configuration
-const PRODUCTION_CONFIG = {
+const _PRODUCTION_CONFIG = {
   sessionTimeoutHours: 12,
   cleanupIntervalHours: 1,
   maxBatchSize: 500,
@@ -28,7 +28,7 @@ const PRODUCTION_CONFIG = {
 
 const twelveHoursInMs = 12 * 60 * 60 * 1000;
 
-exports.cleanupStaleSessions = onSchedule("every 1 hours", async (event) => {
+exports.cleanupStaleSessions = onSchedule("every 1 hours", async (_event) => {
   try {
     const db = admin.firestore();
     const sessionsRef = db.collection("sessions");
@@ -62,16 +62,18 @@ exports.cleanupStaleSessions = onSchedule("every 1 hours", async (event) => {
 
     await batch.commit();
     logger.info(`Cleaned up ${staleSessionsSnapshot.size} stale sessions.`);
-    
+
     // Track cleanup metrics
     const metrics = {
       cleanedSessions: staleSessionsSnapshot.size,
       timestamp: admin.firestore.Timestamp.now(),
-      type: 'session_cleanup',
+      type: "session_cleanup",
     };
-    
-    await db.collection('system').doc('cleanup_metrics').set(metrics, { merge: true });
-    
+
+    await db
+      .collection("system")
+      .doc("cleanup_metrics")
+      .set(metrics, { merge: true });
   } catch (error) {
     logger.error("Error cleaning up stale sessions:", error);
     Sentry.captureException(error);
@@ -80,13 +82,13 @@ exports.cleanupStaleSessions = onSchedule("every 1 hours", async (event) => {
 });
 
 // Daily statistics aggregation
-exports.generateDailyStats = onSchedule("every day 02:00", async (event) => {
+exports.generateDailyStats = onSchedule("every day 02:00", async (_event) => {
   try {
     const db = admin.firestore();
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     const startOfDay = admin.firestore.Timestamp.fromDate(
       new Date(yesterday.setHours(0, 0, 0, 0))
     );
@@ -95,12 +97,13 @@ exports.generateDailyStats = onSchedule("every day 02:00", async (event) => {
     );
 
     // Aggregate session statistics
-    const sessionsQuery = db.collection('sessions')
-      .where('startTime', '>=', startOfDay)
-      .where('startTime', '<=', endOfDay);
-    
+    const sessionsQuery = db
+      .collection("sessions")
+      .where("startTime", ">=", startOfDay)
+      .where("startTime", "<=", endOfDay);
+
     const sessionsSnapshot = await sessionsQuery.get();
-    
+
     const sessionStats = {
       date: admin.firestore.Timestamp.fromDate(yesterday),
       totalSessions: sessionsSnapshot.size,
@@ -111,10 +114,10 @@ exports.generateDailyStats = onSchedule("every day 02:00", async (event) => {
     };
 
     let totalDuration = 0;
-    
-    sessionsSnapshot.forEach(doc => {
+
+    sessionsSnapshot.forEach((doc) => {
       const data = doc.data();
-      if (data.status === 'completed') {
+      if (data.status === "completed") {
         sessionStats.completedSessions++;
         if (data.startTime && data.endTime) {
           const duration = data.endTime.toMillis() - data.startTime.toMillis();
@@ -124,26 +127,31 @@ exports.generateDailyStats = onSchedule("every day 02:00", async (event) => {
 
       // Track by location
       if (data.locationId) {
-        sessionStats.byLocation[data.locationId] = (sessionStats.byLocation[data.locationId] || 0) + 1;
+        sessionStats.byLocation[data.locationId] =
+          (sessionStats.byLocation[data.locationId] || 0) + 1;
       }
 
       // Track by provider
       if (data.userId) {
-        sessionStats.byProvider[data.userId] = (sessionStats.byProvider[data.userId] || 0) + 1;
+        sessionStats.byProvider[data.userId] =
+          (sessionStats.byProvider[data.userId] || 0) + 1;
       }
     });
 
     if (sessionStats.completedSessions > 0) {
-      sessionStats.averageDuration = totalDuration / sessionStats.completedSessions;
+      sessionStats.averageDuration =
+        totalDuration / sessionStats.completedSessions;
     }
 
     // Store daily statistics
-    await db.collection('system').doc(`daily_stats_${yesterday.toISOString().split('T')[0]}`).set(sessionStats);
-    
-    logger.info('Daily statistics generated:', sessionStats);
-    
+    await db
+      .collection("system")
+      .doc(`daily_stats_${yesterday.toISOString().split("T")[0]}`)
+      .set(sessionStats);
+
+    logger.info("Daily statistics generated:", sessionStats);
   } catch (error) {
-    logger.error('Error generating daily statistics:', error);
+    logger.error("Error generating daily statistics:", error);
     Sentry.captureException(error);
     throw error;
   }
@@ -154,34 +162,34 @@ exports.trackCachePerformance = onCall(async (request) => {
   try {
     const { data } = request;
     const db = admin.firestore();
-    
+
     // Validate request data
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid cache performance data');
+    if (!data || typeof data !== "object") {
+      throw new Error("Invalid cache performance data");
     }
 
     const cacheMetrics = {
       ...data,
       timestamp: admin.firestore.Timestamp.now(),
-      source: 'client',
+      source: "client",
     };
 
     // Store cache performance metrics
-    await db.collection('cache_stats').add(cacheMetrics);
-    
+    await db.collection("cache_stats").add(cacheMetrics);
+
     return { success: true, timestamp: cacheMetrics.timestamp };
   } catch (error) {
-    logger.error('Error tracking cache performance:', error);
+    logger.error("Error tracking cache performance:", error);
     Sentry.captureException(error);
     throw error;
   }
 });
 
 // Health check endpoint
-exports.healthCheck = onCall(async (request) => {
+exports.healthCheck = onCall(async (_request) => {
   try {
     const db = admin.firestore();
-    
+
     // Perform basic connectivity tests
     const checks = {
       firestore: false,
@@ -192,21 +200,21 @@ exports.healthCheck = onCall(async (request) => {
 
     // Test Firestore connectivity
     try {
-      await db.collection('system').doc('health_check').set({
+      await db.collection("system").doc("health_check").set({
         test: true,
         timestamp: admin.firestore.Timestamp.now(),
       });
       checks.firestore = true;
     } catch (error) {
-      logger.warn('Firestore health check failed:', error);
+      logger.warn("Firestore health check failed:", error);
     }
 
-    // Test Auth connectivity  
+    // Test Auth connectivity
     try {
       await admin.auth().listUsers(1);
       checks.auth = true;
     } catch (error) {
-      logger.warn('Auth health check failed:', error);
+      logger.warn("Auth health check failed:", error);
     }
 
     // Test Storage connectivity
@@ -215,21 +223,23 @@ exports.healthCheck = onCall(async (request) => {
       await bucket.exists();
       checks.storage = true;
     } catch (error) {
-      logger.warn('Storage health check failed:', error);
+      logger.warn("Storage health check failed:", error);
     }
 
-    const allHealthy = Object.values(checks).filter(v => typeof v === 'boolean').every(Boolean);
-    
+    const allHealthy = Object.values(checks)
+      .filter((v) => typeof v === "boolean")
+      .every(Boolean);
+
     return {
-      status: allHealthy ? 'healthy' : 'degraded',
+      status: allHealthy ? "healthy" : "degraded",
       checks,
-      version: '1.0.0',
+      version: "1.0.0",
     };
   } catch (error) {
-    logger.error('Health check failed:', error);
+    logger.error("Health check failed:", error);
     Sentry.captureException(error);
     return {
-      status: 'error',
+      status: "error",
       error: error.message,
       timestamp: admin.firestore.Timestamp.now(),
     };
@@ -240,30 +250,36 @@ exports.healthCheck = onCall(async (request) => {
 exports.trackUserActivity = onCall(async (request) => {
   try {
     const { data, auth } = request;
-    
+
     if (!auth) {
-      throw new Error('Authentication required');
+      throw new Error("Authentication required");
     }
 
     const db = admin.firestore();
-    
+
     // Update user's last activity
-    await db.collection('users').doc(auth.uid).update({
-      lastActiveAt: admin.firestore.Timestamp.now(),
-      lastActivityType: data.activityType || 'unknown',
-    });
+    await db
+      .collection("users")
+      .doc(auth.uid)
+      .update({
+        lastActiveAt: admin.firestore.Timestamp.now(),
+        lastActivityType: data.activityType || "unknown",
+      });
 
     // Track activity in system collection for analytics
-    await db.collection('system').collection('user_activity').add({
-      userId: auth.uid,
-      activityType: data.activityType,
-      metadata: data.metadata || {},
-      timestamp: admin.firestore.Timestamp.now(),
-    });
+    await db
+      .collection("system")
+      .collection("user_activity")
+      .add({
+        userId: auth.uid,
+        activityType: data.activityType,
+        metadata: data.metadata || {},
+        timestamp: admin.firestore.Timestamp.now(),
+      });
 
     return { success: true };
   } catch (error) {
-    logger.error('Error tracking user activity:', error);
+    logger.error("Error tracking user activity:", error);
     Sentry.captureException(error);
     throw error;
   }

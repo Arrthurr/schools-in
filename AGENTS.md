@@ -1,7 +1,8 @@
 # AGENTS.md - Development Guide for schools-in
 
 ## Commands
-- **Build**: `npm run build` (Next.js build)
+
+- **Build**: `npm run build` (Next.js build for static export)
 - **Production Build**: `npm run production:build` (optimized production build)
 - **Staging Build**: `npm run staging:build` (staging environment build)
 - **Lint**: `npm run lint` or `npm run lint:fix` (ESLint with TypeScript)
@@ -10,6 +11,7 @@
 - **Test watch mode**: `npm run test:watch`
 - **E2E tests**: `npm run test:e2e` (Cypress)
 - **Dev with Firebase**: `npm run dev:firebase` (concurrently runs Firebase emulators + Next.js dev)
+- **Deploy**: `npx firebase deploy --only firestore,hosting` (deploy Firestore + static hosting)
 - **Deploy Production**: `npm run firebase:deploy:production` (full production deployment)
 - **Deploy Staging**: `npm run firebase:deploy:staging` (staging channel deployment)
 - **Rollback**: `npm run firebase:rollback` (interactive rollback utility)
@@ -17,33 +19,40 @@
 - **Deployment Status**: `npm run deployment:status` (check deployment health)
 
 ## Architecture
-- **Framework**: Next.js 14 with TypeScript, App Router, PWA support
+
+- **Framework**: Next.js 14 with TypeScript, App Router, PWA support, Static Export
+- **Hosting**: Firebase Hosting with static site deployment
 - **Database**: Firebase Firestore with collections: users, sessions, locations
-- **Caching**: Multi-layer caching (Memory → Session → Local → IndexedDB)
+- **Caching**: Multi-layer caching (Memory → Session → Local → IndexedDB) with SSR-safe initialization
 - **Images**: Next.js Image optimization with lazy loading and WebP/AVIF support
 - **UI**: Radix UI components with Tailwind CSS, shadcn/ui components
 - **Auth**: Firebase Auth with cached user data and role-based access
 - **Testing**: Jest + React Testing Library (unit), Cypress (e2e)
 - **State**: React hooks, cached Firebase data, offline-capable storage
-- **Deployment**: GitHub Actions CI/CD with Firebase Hosting multi-environment pipeline
+- **Deployment**: Firebase Hosting static export with Firestore backend
 - **Monitoring**: Firebase Analytics, Performance Monitoring, Sentry error tracking
 
 ## Performance Optimizations
-- **Caching System**: `src/lib/cache/` - Multi-layer Firebase data caching with 70-90% hit rates
-- **Image Optimization**: `src/components/ui/optimized-image.tsx` - WebP/AVIF with lazy loading
+
+- **Caching System**: `src/lib/cache/` - Multi-layer Firebase data caching with 70-90% hit rates, SSR-safe initialization
+- **Image Optimization**: `src/components/ui/optimized-image.tsx` - WebP/AVIF with lazy loading, SSR guards
 - **Lazy Loading**: `src/lib/hooks/useLazyLoading.ts` - Intersection Observer-based loading
 - **Bundle Optimization**: Code splitting, tree shaking, static asset caching
-- **Offline Support**: IndexedDB persistence, service worker caching, PWA features
+- **Offline Support**: IndexedDB persistence, service worker caching, PWA features with client-side initialization
+- **Static Export**: All pages pre-rendered for optimal performance and CDN distribution
 
 ## Production Environment
+
 - **Configuration**: `.env.production` - Production environment variables
 - **Security Rules**: Enhanced Firestore and Storage rules with role-based access
-- **Hosting Config**: `firebase.json` - Optimized headers and caching strategies  
+- **Hosting Config**: `firebase.json` - Optimized headers and caching strategies for static export
 - **Monitoring**: Real-time health checks, performance metrics, error tracking
-- **Deployment**: Automated scripts with validation, testing, and rollback capabilities
+- **Deployment**: Firebase Hosting static export with composite Firestore indexes
+- **Live URL**: https://schools-in-check.web.app
 
 ## Key Utilities
-- **Cached Services**: 
+
+- **Cached Services**:
   - `src/lib/services/cachedUserService.ts` - User operations with caching
   - `src/lib/services/cachedSchoolService.ts` - School/location operations with caching
   - `src/lib/firebase/cachedFirestore.ts` - Cached Firestore wrapper
@@ -52,11 +61,13 @@
   - `src/lib/hooks/useCachedSession.ts` - Session management with real-time sync
   - `src/lib/hooks/useLazyLoading.ts` - Lazy loading with Intersection Observer
 - **Image Components**:
-  - `OptimizedImage` - Main optimized image component
+  - `OptimizedImage` - Main optimized image component with SSR guards
   - `OptimizedAvatar` - User avatar with fallbacks
   - `LazyImage` - Advanced lazy loading with placeholders
+- **SSR Safety**: All client-only modules (cache, offline, analytics) safely initialized post-hydration
 
 ## Code Style
+
 - **Imports**: Use `@/` for src imports, group external/internal imports
 - **Components**: PascalCase, functional components with TypeScript
 - **Utils**: `cn()` for className merging (clsx + tailwind-merge)

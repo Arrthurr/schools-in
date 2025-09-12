@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "schools-in-check"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

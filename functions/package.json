@@ -2,6 +2,7 @@
   "name": "functions",
   "description": "Cloud Functions for Firebase",
   "scripts": {
+    "build": "echo 'No build needed for JavaScript functions'",
     "lint": "eslint .",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
@@ -12,7 +13,7 @@
   "engines": {
     "node": "18"
   },
-  "main": "lib/index.js",
+  "main": "src/index.js",
   "dependencies": {
     "@sentry/node": "^10.11.0",
     "firebase-admin": "^12.0.0",
