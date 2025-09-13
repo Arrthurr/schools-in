@@ -55,7 +55,7 @@ export class CachedUserService {
     return FirebaseCache.cacheUserData(
       cacheKey,
       async () => {
-        let q = collection(db, COLLECTIONS.USERS);
+        const q = collection(db, COLLECTIONS.USERS);
         let queryRef: any = q;
 
         // Apply role filter

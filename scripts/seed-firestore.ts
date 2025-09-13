@@ -20,7 +20,7 @@ interface School {
 import { ServiceAccount } from "firebase-admin/app";
 
 // Initialize Firebase Admin SDK
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+ 
 import serviceAccount from "../serviceAccountKey.json"; // You'll need to create this file
 
 admin.initializeApp({

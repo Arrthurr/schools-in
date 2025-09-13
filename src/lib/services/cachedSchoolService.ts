@@ -68,7 +68,7 @@ export class CachedSchoolService {
     return FirebaseCache.cacheLocationData(
       cacheKey,
       async () => {
-        let q = collection(db, COLLECTIONS.LOCATIONS);
+        const q = collection(db, COLLECTIONS.LOCATIONS);
         let queryRef: any = q;
 
         // Apply provider filter
