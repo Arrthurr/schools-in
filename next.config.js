@@ -1,5 +1,3 @@
-const { withSentryConfig } = require("@sentry/nextjs");
-
 /** @type {import('next').NextConfig} */
 const withPWA = require("next-pwa")({
   dest: "public",
@@ -140,27 +138,4 @@ const nextConfig = {
   swcMinify: true,
 };
 
-// Consolidated Sentry configuration using environment variables.
-// The Sentry Webpack Plugin will read SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT
-// from the environment (or .sentryclirc). We intentionally do not hardcode org/project here.
-module.exports = withSentryConfig(
-  withBundleAnalyzer(withPWA(nextConfig)),
-  {
-    // Only print logs for uploading source maps in CI
-    silent: !process.env.CI,
-  },
-  {
-    // Upload a larger set of source maps for prettier stack traces (increases build time)
-    widenClientFileUpload: true,
-    // Transpiles SDK to be compatible with older browsers (increases bundle size)
-    transpileClientSDK: true,
-    // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
-    tunnelRoute: "/monitoring",
-    // Hide source maps from generated client bundles
-    hideSourceMaps: true,
-    // Tree-shake Sentry logger statements to reduce bundle size
-    disableLogger: true,
-    // Enable automatic instrumentation of monitors (no-op if unsupported)
-    automaticVercelMonitors: true,
-  }
-);
+module.exports = withBundleAnalyzer(withPWA(nextConfig));
