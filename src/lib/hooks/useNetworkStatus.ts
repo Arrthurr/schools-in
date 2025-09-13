@@ -58,14 +58,14 @@ const QUALITY_THRESHOLDS = {
 
 export function useNetworkStatus(): UseNetworkStatusReturn {
   const [status, setStatus] = useState<NetworkStatus>(() => ({
-    isOnline: navigator.onLine,
-    isConnected: navigator.onLine,
+    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    isConnected: typeof navigator !== 'undefined' ? navigator.onLine : true,
     connectionType: "unknown",
     effectiveType: "unknown",
     downlink: 0,
     rtt: 0,
     saveData: false,
-    connectivityScore: navigator.onLine ? 50 : 0,
+    connectivityScore: typeof navigator !== 'undefined' ? (navigator.onLine ? 50 : 0) : 50,
   }));
 
   const [listeners, setListeners] = useState<{

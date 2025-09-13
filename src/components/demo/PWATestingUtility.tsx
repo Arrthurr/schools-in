@@ -46,7 +46,7 @@ export const PWATestingUtility: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [currentTest, setCurrentTest] = useState("");
   const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
 
   useEffect(() => {
     // Listen for install prompt

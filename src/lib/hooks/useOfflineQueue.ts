@@ -95,7 +95,7 @@ export function useOfflineQueue(
     isProcessing: false,
   });
 
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const syncIntervalRef = useRef<NodeJS.Timeout>();
   const isInitializedRef = useRef(false);
 
