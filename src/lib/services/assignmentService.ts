@@ -254,7 +254,7 @@ export const replaceSchoolAssignments = async (
       const providerData = providerDoc.data();
       const currentAssignments = providerData.assignedSchools || [];
 
-      let updatedAssignments = currentAssignments.filter(
+      const updatedAssignments = currentAssignments.filter(
         (assignedSchoolId: string) => assignedSchoolId !== schoolId
       );
 

@@ -96,7 +96,7 @@ export function SessionReports() {
     (range: ReportFilters["dateRange"]) => {
       const now = new Date();
       let startDate: Date;
-      let endDate = new Date(
+      const endDate = new Date(
         now.getFullYear(),
         now.getMonth(),
         now.getDate(),

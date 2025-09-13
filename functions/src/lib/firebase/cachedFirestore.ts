@@ -87,7 +87,7 @@ export const getCachedCollection = async <T>(
   return FirebaseCache.cacheLocationData(
     cacheKey,
     async () => {
-      let q = collection(db, collectionName);
+      const q = collection(db, collectionName);
       let queryRef: any = q;
 
       // Apply filters
@@ -148,7 +148,7 @@ export const getCachedUserSessions = async (
   return FirebaseCache.cacheSessionData(
     cacheKey,
     async () => {
-      let q = collection(db, COLLECTIONS.SESSIONS);
+      const q = collection(db, COLLECTIONS.SESSIONS);
       let queryRef: any = q;
 
       filters.forEach((filter) => {
@@ -261,7 +261,7 @@ export const searchCachedUsers = async (
     async () => {
       // Note: Firestore doesn't support full-text search natively
       // This is a simplified implementation - consider using Algolia or similar for production
-      let q = collection(db, COLLECTIONS.USERS);
+      const q = collection(db, COLLECTIONS.USERS);
       let queryRef: any = q;
 
       if (role) {
@@ -398,7 +398,7 @@ export const subscribeToCachedCollection = <T>(
   });
 
   // Set up real-time listener
-  let q = collection(db, collectionName);
+  const q = collection(db, collectionName);
   let queryRef: any = q;
 
   filters.forEach((filter) => {

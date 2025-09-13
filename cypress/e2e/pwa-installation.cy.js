@@ -56,7 +56,7 @@ test.describe("PWA Installation", () => {
     }
 
     // Listen for beforeinstallprompt event
-    let installPromptTriggered = false;
+    const installPromptTriggered = false;
     await page.evaluateOnNewDocument(() => {
       window.addEventListener("beforeinstallprompt", (e) => {
         window.installPromptEvent = e;
