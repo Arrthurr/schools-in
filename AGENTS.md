@@ -30,7 +30,7 @@
 - **Testing**: Jest + React Testing Library (unit), Cypress (e2e)
 - **State**: React hooks, cached Firebase data, offline-capable storage
 - **Deployment**: Firebase Hosting static export with Firestore backend
-- **Monitoring**: Firebase Analytics, Performance Monitoring, Sentry error tracking
+- **Monitoring**: Firebase Analytics, Performance Monitoring
 
 ## Performance Optimizations
 
@@ -82,6 +82,6 @@
 
 - The codebase is running on Next.js 14 with full TypeScript support and enhanced PWA capabilities.
 - Firebase integrations remain robust with optimized Firestore rules, hosting configurations, and multi-channel deployments (production, staging).
-- Sentry error tracking is now split into dedicated configurations for client, edge, and server environments for improved monitoring.
+
 - CI/CD pipelines have been strengthened with GitHub Actions for linting, testing, and deployment, ensuring a smooth development workflow on the main branch.
 - Enhanced caching mechanisms continue to deliver high performance across multi-layer caching systems and offline support.

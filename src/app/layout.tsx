@@ -6,9 +6,7 @@ import ClientLayout from "@/components/layout/ClientLayout";
 import { SkipToContent } from "@/lib/accessibility.tsx";
 import { NetworkStatusIndicator } from "@/components/common/NetworkStatusIndicator";
 import { AnalyticsProvider } from "@/lib/providers/AnalyticsProvider";
-// Sentry tracing meta propagation is handled automatically by the Sentry Next.js SDK in the App Router.
 
-// Sentry tracing meta propagation is handled automatically by the Sentry Next.js SDK in the App Router.
 export function generateMetadata(): Metadata {
   return {
     metadataBase: new URL(

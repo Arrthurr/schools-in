@@ -220,7 +220,6 @@ main() {
     echo "1. Monitor Firebase Console for any issues"
     echo "2. Test key functionality on the live site"
     echo "3. Monitor performance metrics"
-    echo "4. Check error reporting in Sentry"
     echo ""
 }
 

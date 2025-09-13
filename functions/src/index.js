@@ -2,18 +2,8 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall } = require("firebase-functions/v2/https");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
-const Sentry = require("@sentry/node");
 
 admin.initializeApp();
-
-// Initialize Sentry for production error tracking
-if (process.env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.ENVIRONMENT || "production",
-    tracesSampleRate: 0.1, // 10% performance monitoring
-  });
-}
 
 // Production configuration
 const _PRODUCTION_CONFIG = {
@@ -76,7 +66,7 @@ exports.cleanupStaleSessions = onSchedule("every 1 hours", async (_event) => {
       .set(metrics, { merge: true });
   } catch (error) {
     logger.error("Error cleaning up stale sessions:", error);
-    Sentry.captureException(error);
+    logger.error("Error occurred:", error);
     throw error; // Re-throw for proper error tracking
   }
 });
@@ -152,7 +142,7 @@ exports.generateDailyStats = onSchedule("every day 02:00", async (_event) => {
     logger.info("Daily statistics generated:", sessionStats);
   } catch (error) {
     logger.error("Error generating daily statistics:", error);
-    Sentry.captureException(error);
+    logger.error("Error occurred:", error);
     throw error;
   }
 });
@@ -180,7 +170,7 @@ exports.trackCachePerformance = onCall(async (request) => {
     return { success: true, timestamp: cacheMetrics.timestamp };
   } catch (error) {
     logger.error("Error tracking cache performance:", error);
-    Sentry.captureException(error);
+    logger.error("Error occurred:", error);
     throw error;
   }
 });
@@ -237,7 +227,7 @@ exports.healthCheck = onCall(async (_request) => {
     };
   } catch (error) {
     logger.error("Health check failed:", error);
-    Sentry.captureException(error);
+    logger.error("Error occurred:", error);
     return {
       status: "error",
       error: error.message,
@@ -280,7 +270,7 @@ exports.trackUserActivity = onCall(async (request) => {
     return { success: true };
   } catch (error) {
     logger.error("Error tracking user activity:", error);
-    Sentry.captureException(error);
+    logger.error("Error occurred:", error);
     throw error;
   }
 });

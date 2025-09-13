@@ -21,7 +21,6 @@ export interface EnvironmentConfig {
     performanceMonitoring: boolean;
     caching: boolean;
     pwa: boolean;
-    sentry: boolean;
   };
   cache: {
     ttlShort: number;
@@ -61,9 +60,6 @@ export class EnvironmentValidator {
     // Check optional but recommended variables
     const recommendedVars = [
       'NEXT_PUBLIC_APP_VERSION',
-      'NEXT_PUBLIC_SENTRY_DSN',
-      'SENTRY_ORG',
-      'SENTRY_PROJECT',
     ];
 
     recommendedVars.forEach(varName => {
@@ -116,7 +112,6 @@ export class EnvironmentValidator {
         performanceMonitoring: process.env.NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING === 'true',
         caching: process.env.NEXT_PUBLIC_ENABLE_CACHING !== 'false', // Default true
         pwa: process.env.NEXT_PUBLIC_PWA_ENABLED === 'true',
-        sentry: process.env.NEXT_PUBLIC_ENABLE_SENTRY === 'true',
       },
       cache: {
         ttlShort: parseInt(process.env.NEXT_PUBLIC_CACHE_TTL_SHORT || '300000'),

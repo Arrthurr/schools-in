@@ -270,13 +270,8 @@ class WebVitalsMonitor {
   }
 
   private sendToErrorReporting(error: any) {
-    // Send to error reporting service (e.g., Sentry)
-    if ((window as any).Sentry) {
-      (window as any).Sentry.captureMessage("Performance Alert", {
-        level: "warning",
-        extra: error,
-      });
-    }
+    // Log performance alerts to console
+    console.warn("Performance Alert:", error);
   }
 
   // Public methods
