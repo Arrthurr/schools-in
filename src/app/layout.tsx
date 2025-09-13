@@ -14,30 +14,27 @@ export function generateMetadata(): Metadata {
     metadataBase: new URL(
       process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     ),
+    title: "DMDL Schools-In - Provider Check-In System",
+    description:
+      "Professional location-based check-in system for education service providers",
+    manifest: "/manifest.json",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: "DMDL Schools-In",
+    },
+    icons: {
+      icon: [
+        { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+        { url: "/DMDL_logo.png", sizes: "280x60", type: "image/png" },
+      ],
+      apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    },
   };
 }
 
 const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "DMDL Schools-In - Provider Check-In System",
-  description:
-    "Professional location-based check-in system for education service providers",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "DMDL Schools-In",
-  },
-  icons: {
-    icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      { url: "/DMDL_logo.png", sizes: "280x60", type: "image/png" },
-    ],
-    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
-  },
-};
 
 export const viewport: Viewport = {
   width: "device-width",
