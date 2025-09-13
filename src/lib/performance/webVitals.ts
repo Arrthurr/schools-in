@@ -193,12 +193,7 @@ class WebVitalsMonitor {
 
     const report = this.generateReport();
 
-    // Send to analytics in production
-    if (this.isProduction) {
-      this.sendToAnalytics(report);
-    }
-
-    // Always send to Firebase Performance if available
+    // Send to Firebase Performance if available
     this.sendToFirebasePerformance(report);
   }
 
@@ -219,32 +214,7 @@ class WebVitalsMonitor {
     }
   }
 
-  private sendToAnalytics(report: WebVitalsReport) {
-    // Google Analytics 4 integration
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      report.metrics.forEach((metric) => {
-        (window as any).gtag("event", "web_vitals", {
-          event_category: "Web Vitals",
-          event_label: metric.name,
-          value: Math.round(metric.value),
-          custom_map: {
-            metric_rating: metric.rating,
-            metric_delta: metric.delta,
-          },
-        });
-      });
-    }
 
-    // Send to custom analytics endpoint
-    fetch("/api/analytics/web-vitals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(report),
-      keepalive: true,
-    }).catch((err) => {
-      console.warn("Failed to send Web Vitals report:", err);
-    });
-  }
 
   private sendToFirebasePerformance(report: WebVitalsReport) {
     // Firebase Performance Monitoring integration

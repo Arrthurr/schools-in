@@ -30,7 +30,7 @@
 - **Testing**: Jest + React Testing Library (unit), Cypress (e2e)
 - **State**: React hooks, cached Firebase data, offline-capable storage
 - **Deployment**: Firebase Hosting static export with Firestore backend
-- **Monitoring**: Firebase Analytics, Performance Monitoring
+- **Monitoring**: Firebase Performance Monitoring
 
 ## Performance Optimizations
 
@@ -64,7 +64,7 @@
   - `OptimizedImage` - Main optimized image component with SSR guards
   - `OptimizedAvatar` - User avatar with fallbacks
   - `LazyImage` - Advanced lazy loading with placeholders
-- **SSR Safety**: All client-only modules (cache, offline, analytics) safely initialized post-hydration
+- **SSR Safety**: All client-only modules (cache, offline) safely initialized post-hydration
 
 ## Code Style
 

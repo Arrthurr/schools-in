@@ -240,21 +240,7 @@ export class HostingManager {
     console.log("🚀 Deployment Info:", info);
     console.log("🏥 Health Status:", health);
 
-    // Send metrics to analytics (if available)
-    try {
-      const { analytics } = await import("../../../firebase.config");
-      if (analytics && (analytics as any).logEvent) {
-        (analytics as any).logEvent("deployment_health_check", {
-          status: health.status,
-          response_time: health.metrics.responseTime,
-          load_size: health.metrics.loadSize,
-          environment: info.environment,
-          version: info.version,
-        });
-      }
-    } catch (error) {
-      console.warn("Failed to log deployment metrics:", error);
-    }
+
 
     // Store in local storage for debugging
     try {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useAnalytics } from "@/lib/hooks/useAnalytics";
+
 import { Button } from "@/components/ui/button";
 import { logOut } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
@@ -43,12 +43,10 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
 function Header() {
   const { user } = useAuth();
   const router = useRouter();
-  const { trackLogout } = useAnalytics();
 
   const handleSignOut = async () => {
     try {
       await logOut();
-      trackLogout();
       router.push("/");
     } catch (error) {
       console.error("Sign out failed:", error);

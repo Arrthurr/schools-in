@@ -10,7 +10,6 @@ import {
 } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getPerformance } from "firebase/performance";
-import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Production Firebase configuration. Keys are stored in environment variables for security.
 const firebaseConfig = {
@@ -44,19 +43,7 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
   }
 }
 
-// Initialize Firebase Analytics (production only)
-export let analytics = null;
-if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
-  isSupported()
-    .then((supported) => {
-      if (supported) {
-        analytics = getAnalytics(app);
-      }
-    })
-    .catch((error) => {
-      console.warn("Failed to initialize Firebase Analytics:", error);
-    });
-}
+
 
 // Development emulators
 if (process.env.NODE_ENV === "development") {

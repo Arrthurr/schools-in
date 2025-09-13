@@ -15,7 +15,6 @@ export interface EnvironmentConfig {
     customHeaders: Record<string, string>;
   };
   features: {
-    analytics: boolean;
     performanceMonitoring: boolean;
     errorReporting: boolean;
     debugging: boolean;
@@ -51,7 +50,6 @@ export class ConfigManager {
         customHeaders: {},
       },
       features: {
-        analytics: false,
         performanceMonitoring: true,
         errorReporting: true,
         debugging: true,
@@ -87,7 +85,6 @@ export class ConfigManager {
         },
       },
       features: {
-        analytics: false,
         performanceMonitoring: true,
         errorReporting: true,
         debugging: true,
@@ -122,7 +119,6 @@ export class ConfigManager {
         customHeaders: {},
       },
       features: {
-        analytics: true,
         performanceMonitoring: true,
         errorReporting: true,
         debugging: false,
@@ -313,10 +309,6 @@ export class ConfigManager {
 
       if (configToValidate.features.debugging) {
         warnings.push("Debugging should be disabled in production");
-      }
-
-      if (!configToValidate.features.analytics) {
-        warnings.push("Analytics should be enabled for production");
       }
     }
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useId } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useLocation } from "../../lib/hooks/useLocation";
-import { useAnalytics } from "../../lib/hooks/useAnalytics";
+
 import { SchoolService, School } from "../../lib/services/schoolService";
 import {
   Card,
@@ -51,7 +51,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 }) => {
   const { user } = useAuth();
   const { location, loading: locationLoading, getLocation } = useLocation();
-  const { trackLocationLoadTime, trackSearch, trackError } = useAnalytics();
+
   const [schools, setSchools] = useState<School[]>([]);
   const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,8 +77,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         );
         const loadTime = performance.now() - startTime;
 
-        // Track loading performance
-        trackLocationLoadTime(loadTime);
+
 
         setSchools(assignedSchools);
         setFilteredSchools(assignedSchools);
@@ -90,16 +89,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         console.error("Error loading schools:", err);
         const errorMessage = "Failed to load schools. Please try again.";
 
-        // Track loading error
-        trackError(
-          new Error("Failed to load schools"),
-          {
-            user_id: user.uid,
-            load_time: loadTime,
-            error_message: err instanceof Error ? err.message : "Unknown error",
-          },
-          "high"
-        );
+
 
         setError(errorMessage);
         announce(`Error: ${errorMessage}`, "assertive");
@@ -109,7 +99,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     };
 
     loadSchools();
-  }, [user?.uid, trackLocationLoadTime, trackError, announce]);
+  }, [user?.uid, announce]);
 
   // Update schools with distance when location is available
   useEffect(() => {
@@ -161,14 +151,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         );
         const searchTime = performance.now() - startTime;
 
-        // Track search performance
-        if (searchQuery.trim()) {
-          trackSearch(searchQuery, "locations", {
-            count: filtered.length,
-            loadTime: searchTime,
-            fromCache: false, // SchoolService would need to provide this
-          });
-        }
+
 
         setFilteredSchools(filtered);
 
@@ -183,16 +166,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         const searchTime = performance.now() - startTime;
         console.error("Error filtering schools:", err);
 
-        // Track search error
-        trackError(
-          new Error("Search failed"),
-          {
-            search_query: searchQuery,
-            search_time: searchTime,
-            user_id: user.uid,
-          },
-          "medium"
-        );
+
 
         announce("Error filtering schools", "assertive");
       }
@@ -200,7 +174,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
     const timeoutId = setTimeout(filterSchools, 300); // Debounce search
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, user?.uid, trackSearch, trackError, announce]);
+  }, [searchQuery, user?.uid, announce]);
 
   // Format distance for display
   const formatDistance = (distance?: number): string => {

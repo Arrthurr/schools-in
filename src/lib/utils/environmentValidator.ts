@@ -17,7 +17,6 @@ export interface EnvironmentConfig {
     buildTime: string;
   };
   features: {
-    analytics: boolean;
     performanceMonitoring: boolean;
     caching: boolean;
     pwa: boolean;
@@ -108,7 +107,6 @@ export class EnvironmentValidator {
         buildTime: process.env.NEXT_PUBLIC_BUILD_TIME || new Date().toISOString(),
       },
       features: {
-        analytics: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true',
         performanceMonitoring: process.env.NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING === 'true',
         caching: process.env.NEXT_PUBLIC_ENABLE_CACHING !== 'false', // Default true
         pwa: process.env.NEXT_PUBLIC_PWA_ENABLED === 'true',

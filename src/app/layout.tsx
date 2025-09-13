@@ -5,7 +5,7 @@ import { AuthProvider } from "@/components/provider/AuthProvider";
 import ClientLayout from "@/components/layout/ClientLayout";
 import { SkipToContent } from "@/lib/accessibility.tsx";
 import { NetworkStatusIndicator } from "@/components/common/NetworkStatusIndicator";
-import { AnalyticsProvider } from "@/lib/providers/AnalyticsProvider";
+
 
 export function generateMetadata(): Metadata {
   return {
@@ -55,12 +55,10 @@ export default function RootLayout({
       >
         <SkipToContent />
         <AuthProvider>
-          <AnalyticsProvider>
-            <div className="min-h-full safe-area-inset">
-              <ClientLayout>{children}</ClientLayout>
-              <NetworkStatusIndicator />
-            </div>
-          </AnalyticsProvider>
+          <div className="min-h-full safe-area-inset">
+            <ClientLayout>{children}</ClientLayout>
+            <NetworkStatusIndicator />
+          </div>
         </AuthProvider>
       </body>
     </html>
