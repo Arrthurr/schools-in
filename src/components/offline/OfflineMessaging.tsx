@@ -69,8 +69,9 @@ export function OfflineMessagingProvider({
 
   // Track network status changes
   useEffect(() => {
-    if (previousOnlineStatus !== networkStatus.isOnline) {
-      if (networkStatus.isOnline) {
+    if (previousOnlineStatus === networkStatus.isOnline) return;
+
+    if (networkStatus.isOnline) {
         // Just came online
         if (enableToasts) {
           toast({
@@ -120,13 +121,11 @@ export function OfflineMessagingProvider({
           autoHide: false,
         });
       }
-      setPreviousOnlineStatus(networkStatus.isOnline);
-    }
+    setPreviousOnlineStatus(networkStatus.isOnline);
   }, [
     networkStatus.isOnline,
     state.queueStats.pending,
     enableToasts,
-    previousOnlineStatus,
   ]);
 
   // Track sync completion

@@ -365,8 +365,8 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
       connection.addEventListener("change", handleConnectionChange);
     }
 
-    // Initial status check
-    updateNetworkStatus();
+    // Initial status check (deferred to prevent infinite re-renders)
+    queueMicrotask(() => updateNetworkStatus());
 
     // Periodic connectivity verification
     const verificationInterval = setInterval(async () => {

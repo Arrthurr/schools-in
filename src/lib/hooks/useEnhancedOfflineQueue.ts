@@ -95,6 +95,17 @@ export function useEnhancedOfflineQueue(
 
   // Network status and connectivity restoration
   const networkStatus = useNetworkStatus();
+  
+  // Stabilize networkStatus reference to prevent infinite re-renders
+  const stableNetworkStatus = useMemo(
+    () => networkStatus,
+    [
+      networkStatus.isOnline,
+      networkStatus.isUnstable,
+      networkStatus.connectivityScore,
+    ]
+  );
+  
   const connectivityRestoration = useConnectivityRestoration(
     config.restorationConfig
   );
@@ -124,17 +135,19 @@ export function useEnhancedOfflineQueue(
 
   // Update queue manager with current network status
   useEffect(() => {
-    queueManager.updateNetworkStatus(networkStatus);
+    queueManager.updateNetworkStatus(stableNetworkStatus);
 
-    // Update sync recommendations
+    // Update sync recommendations with guard
     const recommendations = queueManager.getSyncRecommendations();
-    setSyncRecommendations(recommendations);
+    setSyncRecommendations(prev =>
+      JSON.stringify(prev) === JSON.stringify(recommendations) ? prev : recommendations
+    );
 
     if (enableDebugLogs) {
-      console.log("Network status updated:", networkStatus);
+      console.log("Network status updated:", stableNetworkStatus);
       console.log("Sync recommendations:", recommendations);
     }
-  }, [networkStatus, enableDebugLogs]);
+  }, [stableNetworkStatus, enableDebugLogs]);
 
   // Setup stats listener
   useEffect(() => {
@@ -357,9 +370,9 @@ export function useEnhancedOfflineQueue(
     isSyncing: isSyncing || connectivityRestoration.isRestoring,
     lastSyncResult,
     syncError,
-    isOnline: networkStatus.isOnline,
-    isUnstable: networkStatus.isUnstable,
-    connectivityScore: networkStatus.connectivityScore,
+    isOnline: stableNetworkStatus.isOnline,
+    isUnstable: stableNetworkStatus.isUnstable,
+    connectivityScore: stableNetworkStatus.connectivityScore,
     isRestoring: connectivityRestoration.isRestoring,
     syncRecommendations,
   }), [
@@ -369,9 +382,9 @@ export function useEnhancedOfflineQueue(
     connectivityRestoration.isRestoring,
     lastSyncResult,
     syncError,
-    networkStatus.isOnline,
-    networkStatus.isUnstable,
-    networkStatus.connectivityScore,
+    stableNetworkStatus.isOnline,
+    stableNetworkStatus.isUnstable,
+    stableNetworkStatus.connectivityScore,
     syncRecommendations,
   ]);
 
