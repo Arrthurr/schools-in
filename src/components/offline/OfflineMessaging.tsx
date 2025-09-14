@@ -126,8 +126,7 @@ export function OfflineMessagingProvider({
     networkStatus.isOnline,
     state.queueStats.pending,
     enableToasts,
-    toast,
-    actions,
+    previousOnlineStatus,
   ]);
 
   // Track sync completion
@@ -154,11 +153,10 @@ export function OfflineMessagingProvider({
     }
     setPreviousPendingCount(state.queueStats.pending);
   }, [
-    state.queueStats.pending,
-    networkStatus.isOnline,
-    previousPendingCount,
-    enableToasts,
-    toast,
+  state.queueStats.pending,
+  networkStatus.isOnline,
+  previousPendingCount,
+  enableToasts,
   ]);
 
   // Track sync errors

@@ -1,7 +1,7 @@
 // Enhanced offline queue hook with intelligent sync and connectivity restoration
 // Integrates queue manager, network status, and sync management for comprehensive offline support
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { queueManager, type QueueManagerConfig } from "../offline/queueManager";
 import { useNetworkStatus } from "./useNetworkStatus";
 import {
@@ -350,8 +350,8 @@ export function useEnhancedOfflineQueue(
     [connectivityRestoration]
   );
 
-  // Compose final state
-  const state: EnhancedOfflineQueueState = {
+  // Compose final state with memoization
+  const state: EnhancedOfflineQueueState = useMemo(() => ({
     queueStats,
     pendingActions,
     isSyncing: isSyncing || connectivityRestoration.isRestoring,
@@ -362,9 +362,20 @@ export function useEnhancedOfflineQueue(
     connectivityScore: networkStatus.connectivityScore,
     isRestoring: connectivityRestoration.isRestoring,
     syncRecommendations,
-  };
+  }), [
+    queueStats,
+    pendingActions,
+    isSyncing,
+    connectivityRestoration.isRestoring,
+    lastSyncResult,
+    syncError,
+    networkStatus.isOnline,
+    networkStatus.isUnstable,
+    networkStatus.connectivityScore,
+    syncRecommendations,
+  ]);
 
-  const actions: EnhancedOfflineQueueActions = {
+  const actions: EnhancedOfflineQueueActions = useMemo(() => ({
     checkIn,
     checkOut,
     syncNow,
@@ -372,7 +383,15 @@ export function useEnhancedOfflineQueue(
     getPendingActions,
     refreshStats,
     updateRestorationConfig,
-  };
+  }), [
+    checkIn,
+    checkOut,
+    syncNow,
+    triggerRestoration,
+    getPendingActions,
+    refreshStats,
+    updateRestorationConfig,
+  ]);
 
   return { state, actions };
 }
