@@ -6,7 +6,6 @@ import ClientLayout from "@/components/layout/ClientLayout";
 import { SkipToContent } from "@/lib/accessibility.tsx";
 import { NetworkStatusIndicator } from "@/components/common/NetworkStatusIndicator";
 
-
 export function generateMetadata(): Metadata {
   return {
     metadataBase: new URL(
@@ -20,6 +19,10 @@ export function generateMetadata(): Metadata {
       capable: true,
       statusBarStyle: "default",
       title: "DMDL Schools-In",
+    },
+    // Include standard cross-platform PWA capability meta alongside Apple's
+    other: {
+      "mobile-web-app-capable": "yes",
     },
     icons: {
       icon: [

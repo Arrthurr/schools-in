@@ -41,6 +41,18 @@
 - **Offline Support**: IndexedDB persistence, service worker caching, PWA features with client-side initialization
 - **Static Export**: All pages pre-rendered for optimal performance and CDN distribution
 
+## PWA Meta Tags
+
+- Include both of the following for broad mobile support and to silence deprecation warnings:
+
+  - `<meta name="apple-mobile-web-app-capable" content="yes">` (iOS legacy/Apple-specific; still emitted via `appleWebApp` in Next metadata)
+  - `<meta name="mobile-web-app-capable" content="yes">` (standard for other browsers)
+
+- Implementation details:
+  - `src/app/layout.tsx` adds the standard tag via Next.js Metadata API using `other: { 'mobile-web-app-capable': 'yes' }`.
+  - `src/app/layout.tsx` also sets `appleWebApp.capable = true`, which emits the Apple tag.
+  - `src/app/head.tsx` ensures the standard tag is present during app routes rendering as a fallback.
+
 ## Production Environment
 
 - **Configuration**: `.env.production` - Production environment variables
