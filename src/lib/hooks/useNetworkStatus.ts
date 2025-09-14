@@ -385,7 +385,7 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
 
       clearInterval(verificationInterval);
     };
-  }, [updateNetworkStatus, checkConnectivity, status.isOnline, listeners]);
+  }, [updateNetworkStatus, checkConnectivity, status.isOnline]);
 
   // Notify change listeners when status changes
   useEffect(() => {
@@ -396,7 +396,7 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
         console.error("Error in change callback:", error);
       }
     });
-  }, [status, listeners.change]);
+  }, [status]);
 
   // Calculate derived properties
   const isHighQuality = status.connectivityScore >= 80;
