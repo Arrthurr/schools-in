@@ -20,7 +20,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadingButton } from "@/components/ui/loading";
 import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
 
-
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z
@@ -56,13 +55,10 @@ export function LoginForm() {
 
       // Track successful email login
 
-
       announce("Successfully signed in", "polite");
     } catch (error: any) {
       const loginTime = performance.now() - startTime;
       const errorMessage = error.message;
-
-
 
       setError(errorMessage);
       announce(`Sign in failed: ${errorMessage}`, "assertive");
@@ -80,14 +76,10 @@ export function LoginForm() {
       await signInWithGoogle();
       const loginTime = performance.now() - startTime;
 
-
-
       announce("Successfully signed in with Google", "polite");
     } catch (error: any) {
       const loginTime = performance.now() - startTime;
       const errorMessage = error.message;
-
-
 
       setError(errorMessage);
       announce(`Google sign in failed: ${errorMessage}`, "assertive");
@@ -195,12 +187,12 @@ export function LoginForm() {
         </form>
       </Form>
 
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
+      <div className="space-y-3">
+        <div className="flex items-center">
           <span className="w-full border-t" />
         </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
+        <div className="flex justify-center">
+          <span className="text-xs uppercase text-muted-foreground">
             Or continue with
           </span>
         </div>
