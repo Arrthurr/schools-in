@@ -4,8 +4,8 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { BrandHeader } from "@/components/ui/logo";
 import Link from "next/link";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
 import type { Route } from "next";
 
 // (Removed force-dynamic to enable static export if possible.)
@@ -13,14 +13,12 @@ import type { Route } from "next";
 export default function LoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!loading && user) {
-      const redirectTo = searchParams.get("redirectTo");
-      router.replace((redirectTo || "/dashboard") as Route);
+      router.replace("/dashboard" as Route);
     }
-  }, [loading, user, router, searchParams]);
+  }, [loading, user, router]);
 
   if (!loading && user) return null;
 
@@ -29,7 +27,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm sm:max-w-md space-y-6 sm:space-y-8">
         <BrandHeader title="Sign In" subtitle="Welcome back to Schools-In" />
 
-        <LoginForm />
+        <Suspense fallback={null}>
+          <LoginForm />
+        </Suspense>
 
         <p className="text-sm text-muted-foreground text-center">
           Don't have an account?{" "}
