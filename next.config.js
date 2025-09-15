@@ -107,7 +107,7 @@ const nextConfig = {
   trailingSlash: true,
   images: {
     // Enable optimization in development, disable for static export in production
-    unoptimized: false, // Keep optimization on
+    unoptimized: true, // Must be true for static export
 
     // Image formats supported
     formats: ["image/webp", "image/avif"],

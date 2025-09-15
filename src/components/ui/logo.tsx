@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { OptimizedImage } from "./optimized-image";
 
 interface LogoProps {
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "xxl";
   className?: string;
   priority?: boolean;
   showText?: boolean;
@@ -14,6 +14,7 @@ const sizeMap = {
   md: { width: 48, height: 48, textSize: "text-xl" },
   lg: { width: 64, height: 64, textSize: "text-2xl" },
   xl: { width: 96, height: 96, textSize: "text-3xl" },
+  xxl: { width: 200, height: 200, textSize: "text-4xl" },
 };
 
 export function Logo({
@@ -24,10 +25,15 @@ export function Logo({
 }: LogoProps) {
   const { width, height, textSize } = sizeMap[size];
 
+  // Use vertical layout for larger sizes (focal point), horizontal for smaller (navigation)
+  const isLargeSize = size === "lg" || size === "xl" || size === "xxl";
+  const layoutClass = isLargeSize ? "flex-col items-center" : "items-center";
+  const gapClass = isLargeSize ? "gap-3" : "gap-3";
+
   return (
-    <div className={cn("flex items-center gap-3", className)}>
+    <div className={cn(`flex ${layoutClass} ${gapClass}`, className)}>
       <OptimizedImage
-        src="/DMDL_logo.png"
+        src="/DMDL_logo_alpha.png"
         alt="DMDL Schools-In Logo"
         width={width}
         height={height}
@@ -37,7 +43,13 @@ export function Logo({
         loading={priority ? "eager" : "lazy"}
       />
       {showText && (
-        <span className={cn("font-bold text-brand-primary", textSize)}>
+        <span
+          className={cn(
+            "font-bold text-brand-primary",
+            isLargeSize ? "text-center" : "",
+            textSize
+          )}
+        >
           Schools-In
         </span>
       )}
@@ -57,7 +69,7 @@ export function BrandHeader({
 }) {
   return (
     <div className={cn("text-center space-y-4", className)}>
-      <Logo size="xl" className="justify-center" />
+      <Logo size="xxl" className="justify-center" />
       {title && (
         <div className="space-y-2">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">

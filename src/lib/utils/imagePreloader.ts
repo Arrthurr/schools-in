@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Image preloading utilities for critical images and performance optimization
@@ -6,15 +6,15 @@
 
 // Priority levels for image preloading
 export enum PreloadPriority {
-  HIGH = 'high',
-  LOW = 'low',
+  HIGH = "high",
+  LOW = "low",
 }
 
 interface PreloadOptions {
   priority?: PreloadPriority;
-  crossOrigin?: 'anonymous' | 'use-credentials';
-  fetchPriority?: 'high' | 'low' | 'auto';
-  as?: 'image';
+  crossOrigin?: "anonymous" | "use-credentials";
+  fetchPriority?: "high" | "low" | "auto";
+  as?: "image";
   type?: string;
 }
 
@@ -23,15 +23,15 @@ export function preloadImageWithLink(
   href: string,
   options: PreloadOptions = {}
 ): void {
-  if (typeof document === 'undefined') return;
+  if (typeof document === "undefined") return;
 
   // Check if already preloaded
   const existing = document.querySelector(`link[href="${href}"]`);
   if (existing) return;
 
-  const link = document.createElement('link');
-  link.rel = 'preload';
-  link.as = options.as || 'image';
+  const link = document.createElement("link");
+  link.rel = "preload";
+  link.as = options.as || "image";
   link.href = href;
 
   if (options.crossOrigin) {
@@ -73,55 +73,55 @@ export async function preloadImages(
   sources: string[],
   options: PreloadOptions = {}
 ): Promise<HTMLImageElement[]> {
-  const promises = sources.map(src => preloadImageWithPromise(
-    src, 
-    options.crossOrigin
-  ));
+  const promises = sources.map((src) =>
+    preloadImageWithPromise(src, options.crossOrigin)
+  );
 
   try {
     return await Promise.all(promises);
   } catch (error) {
-    console.warn('Some images failed to preload:', error);
+    console.warn("Some images failed to preload:", error);
     // Return successfully loaded images
     const results = await Promise.allSettled(promises);
     return results
-      .filter((result): result is PromiseFulfilledResult<HTMLImageElement> => 
-        result.status === 'fulfilled'
+      .filter(
+        (result): result is PromiseFulfilledResult<HTMLImageElement> =>
+          result.status === "fulfilled"
       )
-      .map(result => result.value);
+      .map((result) => result.value);
   }
 }
 
 // Preload critical images for the application
 export function preloadCriticalImages(): void {
   const criticalImages = [
-    '/DMDL_logo.png',
-    '/icon-192.png',
-    '/icon-512.png',
+    "/DMDL_logo_alpha.png",
+    "/icon-192.png",
+    "/icon-512.png",
   ];
 
-  criticalImages.forEach(src => {
+  criticalImages.forEach((src) => {
     preloadImageWithLink(src, {
       priority: PreloadPriority.HIGH,
-      fetchPriority: 'high',
+      fetchPriority: "high",
     });
   });
 }
 
 // Lazy preload images when they're likely to be needed soon
 export function lazyPreloadImages(sources: string[], delay = 1000): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   // Use requestIdleCallback if available
   const schedulePreload = () => {
-    sources.forEach(src => {
-      preloadImageWithPromise(src).catch(error => {
+    sources.forEach((src) => {
+      preloadImageWithPromise(src).catch((error) => {
         console.warn(`Failed to lazy preload image: ${src}`, error);
       });
     });
   };
 
-  if ('requestIdleCallback' in window) {
+  if ("requestIdleCallback" in window) {
     requestIdleCallback(schedulePreload, { timeout: delay });
   } else {
     setTimeout(schedulePreload, delay);
@@ -135,18 +135,18 @@ export function preloadOnHover(element: HTMLElement, imageSrc: string): void {
   const preload = () => {
     if (preloaded) return;
     preloaded = true;
-    preloadImageWithPromise(imageSrc).catch(error => {
+    preloadImageWithPromise(imageSrc).catch((error) => {
       console.warn(`Failed to preload on hover: ${imageSrc}`, error);
     });
   };
 
-  element.addEventListener('mouseenter', preload, { once: true });
-  element.addEventListener('focus', preload, { once: true });
-  
+  element.addEventListener("mouseenter", preload, { once: true });
+  element.addEventListener("focus", preload, { once: true });
+
   // Clean up listeners after a timeout
   setTimeout(() => {
-    element.removeEventListener('mouseenter', preload);
-    element.removeEventListener('focus', preload);
+    element.removeEventListener("mouseenter", preload);
+    element.removeEventListener("focus", preload);
   }, 10000);
 }
 
@@ -159,7 +159,7 @@ export function conditionalPreload(
     maxDataSaver?: boolean;
   } = {}
 ): void {
-  if (typeof navigator === 'undefined') return;
+  if (typeof navigator === "undefined") return;
 
   const {
     maxImages = 5,
@@ -168,24 +168,24 @@ export function conditionalPreload(
   } = conditions;
 
   // Check for data saver preference
-  if ('connection' in navigator) {
+  if ("connection" in navigator) {
     const connection = (navigator as any).connection;
-    
+
     if (connection?.saveData && !maxDataSaver) {
-      console.log('Data saver is enabled, skipping image preload');
+      console.log("Data saver is enabled, skipping image preload");
       return;
     }
 
     // Check connection speed
     if (connection?.downlink && connection.downlink < minConnectionSpeed) {
-      console.log('Slow connection detected, limiting image preload');
+      console.log("Slow connection detected, limiting image preload");
       sources = sources.slice(0, Math.min(2, maxImages));
     }
   }
 
   // Limit number of images to preload
   const imagesToPreload = sources.slice(0, maxImages);
-  
+
   lazyPreloadImages(imagesToPreload, 2000);
 }
 
@@ -215,16 +215,16 @@ export async function measureImageLoadPerformance(src: string): Promise<{
 
 // Initialize image preloading strategy
 export function initImagePreloading(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   // Preload critical images immediately
   preloadCriticalImages();
 
   // Setup intersection observer for lazy preloading
-  if ('IntersectionObserver' in window) {
+  if ("IntersectionObserver" in window) {
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach(entry => {
+        entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const img = entry.target as HTMLImageElement;
             const src = img.dataset.preload;
@@ -235,11 +235,11 @@ export function initImagePreloading(): void {
           }
         });
       },
-      { rootMargin: '100px' }
+      { rootMargin: "100px" }
     );
 
     // Observe elements with data-preload attribute
-    document.querySelectorAll('[data-preload]').forEach(el => {
+    document.querySelectorAll("[data-preload]").forEach((el) => {
       observer.observe(el);
     });
   }
