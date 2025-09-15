@@ -6,6 +6,17 @@ jest.mock("@/lib/firebase/auth", () => ({
   signInWithGoogle: jest.fn(),
 }));
 
+jest.mock("next/navigation", () => {
+  return {
+    useRouter: () => ({
+      push: jest.fn(),
+      replace: jest.fn(),
+      prefetch: jest.fn(),
+    }),
+    useSearchParams: () => new URLSearchParams(),
+  };
+});
+
 describe("LoginForm", () => {
   it("renders the login form", () => {
     render(<LoginForm />);

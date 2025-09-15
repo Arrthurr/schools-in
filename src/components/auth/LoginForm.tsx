@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useId } from "react";
 import { useForm } from "react-hook-form";
@@ -19,6 +19,8 @@ import { signInWithEmail, signInWithGoogle } from "@/lib/firebase/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadingButton } from "@/components/ui/loading";
 import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { Route } from "next";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -35,6 +37,8 @@ export function LoginForm() {
   const { announce } = useAnnouncement();
   const formId = useId();
   const errorId = useId();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,7 +58,9 @@ export function LoginForm() {
       const loginTime = performance.now() - startTime;
 
       // Track successful email login
-
+      const redirectTo = searchParams.get("redirectTo");
+      // Navigate to intended destination (or dashboard)
+      router.replace((redirectTo || "/dashboard") as Route);
       announce("Successfully signed in", "polite");
     } catch (error: any) {
       const loginTime = performance.now() - startTime;
@@ -75,7 +81,8 @@ export function LoginForm() {
     try {
       await signInWithGoogle();
       const loginTime = performance.now() - startTime;
-
+      const redirectTo = searchParams.get("redirectTo");
+      router.replace((redirectTo || "/dashboard") as Route);
       announce("Successfully signed in with Google", "polite");
     } catch (error: any) {
       const loginTime = performance.now() - startTime;
@@ -87,6 +94,13 @@ export function LoginForm() {
       setLoading(false);
     }
   };
+
+  // Prefetch dashboard for faster transition
+  useEffect(() => {
+    try {
+      router.prefetch?.("/dashboard" as Route);
+    } catch {}
+  }, [router]);
 
   return (
     <div className="w-full space-y-4 sm:space-y-6">
