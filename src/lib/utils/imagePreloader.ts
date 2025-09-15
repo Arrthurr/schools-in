@@ -94,11 +94,7 @@ export async function preloadImages(
 
 // Preload critical images for the application
 export function preloadCriticalImages(): void {
-  const criticalImages = [
-    "/DMDL_logo_alpha.png",
-    "/icon-192.png",
-    "/icon-512.png",
-  ];
+  const criticalImages = ["/DMDL_logo_alpha.png"];
 
   criticalImages.forEach((src) => {
     preloadImageWithLink(src, {

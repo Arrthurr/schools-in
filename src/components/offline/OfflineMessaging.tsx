@@ -72,61 +72,57 @@ export function OfflineMessagingProvider({
     if (previousOnlineStatus === networkStatus.isOnline) return;
 
     if (networkStatus.isOnline) {
-        // Just came online
-        if (enableToasts) {
-          toast({
-            title: "Connection Restored",
-            description:
-              state.queueStats.pending > 0
-                ? `Syncing ${state.queueStats.pending} pending actions...`
-                : "All data is up to date",
-            action:
-              state.queueStats.pending > 0 ? (
-                <ToastAction
-                  altText="Sync now"
-                  onClick={() => actions.syncNow(true)}
-                >
-                  Sync Now
-                </ToastAction>
-              ) : undefined,
-          });
-        }
-
-        addMessage({
-          type: "success",
-          title: "Back Online",
+      // Just came online
+      if (enableToasts) {
+        toast({
+          title: "Connection Restored",
           description:
             state.queueStats.pending > 0
-              ? `Syncing ${state.queueStats.pending} pending actions`
-              : "All data synchronized",
-          autoHide: true,
-          duration: 5000,
-        });
-      } else {
-        // Just went offline
-        if (enableToasts) {
-          toast({
-            title: "Connection Lost",
-            description:
-              "You can continue working offline. Actions will sync when connection returns.",
-            variant: "destructive",
-          });
-        }
-
-        addMessage({
-          type: "warning",
-          title: "Working Offline",
-          description:
-            "You can still check in and out. Actions will sync automatically.",
-          autoHide: false,
+              ? `Syncing ${state.queueStats.pending} pending actions...`
+              : "All data is up to date",
+          action:
+            state.queueStats.pending > 0 ? (
+              <ToastAction
+                altText="Sync now"
+                onClick={() => actions.syncNow(true)}
+              >
+                Sync Now
+              </ToastAction>
+            ) : undefined,
         });
       }
+
+      addMessage({
+        type: "success",
+        title: "Back Online",
+        description:
+          state.queueStats.pending > 0
+            ? `Syncing ${state.queueStats.pending} pending actions`
+            : "All data synchronized",
+        autoHide: true,
+        duration: 5000,
+      });
+    } else {
+      // Just went offline
+      if (enableToasts) {
+        toast({
+          title: "Connection Lost",
+          description:
+            "You can continue working offline. Actions will sync when connection returns.",
+          variant: "destructive",
+        });
+      }
+
+      addMessage({
+        type: "warning",
+        title: "Working Offline",
+        description:
+          "You can still check in and out. Actions will sync automatically.",
+        autoHide: false,
+      });
+    }
     setPreviousOnlineStatus(networkStatus.isOnline);
-  }, [
-    networkStatus.isOnline,
-    state.queueStats.pending,
-    enableToasts,
-  ]);
+  }, [networkStatus.isOnline, state.queueStats.pending, enableToasts]);
 
   // Track sync completion
   useEffect(() => {
@@ -152,10 +148,10 @@ export function OfflineMessagingProvider({
     }
     setPreviousPendingCount(state.queueStats.pending);
   }, [
-  state.queueStats.pending,
-  networkStatus.isOnline,
-  previousPendingCount,
-  enableToasts,
+    state.queueStats.pending,
+    networkStatus.isOnline,
+    previousPendingCount,
+    enableToasts,
   ]);
 
   // Track sync errors
@@ -226,7 +222,7 @@ export function OfflineMessagingProvider({
     ) {
       new Notification(message.title, {
         body: message.description,
-        icon: "/icon-192.png",
+        icon: "/DMDL_logo_alpha.png",
         tag: `offline-message-${message.type}`,
       });
     }
