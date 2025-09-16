@@ -77,8 +77,6 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         );
         const loadTime = performance.now() - startTime;
 
-
-
         setSchools(assignedSchools);
         setFilteredSchools(assignedSchools);
 
@@ -88,8 +86,6 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         const loadTime = performance.now() - startTime;
         console.error("Error loading schools:", err);
         const errorMessage = "Failed to load schools. Please try again.";
-
-
 
         setError(errorMessage);
         announce(`Error: ${errorMessage}`, "assertive");
@@ -151,8 +147,6 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         );
         const searchTime = performance.now() - startTime;
 
-
-
         setFilteredSchools(filtered);
 
         // Announce search results to screen readers
@@ -165,8 +159,6 @@ export const SchoolList: React.FC<SchoolListProps> = ({
       } catch (err) {
         const searchTime = performance.now() - startTime;
         console.error("Error filtering schools:", err);
-
-
 
         announce("Error filtering schools", "assertive");
       }
@@ -284,10 +276,10 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     <Card className={className}>
       <CardHeader className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 md:min-w-0 md:flex-initial">
             <CardTitle className="flex items-center text-lg sm:text-xl">
               <SchoolIcon className="mr-2 h-5 w-5 flex-shrink-0" />
-              <span className="truncate">Assigned Schools</span>
+              <span className="truncate md:text-clip">Assigned Schools</span>
             </CardTitle>
             <CardDescription className="mt-1">
               {schools.length} school{schools.length !== 1 ? "s" : ""} assigned
@@ -308,7 +300,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
               disabled={locationLoading}
               size="sm"
               variant="outline"
-              className="touch-target flex-shrink-0 w-full sm:w-auto micro-scale"
+              className="touch-target flex-shrink-0 w-full sm:w-auto md:ml-4 micro-scale"
               aria-label={
                 locationLoading
                   ? "Getting your location..."
@@ -393,10 +385,10 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                   }
                 }}
               >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 md:gap-6">
+                  <div className="flex-1 min-w-0 md:flex-auto md:min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                      <h4 className="font-medium text-gray-900 text-base sm:text-lg truncate">
+                      <h4 className="font-medium text-gray-900 text-base sm:text-lg truncate md:text-clip md:break-words">
                         {school.name}
                       </h4>
                       {getSchoolStatusBadge(school)}
@@ -426,7 +418,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-2 sm:ml-4 w-full sm:w-auto">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:ml-4 md:ml-6 w-full sm:w-auto md:flex-shrink-0">
                     {showDetailButtons && (
                       <Button
                         size="sm"
