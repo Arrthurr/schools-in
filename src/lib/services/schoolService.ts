@@ -1,8 +1,5 @@
 // Service for handling school data operations
 
-import { getLocationsByProvider } from '../firebase/firestore';
-import { Location } from '../firebase/types';
-
 // Static school data from JSON (eventually this will come from Firestore)
 const SCHOOLS_DATA = [
   {
@@ -200,7 +197,7 @@ export class SchoolService {
   }
 
   // Get schools assigned to a specific provider
-  static async getAssignedSchools(providerId: string): Promise<School[]> {
+  static async getAssignedSchools(_providerId: string): Promise<School[]> {
     // For now, we'll simulate assignments by returning first 3 schools
     // Later this will integrate with Firestore user assignments
     const allSchools = await this.getAllSchools();

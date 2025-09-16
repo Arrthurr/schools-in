@@ -2,22 +2,15 @@
 
 import { useState, useEffect } from "react";
 import {
-  Users,
   School,
   Search,
-  Plus,
-  Minus,
   UserPlus,
-  UserMinus,
   Download,
-  Filter,
   CheckSquare,
   Square,
-  MoreVertical,
   MapPin,
   Calendar,
   AlertCircle,
-  Check,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,9 +18,7 @@ import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -41,12 +32,8 @@ import {
   getUnassignedProviders,
   assignProviderToSchool,
   removeProviderFromSchool,
-  bulkAssignProvidersToSchool,
-  bulkRemoveProvidersFromSchool,
-  replaceSchoolAssignments,
   SchoolAssignment,
   AssignmentStats,
-  ProviderAssignment,
 } from "@/lib/services/assignmentService";
 import { UserRecord } from "@/lib/services/userService";
 

@@ -86,7 +86,7 @@ export class CachedUserService {
 
         const snapshot = await getDocs(queryRef);
         let users = snapshot.docs.map(doc => ({
-          id: doc.id,
+          uid: doc.id,
           ...doc.data(),
         } as User));
 
@@ -128,7 +128,7 @@ export class CachedUserService {
         
         const doc = userDoc.docs[0];
         return {
-          id: doc.id,
+          uid: doc.id,
           ...doc.data(),
         } as User;
       },
@@ -158,7 +158,7 @@ export class CachedUserService {
         
         const providersSnapshot = await getDocs(providersQuery);
         const providers = providersSnapshot.docs.map(doc => ({
-          id: doc.id,
+          uid: doc.id,
           ...doc.data(),
         } as User));
 
@@ -167,7 +167,7 @@ export class CachedUserService {
           providers.map(async (provider) => {
             const schoolsQuery = query(
               collection(db, COLLECTIONS.LOCATIONS),
-              where('assignedProviders', 'array-contains', provider.id)
+              where('assignedProviders', 'array-contains', provider.uid)
             );
             
             const schoolsSnapshot = await getDocs(schoolsQuery);
@@ -355,7 +355,7 @@ export class CachedUserService {
         
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({
-          id: doc.id,
+          uid: doc.id,
           ...doc.data(),
         } as User));
       },

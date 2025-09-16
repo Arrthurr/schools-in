@@ -16,7 +16,6 @@ import {
   limit,
   onSnapshot,
   QuerySnapshot,
-  DocumentSnapshot,
   Unsubscribe,
   DocumentData,
   WhereFilterOp,

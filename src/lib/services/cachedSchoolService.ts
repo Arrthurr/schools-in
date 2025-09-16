@@ -20,7 +20,6 @@ import { Location } from "@/lib/firebase/types";
 import { FirebaseCache, CacheTracker } from "@/lib/cache/FirebaseCache";
 import {
   getCachedLocationsByProvider,
-  getCachedCollection,
 } from "@/lib/firebase/cachedFirestore";
 
 export interface SchoolFilters {

@@ -1,6 +1,6 @@
 // Custom React hook for GPS location handling
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { locationService, Coordinates, LocationError } from "../utils/location";
 
 interface UseLocationReturn {

@@ -13,9 +13,6 @@ import {
   orderBy,
   limit,
   Timestamp,
-  DocumentData,
-  QuerySnapshot,
-  DocumentSnapshot,
 } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { User, Location, Session } from "./types";
