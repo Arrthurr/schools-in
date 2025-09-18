@@ -275,11 +275,11 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   return (
     <Card className={className}>
       <CardHeader className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="min-w-0 flex-1 md:flex-initial md:w-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 lg:gap-6">
+          <div className="min-w-0 flex-1">
             <CardTitle className="flex items-center text-lg sm:text-xl">
               <SchoolIcon className="mr-2 h-5 w-5 flex-shrink-0" />
-              <span className="truncate md:whitespace-nowrap">
+              <span className="truncate md:whitespace-normal md:overflow-visible md:text-clip break-words">
                 Assigned Schools
               </span>
             </CardTitle>
@@ -302,7 +302,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
               disabled={locationLoading}
               size="sm"
               variant="outline"
-              className="touch-target flex-shrink-0 w-full sm:w-auto md:w-auto md:min-w-max micro-scale"
+              className="touch-target flex-shrink-0 w-full sm:w-auto micro-scale"
               aria-label={
                 locationLoading
                   ? "Getting your location..."
@@ -387,10 +387,10 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                   }
                 }}
               >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 md:gap-8">
-                  <div className="flex-1 min-w-0 md:flex-auto">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                      <h4 className="font-medium text-gray-900 text-base sm:text-lg truncate md:whitespace-nowrap md:overflow-visible">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 lg:gap-8">
+                  <div className="flex-1 min-w-0 md:pr-4 lg:pr-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-3 mb-2">
+                      <h4 className="font-medium text-gray-900 text-base sm:text-lg truncate md:whitespace-normal md:overflow-visible md:text-clip break-words">
                         {school.name}
                       </h4>
                       {getSchoolStatusBadge(school)}
@@ -420,7 +420,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-2 sm:ml-4 md:ml-8 w-full sm:w-auto md:w-auto md:min-w-max">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:ml-4 lg:ml-6 w-full sm:w-auto flex-shrink-0">
                     {showDetailButtons && (
                       <Button
                         size="sm"
