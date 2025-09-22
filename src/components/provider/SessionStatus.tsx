@@ -1,30 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAuth } from "../../lib/hooks/useAuth";
-import { School } from "../../lib/services/schoolService";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import { StatusBadge } from "../ui/status-badge";
-import {
-  Clock,
-  MapPin,
-  Play,
-  Square,
-  Timer,
-  AlertCircle,
-  CheckCircle,
-  School as SchoolIcon,
-} from "lucide-react";
+import { Clock, MapPin, Timer, CheckCircle, School as SchoolIcon } from "lucide-react";
+import { Timestamp } from "firebase/firestore";
+import { Session as NormalizedSession, Location } from "@/lib/firebase/types";
+import { getCachedDocument } from "@/lib/firebase/cachedFirestore";
+import { COLLECTIONS } from "@/lib/firebase/firestore";
 
-interface SessionData {
+// Legacy UI shape used previously in the app
+interface LegacySessionData {
   id: string;
   schoolId: string;
   schoolName: string;
@@ -38,92 +25,108 @@ interface SessionData {
 }
 
 interface SessionStatusProps {
-  currentSession?: SessionData | null;
+  currentSession?: LegacySessionData | NormalizedSession | null;
   onEndSession?: (sessionId: string) => void;
-  onPauseSession?: (sessionId: string) => void;
-  onResumeSession?: (sessionId: string) => void;
   className?: string;
 }
 
-export const SessionStatus: React.FC<SessionStatusProps> = ({
-  currentSession,
-  onEndSession,
-  onPauseSession,
-  onResumeSession,
-  className = "",
-}) => {
-  const { user } = useAuth();
-  const [elapsedTime, setElapsedTime] = useState<number>(0);
+export const SessionStatus: React.FC<SessionStatusProps> = ({ currentSession, onEndSession, className = "" }) => {
+  const [elapsedMinutes, setElapsedMinutes] = useState<number>(0);
   const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [locationInfo, setLocationInfo] = useState<{ name?: string; latitude?: number; longitude?: number } | null>(
+    null
+  );
 
-  // Update elapsed time every second for active sessions
+  const status = (currentSession as any)?.status as string | undefined;
+
+  const startDate: Date | null = useMemo(() => {
+    if (!currentSession) return null;
+    const st: any = (currentSession as any).startTime;
+    if (!st) return null;
+    if (st instanceof Date) return st;
+    if (st instanceof Timestamp) return st.toDate();
+    if (typeof st?.toDate === "function") return st.toDate();
+    return new Date(st);
+  }, [currentSession]);
+
+  const computedDuration = useMemo(() => {
+    if (!currentSession) return 0;
+    const s: any = currentSession as any;
+    if (typeof s.durationMinutes === "number") return s.durationMinutes;
+    if (typeof s.duration === "number") return s.duration;
+    const endVal = s.endTime || s.checkOutTime;
+    if (startDate && endVal) {
+      const endDate = endVal instanceof Timestamp ? endVal.toDate() : typeof endVal?.toDate === "function" ? endVal.toDate() : new Date(endVal);
+      const diffMs = endDate.getTime() - startDate.getTime();
+      return Math.max(0, Math.round(diffMs / 60000));
+    }
+    return 0;
+  }, [currentSession, startDate]);
+
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-
-    if (currentSession && currentSession.status === "active") {
+    let timer: NodeJS.Timeout | null = null;
+    if (currentSession && status === "active" && startDate) {
       setIsRunning(true);
-      interval = setInterval(() => {
-        const now = new Date();
-        const startTime = new Date(currentSession.startTime);
-        const elapsed = Math.floor(
-          (now.getTime() - startTime.getTime()) / 1000 / 60
-        ); // in minutes
-        setElapsedTime(elapsed);
-      }, 60000); // Update every minute
+      const tick = () => {
+        const now = Date.now();
+        setElapsedMinutes(Math.max(0, Math.floor((now - startDate.getTime()) / 60000)));
+      };
+      tick();
+      timer = setInterval(tick, 60000);
     } else {
       setIsRunning(false);
-      if (currentSession) {
-        setElapsedTime(currentSession.duration);
+      setElapsedMinutes(computedDuration);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [currentSession, status, startDate, computedDuration]);
+
+  // Load location info
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!currentSession) {
+        setLocationInfo(null);
+        return;
+      }
+      const s: any = currentSession as any;
+      if (s.location && typeof s.location.latitude === "number") {
+        if (!cancelled) setLocationInfo({ name: s.schoolName, latitude: s.location.latitude, longitude: s.location.longitude });
+        return;
+      }
+      if (s.locationId) {
+        try {
+          const loc = (await getCachedDocument<Location>(COLLECTIONS.LOCATIONS, s.locationId)) as any;
+          if (!cancelled) {
+            const lat = loc?.geo?.latitude ?? loc?.gpsCoordinates?.latitude ?? loc?.latitude;
+            const lng = loc?.geo?.longitude ?? loc?.gpsCoordinates?.longitude ?? loc?.longitude;
+            setLocationInfo({ name: loc?.name || s.locationId, latitude: lat, longitude: lng });
+          }
+        } catch {
+          if (!cancelled) setLocationInfo({ name: s.locationId });
+        }
       }
     }
-
+    load();
     return () => {
-      if (interval) clearInterval(interval);
+      cancelled = true;
     };
   }, [currentSession]);
 
-  // Format duration for display
   const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
-  // Format time for display
-  const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+  const formatTime = (date: Date): string => date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+  const handleEnd = () => {
+    if (currentSession && onEndSession) onEndSession((currentSession as any).id);
   };
 
-  // Format time for display
-
-  // Handle session actions
-  const handleEndSession = () => {
-    if (currentSession && onEndSession) {
-      onEndSession(currentSession.id);
-    }
-  };
-
-  const handlePauseSession = () => {
-    if (currentSession && onPauseSession) {
-      onPauseSession(currentSession.id);
-    }
-  };
-
-  const handleResumeSession = () => {
-    if (currentSession && onResumeSession) {
-      onResumeSession(currentSession.id);
-    }
-  };
-
-  // No active session
+  // Empty state
   if (!currentSession) {
     return (
       <Card className={className}>
@@ -137,12 +140,8 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
         <CardContent>
           <div className="text-center py-6">
             <Clock className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-            <p className="text-gray-600 mb-4">
-              You're not currently checked in at any school
-            </p>
-            <p className="text-sm text-gray-500">
-              Check in at a school to start tracking your session
-            </p>
+            <p className="text-gray-600 mb-4">You're not currently checked in at any school</p>
+            <p className="text-sm text-gray-500">Check in at a school to start tracking your session</p>
           </div>
         </CardContent>
       </Card>
@@ -158,11 +157,9 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
               <Timer className="h-5 w-5 mr-2 text-brand-primary" />
               Current Session
             </CardTitle>
-            <CardDescription>
-              Started at {formatTime(new Date(currentSession.startTime))}
-            </CardDescription>
+            <CardDescription>{startDate ? `Started at ${formatTime(startDate)}` : ""}</CardDescription>
           </div>
-          {currentSession && <StatusBadge status={currentSession.status} />}
+          {status && <StatusBadge status={status as any} />}
         </div>
       </CardHeader>
 
@@ -172,13 +169,14 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
           <SchoolIcon className="h-5 w-5 text-brand-primary" />
           <div>
             <p className="font-medium text-gray-900">
-              {currentSession.schoolName}
+              {locationInfo?.name || (currentSession as any).schoolName || (currentSession as any).locationId}
             </p>
             <div className="flex items-center text-sm text-gray-600 mt-1">
               <MapPin className="h-3 w-3 mr-1" />
               <span>
-                {currentSession.location.latitude.toFixed(4)},{" "}
-                {currentSession.location.longitude.toFixed(4)}
+                {typeof locationInfo?.latitude === "number" && typeof locationInfo?.longitude === "number"
+                  ? `${locationInfo.latitude.toFixed(4)}, ${locationInfo.longitude.toFixed(4)}`
+                  : "Coordinates unavailable"}
               </span>
             </div>
           </div>
@@ -188,12 +186,8 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-brand-primary rounded-full mb-4">
             <div className="text-center text-white">
-              <div className="text-2xl font-bold">
-                {formatDuration(elapsedTime)}
-              </div>
-              <div className="text-xs opacity-80">
-                {isRunning ? "ACTIVE" : currentSession.status.toUpperCase()}
-              </div>
+              <div className="text-2xl font-bold">{formatDuration(elapsedMinutes)}</div>
+              <div className="text-xs opacity-80">{isRunning ? "ACTIVE" : String(status || "").toUpperCase()}</div>
             </div>
           </div>
           <p className="text-sm text-gray-600">Session duration</p>
@@ -202,85 +196,34 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
         {/* Session Stats */}
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-lg font-semibold text-gray-900">
-              {formatTime(new Date(currentSession.startTime))}
-            </div>
+            <div className="text-lg font-semibold text-gray-900">{startDate ? formatTime(startDate) : "—"}</div>
             <div className="text-sm text-gray-600">Start Time</div>
           </div>
           <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-lg font-semibold text-gray-900">
-              {currentSession.status === "completed" ? "Ended" : "Ongoing"}
-            </div>
+            <div className="text-lg font-semibold text-gray-900">{status === "completed" ? "Ended" : "Ongoing"}</div>
             <div className="text-sm text-gray-600">Status</div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        {currentSession.status !== "completed" && (
+        {/* Action Button */}
+        {status === "active" && (
           <div className="flex gap-3">
-            {currentSession.status === "active" ? (
-              <>
-                <Button
-                  onClick={handlePauseSession}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <Square className="h-4 w-4 mr-2" />
-                  Pause
-                </Button>
-                <Button
-                  onClick={handleEndSession}
-                  className="flex-1 bg-red-600 hover:bg-red-700"
-                >
-                  End Session
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  onClick={handleResumeSession}
-                  className="flex-1 btn-brand-primary"
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Resume
-                </Button>
-                <Button
-                  onClick={handleEndSession}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  End Session
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Warning for paused sessions */}
-        {currentSession.status === "paused" && (
-          <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium text-yellow-900 mb-1">Session Paused</p>
-              <p className="text-yellow-800 text-sm">
-                Remember to resume your session when you return to work. Paused
-                sessions don't count toward your active time.
-              </p>
-            </div>
+            <Button onClick={handleEnd} className="flex-1 bg-red-600 hover:bg-red-700">
+              End Session
+            </Button>
           </div>
         )}
 
         {/* Session completed info */}
-        {currentSession.status === "completed" && (
+        {status === "completed" && (
           <div className="flex items-start gap-3 p-3 bg-brand-primary/5 rounded-lg border border-brand-primary/20">
             <CheckCircle className="h-5 w-5 text-brand-primary mt-0.5 flex-shrink-0" />
             <div>
-              <p className="font-medium text-brand-primary mb-1">
-                Session Completed
-              </p>
+              <p className="font-medium text-brand-primary mb-1">Session Completed</p>
               <p className="text-brand-primary/80 text-sm">
-                This session has been completed and the time has been recorded.
-                Total duration: {formatDuration(currentSession.duration)}
+                This session has been completed and the time has been recorded. Total duration: {formatDuration(
+                  computedDuration
+                )}
               </p>
             </div>
           </div>

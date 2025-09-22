@@ -2,13 +2,17 @@ import { Timestamp, GeoPoint } from 'firebase/firestore';
 
 export interface User {
   uid: string;
-  email: string | null;
-  displayName: string | null;
   role: 'provider' | 'admin';
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  disabled?: boolean;
+  isActive?: boolean;
+  createdAt: Timestamp;
+  lastActiveAt: Timestamp;
+  // Legacy fields for backward compatibility
   assignedLocations?: string[];
   phoneNumber?: string | null;
-  isActive?: boolean;
-  createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
 
@@ -16,25 +20,50 @@ export interface Location {
   id: string;
   name: string;
   address: string;
-  gpsCoordinates: GeoPoint;
-  radius: number; // in meters
+  geo: GeoPoint;
+  radiusMeters?: number; // default 100
+  timezone?: string; // default "America/Chicago"
+  active?: boolean; // default true
+  assignedProviders: string[]; // array of userIds - authoritative for RBAC
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  // Legacy fields for backward compatibility
+  gpsCoordinates?: GeoPoint;
+  radius?: number;
   region?: string;
   isActive?: boolean;
-  assignedProviders?: string[];
   latitude?: number;
   longitude?: number;
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
 }
 
 export interface Session {
   id: string;
   userId: string;
   locationId: string;
-  checkInTime: Timestamp;
-  checkOutTime: Timestamp | null;
-  status: 'active' | 'completed';
-  duration?: number; // in minutes
+  startTime: Timestamp;
+  endTime?: Timestamp; // optional until completed
+  status: 'active' | 'paused' | 'completed' | 'cancelled';
+  durationMinutes?: number; // derived on completion; excludes paused time
+  checkInMethod: 'geo' | 'manual' | 'offline-sync';
+  distanceFromCenterAtCheckIn: number; // in meters
+  dayKey: string; // YYYY-MM-DD for America/Chicago, computed from startTime
+  notes?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  // Legacy compatibility fields (read-only usage)
+  checkInTime?: Timestamp;
+  checkOutTime?: Timestamp | null;
+  duration?: number; // legacy total minutes
+}
+
+export interface Assignment {
+  id: string; // `${userId}_${locationId}`
+  userId: string;
+  locationId: string;
+  active?: boolean;
+  role?: 'provider';
+  assignedAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 // Additional utility types
@@ -70,4 +99,49 @@ export interface LocationStatistics {
 export interface ProviderWithSchools extends User {
   assignedSchoolsCount: number;
   assignedSchools: Location[];
+}
+
+// Dashboard-specific types for metrics
+export interface ProviderMetrics {
+  currentSession: Session | null;
+  weeklySessionsCount: number;
+  weeklyTotalHours: number;
+}
+
+export interface AdminMetrics {
+  activeProviders: number;
+  activeSessions: number;
+  todaysCheckIns: number;
+  yesterdaysCheckIns: number;
+  checkInChangePercentage: number;
+  avgSessionDurationHours: number;
+  recentActivity: SessionActivity[];
+}
+
+export interface SessionActivity {
+  id: string;
+  type: 'check-in' | 'check-out' | 'pause' | 'resume';
+  timestamp: Timestamp;
+  userId: string;
+  userName: string;
+  locationId: string;
+  locationName: string;
+}
+
+// CSV Export types
+export interface SessionExportData {
+  user: string;
+  location: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  durationMinutes: number;
+  checkInMethod: string;
+  distanceFromCenterAtCheckIn: number;
+  notes: string;
+}
+
+export interface ExportDateRange {
+  startDate: string; // YYYY-MM-DD in America/Chicago
+  endDate: string; // YYYY-MM-DD in America/Chicago
 }

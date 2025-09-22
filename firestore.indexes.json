@@ -29,7 +29,7 @@
       "collectionGroup": "locations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "active", "order": "ASCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
     },
@@ -47,7 +47,7 @@
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "startTime", "order": "DESCENDING" }
+        { "fieldPath": "dayKey", "order": "ASCENDING" }
       ]
     },
     {
@@ -55,7 +55,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "locationId", "order": "ASCENDING" },
         { "fieldPath": "startTime", "order": "DESCENDING" }
       ]
     },
@@ -64,8 +63,15 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "endTime", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "locationId", "order": "ASCENDING" },
-        { "fieldPath": "startTime", "order": "DESCENDING" }
+        { "fieldPath": "dayKey", "order": "ASCENDING" }
       ]
     }
   ],

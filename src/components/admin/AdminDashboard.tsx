@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
+import { useAdminMetrics } from "@/lib/hooks/useAdminMetrics";
 import {
   Card,
   CardContent,
@@ -47,81 +48,36 @@ interface RecentActivity {
 }
 
 export function AdminDashboard() {
-  const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalSchools: 0,
-    activeProviders: 0,
-    activeSessions: 0,
-    todayCheckIns: 0,
-    totalSessions: 0,
-    avgSessionDuration: 0,
-  });
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useCachedAuth();
+  const { stats, recent, loading, error } = useAdminMetrics();
+  const [totalSchools, setTotalSchools] = useState<number | null>(null);
 
   // Accessibility hooks
   const { announce } = useAnnouncement();
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
-    try {
-      // TODO: Replace with actual Firestore queries
-      // Mock data for now
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setStats({
-        totalSchools: 15,
-        activeProviders: 8,
-        activeSessions: 3,
-        todayCheckIns: 12,
-        totalSessions: 156,
-        avgSessionDuration: 4.2,
-      });
-
-      setRecentActivity([
-        {
-          id: "1",
-          type: "check-in",
-          message: "John Doe checked in at Walter Payton HS",
-          timestamp: new Date(Date.now() - 15 * 60 * 1000),
-          providerName: "John Doe",
-          schoolName: "Walter Payton HS",
-        },
-        {
-          id: "2",
-          type: "check-out",
-          message: "Jane Smith checked out from Estrella Foothills HS",
-          timestamp: new Date(Date.now() - 45 * 60 * 1000),
-          providerName: "Jane Smith",
-          schoolName: "Estrella Foothills HS",
-        },
-        {
-          id: "3",
-          type: "school-added",
-          message: "New school added: Cambridge School",
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          schoolName: "Cambridge School",
-        },
-      ]);
-
-      // Announce successful data load to screen readers
+    if (!loading && !error) {
       announce("Dashboard data loaded successfully", "polite");
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Failed to load dashboard data";
-      setError(errorMessage);
-      announce("Error loading dashboard data", "assertive");
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [loading, error, announce]);
+
+  // Load total schools
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSchools() {
+      try {
+        const { CachedSchoolService } = await import("@/lib/services/cachedSchoolService");
+        const s = await CachedSchoolService.getSchoolStats();
+        if (!cancelled) setTotalSchools(s.totalSchools);
+      } catch {
+        if (!cancelled) setTotalSchools(null);
+      }
+    }
+    loadSchools();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const formatRelativeTime = (date: Date) => {
     const now = new Date();
@@ -160,10 +116,7 @@ export function AdminDashboard() {
         type="generic"
         title="Failed to load dashboard"
         message={error}
-        onAction={() => {
-          setError(null);
-          loadDashboardData();
-        }}
+        onAction={() => window.location.reload()}
         actionLabel="Retry"
         className="max-w-md mx-auto mt-8"
       />
@@ -229,7 +182,7 @@ export function AdminDashboard() {
             <School className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalSchools}</div>
+            <div className="text-2xl font-bold">{totalSchools ?? '—'}</div>
             <p className="text-xs text-muted-foreground">+2 from last month</p>
           </CardContent>
         </Card>
@@ -242,9 +195,9 @@ export function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.activeProviders}</div>
+            <div className="text-2xl font-bold">{stats?.activeProviders ?? 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.activeSessions} currently checked in
+              {stats?.activeSessions ?? 0} currently checked in
             </p>
           </CardContent>
         </Card>
@@ -257,8 +210,10 @@ export function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.todayCheckIns}</div>
-            <p className="text-xs text-muted-foreground">+15% from yesterday</p>
+            <div className="text-2xl font-bold">{stats?.todayCheckIns ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats ? `${stats.percentChange >= 0 ? '+' : ''}${stats.percentChange}% from yesterday` : '—'}
+            </p>
           </CardContent>
         </Card>
 
@@ -271,10 +226,10 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.avgSessionDuration}h
+              {stats?.avgSessionDurationHours ?? 0}h
             </div>
             <p className="text-xs text-muted-foreground">
-              From {stats.totalSessions} total sessions
+              From {stats?.totalSessions ?? 0} total sessions
             </p>
           </CardContent>
         </Card>
@@ -294,22 +249,24 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 sm:space-y-4">
-              {recentActivity.map((activity) => (
+              {recent.map((activity) => (
                 <div key={activity.id} className="flex items-start space-x-3">
                   <div className="flex-shrink-0 mt-1">
-                    {getActivityIcon(activity.type)}
+                    {getActivityIcon(activity.type as any)}
                   </div>
                   <div className="flex-1 space-y-1 min-w-0">
                     <p className="text-sm font-medium leading-none break-words">
-                      {activity.message}
+                      {activity.type === 'check-in'
+                        ? `${activity.providerName || activity.userId} checked in at ${activity.locationName || activity.locationId}`
+                        : `${activity.providerName || activity.userId} checked out from ${activity.locationName || activity.locationId}`}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatRelativeTime(activity.timestamp)}
+                      {formatRelativeTime(activity.timestamp as any)}
                     </p>
                   </div>
                 </div>
               ))}
-              {recentActivity.length === 0 && (
+              {recent.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   No recent activity to show
                 </p>

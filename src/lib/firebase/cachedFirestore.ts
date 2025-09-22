@@ -190,19 +190,47 @@ export const getCachedLocationsByProvider = async (
   return FirebaseCache.cacheLocationData(
     cacheKey,
     async () => {
-      const q = query(
-        collection(db, COLLECTIONS.LOCATIONS),
-        where("assignedProviders", "array-contains", providerId)
+      // Prefer assignments collection for mapping provider->locations
+      const assignmentsSnap = await getDocs(
+        query(
+          collection(db, COLLECTIONS.ASSIGNMENTS),
+          where("userId", "==", providerId)
+        )
       );
+      const assignedLocationIds = assignmentsSnap.docs
+        .map((d) => (d.data() as any).locationId)
+        .filter(Boolean);
 
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(
-        (doc) =>
-          ({
-            id: doc.id,
-            ...(doc.data() as object),
-          } as Location)
-      );
+      if (assignedLocationIds.length === 0) {
+        // Fallback to legacy array-contains
+        const qLegacy = query(
+          collection(db, COLLECTIONS.LOCATIONS),
+          where("assignedProviders", "array-contains", providerId)
+        );
+        const legacySnap = await getDocs(qLegacy);
+        return legacySnap.docs.map(
+          (doc) => ({ id: doc.id, ...(doc.data() as object) } as Location)
+        );
+      }
+
+      // Fetch locations by IDs (batched)
+      const results: Location[] = [];
+      // Firestore doesn't support IN with more than 10 values; chunk if needed
+      const chunkSize = 10;
+      for (let i = 0; i < assignedLocationIds.length; i += chunkSize) {
+        const chunk = assignedLocationIds.slice(i, i + chunkSize);
+        const qIds = query(
+          collection(db, COLLECTIONS.LOCATIONS),
+          where("__name__", "in", chunk)
+        );
+        const snap = await getDocs(qIds);
+        results.push(
+          ...snap.docs.map((doc) =>
+            ({ id: doc.id, ...(doc.data() as object) } as Location)
+          )
+        );
+      }
+      return results;
     },
     {
       forceRefresh: options.forceRefresh,

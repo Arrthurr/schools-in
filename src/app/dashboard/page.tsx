@@ -1,7 +1,8 @@
 "use client";
 
 import { ProtectedRoute } from "../../components/auth/ProtectedRoute";
-import { useAuth } from "../../lib/hooks/useAuth";
+import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
+import { useProviderMetrics } from "@/lib/hooks/useProviderMetrics";
 import { SchoolList } from "../../components/provider/SchoolList";
 import { SessionStatus } from "../../components/provider/SessionStatus";
 import {
@@ -29,7 +30,7 @@ import {
 import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "../../../firebase.config";
-import { SchoolService } from "../../lib/services/schoolService";
+import { CachedSchoolService } from "@/lib/services/cachedSchoolService";
 import { Logo } from "../../components/ui/logo";
 
 interface SessionData {
@@ -46,7 +47,8 @@ interface SessionData {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user } = useCachedAuth();
+  const metrics = useProviderMetrics(user?.uid);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
   const [currentSession, setCurrentSession] = useState<SessionData | null>(
@@ -59,7 +61,7 @@ export default function DashboardPage() {
       if (!user?.uid) return;
 
       try {
-        const schools = await SchoolService.getAssignedSchools(user.uid);
+        const schools = await CachedSchoolService.getSchoolsByProvider(user.uid);
         setAssignedSchoolsCount(schools.length);
       } catch (error) {
         console.error("Error loading schools count:", error);
@@ -75,13 +77,7 @@ export default function DashboardPage() {
     setCurrentSession(null);
   };
 
-  const handlePauseSession = (sessionId: string) => {
-    console.log("Pausing session:", sessionId);
-  };
-
-  const handleResumeSession = (sessionId: string) => {
-    console.log("Resuming session:", sessionId);
-  };
+  // Pause/Resume not supported in v1
 
   const handleSignOut = async () => {
     try {
@@ -267,11 +263,11 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {currentSession ? "Active" : "Not Active"}
+                      {metrics.activeSession ? "Active" : "Not Active"}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {currentSession
-                        ? `At ${currentSession.schoolName}`
+                      {metrics.activeSession
+                        ? `At ${metrics.activeSession.locationId}`
                         : "No current session"}
                     </p>
                   </CardContent>
@@ -302,7 +298,7 @@ export default function DashboardPage() {
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">0</div>
+                    <div className="text-2xl font-bold">{metrics.weekly.completedCount}</div>
                     <p className="text-xs text-muted-foreground">
                       Sessions completed
                     </p>
@@ -317,7 +313,7 @@ export default function DashboardPage() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">0.0</div>
+                    <div className="text-2xl font-bold">{metrics.weekly.totalHours.toFixed(1)}</div>
                     <p className="text-xs text-muted-foreground">This week</p>
                   </CardContent>
                 </Card>
@@ -327,10 +323,8 @@ export default function DashboardPage() {
               <div className="grid gap-6 lg:grid-cols-2">
                 {/* Current Session Status */}
                 <SessionStatus
-                  currentSession={currentSession}
+                  currentSession={metrics.activeSession as any}
                   onEndSession={handleEndSession}
-                  onPauseSession={handlePauseSession}
-                  onResumeSession={handleResumeSession}
                 />
 
                 {/* School List */}

@@ -37,19 +37,22 @@ service cloud.firestore {
              data.updatedAt is timestamp;
     }
 
-    // Users collection rules - Enhanced security
+    // Users collection rules - Enhanced security per PRD
     match /users/{userId} {
       allow create: if isOwner(userId) && 
-                       isValidEmail(resource.data.email) &&
-                       hasValidTimestamp(resource.data) &&
-                       resource.data.role in ['provider', 'admin'];
+                       isValidEmail(request.resource.data.email) &&
+                       hasValidTimestamp(request.resource.data) &&
+                       request.resource.data.role in ['provider', 'admin'] &&
+                       request.resource.data.displayName is string &&
+                       request.resource.data.email is string &&
+                       request.resource.data.uid == userId;
       
       allow read: if isOwner(userId) || isAdmin();
       
       allow update: if (isOwner(userId) && 
                        // Users can only update specific fields
                        request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['displayName', 'photoURL', 'phoneNumber', 'preferences', 'updatedAt'])) ||
+                         .hasOnly(['displayName', 'photoURL', 'lastActiveAt', 'updatedAt'])) ||
                        (isAdmin() && hasValidTimestamp(request.resource.data));
       
       allow delete: if isAdmin();
@@ -58,19 +61,23 @@ service cloud.firestore {
       allow list: if isAdmin();
     }
 
-    // Locations collection rules - Enhanced with provider access
+    // Locations collection rules - Enhanced with provider access per PRD
     match /locations/{locationId} {
       allow read: if isAuthenticated() &&
                      (isAdmin() || 
-                      isProvider() &&
-                      resource.data.assignedProviders.hasAny([request.auth.uid]));
+                      (isProvider() && (
+                        // Primary: assignedProviders array (authoritative for RBAC per PRD)
+                        resource.data.assignedProviders.hasAny([request.auth.uid]) ||
+                        // Fallback: assignment document exists for (uid, locationId)
+                        exists(/databases/$(database)/documents/assignments/$(request.auth.uid + '_' + locationId))
+                      )));
       
       allow create, update: if isAdmin() && 
                               hasValidTimestamp(request.resource.data) &&
-                              request.resource.data.latitude is number &&
-                              request.resource.data.longitude is number &&
+                              request.resource.data.geo != null && // GeoPoint validation
                               request.resource.data.name is string &&
-                              request.resource.data.address is string;
+                              request.resource.data.address is string &&
+                              request.resource.data.assignedProviders is list;
       
       allow delete: if isAdmin();
       
@@ -78,32 +85,65 @@ service cloud.firestore {
       allow list: if isAdmin() || isProvider();
     }
 
-    // Sessions collection rules - Enhanced validation
+    // Sessions collection rules - Enhanced validation per PRD
     match /sessions/{sessionId} {
       allow create: if isAuthenticated() && 
                        isProvider() &&
                        isActiveUser() &&
                        request.auth.uid == request.resource.data.userId &&
                        hasValidTimestamp(request.resource.data) &&
-                       request.resource.data.status in ['active', 'paused'] &&
+                       request.resource.data.status in ['active'] && // Only allow creating active sessions
                        request.resource.data.locationId is string &&
-                       request.resource.data.startTime is timestamp;
+                       request.resource.data.startTime is timestamp &&
+                       request.resource.data.checkInMethod in ['geo', 'manual', 'offline-sync'] &&
+                       request.resource.data.distanceFromCenterAtCheckIn is number &&
+                       request.resource.data.dayKey is string;
       
       allow read: if isAuthenticated() &&
                      (isOwner(resource.data.userId) || isAdmin());
       
       allow update: if isAuthenticated() &&
-                       (isOwner(resource.data.userId) || isAdmin()) &&
                        hasValidTimestamp(request.resource.data) &&
-                       // Validate state transitions
-                       ((resource.data.status == 'active' && request.resource.data.status in ['paused', 'completed']) ||
-                        (resource.data.status == 'paused' && request.resource.data.status in ['active', 'completed']) ||
-                        (isAdmin() && request.resource.data.status in ['active', 'paused', 'completed', 'cancelled']));
+                       (
+                         // Providers can only update their own sessions with valid transitions
+                         (isOwner(resource.data.userId) && 
+                          isProvider() &&
+                          !resource.data.status == 'completed' && // Cannot update completed sessions
+                          (
+                            // Valid state transitions for providers
+                            (resource.data.status == 'active' && request.resource.data.status in ['paused', 'completed']) ||
+                            (resource.data.status == 'paused' && request.resource.data.status in ['active', 'completed'])
+                          )) ||
+                         // Admins have full control over all sessions and transitions
+                         (isAdmin() && request.resource.data.status in ['active', 'paused', 'completed', 'cancelled'])
+                       );
       
       allow delete: if isAdmin();
       
       // List operations with user filtering  
       allow list: if isAdmin() || isProvider();
+    }
+
+    // Assignments collection - provider-location relationships per PRD
+    match /assignments/{assignmentId} {
+      allow create: if isAdmin() &&
+                       hasValidTimestamp(request.resource.data) &&
+                       request.resource.data.userId is string &&
+                       request.resource.data.locationId is string &&
+                       assignmentId == request.resource.data.userId + '_' + request.resource.data.locationId;
+                       
+      allow update: if isAdmin() &&
+                       hasValidTimestamp(request.resource.data);
+                       
+      allow delete: if isAdmin();
+      
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        // Providers can read their own assignments only
+        assignmentId.matches('^' + request.auth.uid + '_.*$')
+      );
+      
+      allow list: if isAdmin();
     }
 
     // System metadata collection for analytics (admin only)
