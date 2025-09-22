@@ -11,7 +11,7 @@
 - `src/components/admin/CsvExportButton.tsx` - To create a new component that allows admins to export session data.
 - `firestore.rules` - To add security rules for the `sessions` and `assignments` collections and update existing rules.
 - `firestore.indexes.json` - To add the required composite indexes for efficient querying.
-- `functions/src/index.ts` - To add a callable function (`startSession`) to enforce the "one active session per provider" rule atomically.
+- `functions/src/index.js` - To add a callable function (`startSession`) to enforce the "one active session per provider" rule atomically.
 
 ### Notes
 
@@ -28,12 +28,12 @@
   - [x] 1.4 Update `firestore.indexes.json` with the composite indexes specified in the PRD for the `sessions` collection.
   - [x] 1.5 Update `firestore.rules` to include security rules for `sessions` and `assignments`, ensuring providers can only manage their own sessions and admins have full access.
 
-- [ ] **2.0 Core Services: Session and Data Management**
+- [x] **2.0 Core Services: Session and Data Management**
 
-  - [ ] 2.1 Create a callable cloud function in `functions/src/index.ts` named `startSession` that checks if a provider already has an active session before creating a new one.
-  - [ ] 2.2 Create `src/lib/services/cachedSessionService.ts` to handle all Firestore interactions for sessions (create, update, fetch).
-  - [ ] 2.3 Implement `startSession` in the service, which calls the new callable function and validates the provider's location against the geofence.
-  - [ ] 2.4 Implement `endSession` in the service to update the session status, set the end time, and calculate the final duration.
+  - [x] 2.1 Create a callable cloud function in `functions/src/index.ts` named `startSession` that checks if a provider already has an active session before creating a new one.
+  - [x] 2.2 Create `src/lib/services/cachedSessionService.ts` to handle all Firestore interactions for sessions (create, update, fetch).
+  - [x] 2.3 Implement `startSession` in the service, which calls the new callable function and validates the provider's location against the geofence.
+  - [x] 2.4 Implement `endSession` in the service to update the session status, set the end time, and calculate the final duration.
 
 - [ ] **3.0 Provider Dashboard: UI Implementation**
 

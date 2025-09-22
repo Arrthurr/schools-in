@@ -9,6 +9,7 @@ import {
   enableMultiTabIndexedDbPersistence,
 } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { getPerformance } from "firebase/performance";
 
 // Production Firebase configuration. Keys are stored in environment variables for security.
@@ -33,6 +34,9 @@ export const db = getFirestore(app);
 // Initialize Firebase Storage
 export const storage = getStorage(app);
 
+// Initialize Firebase Functions
+export const functions = getFunctions(app);
+
 // Initialize Firebase Performance Monitoring (production only)
 export let performance = null;
 if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
@@ -50,6 +54,7 @@ if (process.env.NODE_ENV === "development") {
   connectAuthEmulator(auth, "http://localhost:9099");
   connectFirestoreEmulator(db, "localhost", 8080);
   connectStorageEmulator(storage, "localhost", 9199);
+  connectFunctionsEmulator(functions, "localhost", 5001);
 }
 
 // Enable offline persistence in production

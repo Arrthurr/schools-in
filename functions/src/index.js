@@ -18,6 +18,140 @@ const _PRODUCTION_CONFIG = {
 
 const twelveHoursInMs = 12 * 60 * 60 * 1000;
 
+// Callable function to start a session with atomic checks
+exports.startSession = onCall(async (request) => {
+  try {
+    const { data, auth } = request;
+
+    // Authentication check
+    if (!auth) {
+      throw new Error("Authentication required");
+    }
+
+    // Validate input data
+    if (!data || !data.locationId || !data.startTime || !data.checkInMethod || !data.distanceFromCenterAtCheckIn || !data.dayKey) {
+      throw new Error("Missing required session data: locationId, startTime, checkInMethod, distanceFromCenterAtCheckIn, dayKey");
+    }
+
+    const db = admin.firestore();
+    const userId = auth.uid;
+
+    // Use a transaction to atomically check for existing active sessions and create new one
+    const result = await db.runTransaction(async (transaction) => {
+      // Check if user exists and is active
+      const userRef = db.collection("users").doc(userId);
+      const userDoc = await transaction.get(userRef);
+      
+      if (!userDoc.exists) {
+        throw new Error("User not found");
+      }
+
+      const userData = userDoc.data();
+      if (userData.role !== 'provider') {
+        throw new Error("Only providers can start sessions");
+      }
+
+      if (userData.isActive === false || userData.disabled === true) {
+        throw new Error("User account is not active");
+      }
+
+      // Check for existing active or paused sessions for this provider
+      const existingSessionsQuery = db.collection("sessions")
+        .where("userId", "==", userId)
+        .where("status", "in", ["active", "paused"]);
+      
+      const existingSessionsSnapshot = await transaction.get(existingSessionsQuery);
+
+      if (!existingSessionsSnapshot.empty) {
+        const existingSession = existingSessionsSnapshot.docs[0];
+        throw new Error(`Provider already has an ${existingSession.data().status} session: ${existingSession.id}`);
+      }
+
+      // Verify the location exists and provider has access
+      const locationRef = db.collection("locations").doc(data.locationId);
+      const locationDoc = await transaction.get(locationRef);
+      
+      if (!locationDoc.exists) {
+        throw new Error("Location not found");
+      }
+
+      const locationData = locationDoc.data();
+      if (locationData.active === false) {
+        throw new Error("Location is not active");
+      }
+
+      // Check if provider is assigned to this location
+      if (!locationData.assignedProviders || !locationData.assignedProviders.includes(userId)) {
+        throw new Error("Provider is not assigned to this location");
+      }
+
+      // Create the new session document
+      const sessionData = {
+        id: null, // Will be set after creation
+        userId: userId,
+        locationId: data.locationId,
+        startTime: admin.firestore.Timestamp.fromDate(new Date(data.startTime)),
+        endTime: null,
+        status: 'active',
+        checkInMethod: data.checkInMethod,
+        distanceFromCenterAtCheckIn: data.distanceFromCenterAtCheckIn,
+        dayKey: data.dayKey,
+        notes: data.notes || '',
+        createdAt: admin.firestore.Timestamp.now(),
+        updatedAt: admin.firestore.Timestamp.now()
+      };
+
+      // Add optional fields if provided
+      if (data.durationMinutes !== undefined) {
+        sessionData.durationMinutes = data.durationMinutes;
+      }
+
+      const sessionRef = db.collection("sessions").doc();
+      sessionData.id = sessionRef.id;
+      
+      transaction.set(sessionRef, sessionData);
+
+      // Update user's last activity
+      transaction.update(userRef, {
+        lastActiveAt: admin.firestore.Timestamp.now()
+      });
+
+      return {
+        sessionId: sessionRef.id,
+        sessionData: sessionData
+      };
+    });
+
+    logger.info(`Session started successfully for user ${userId}: ${result.sessionId}`);
+    
+    return {
+      success: true,
+      sessionId: result.sessionId,
+      session: result.sessionData
+    };
+
+  } catch (error) {
+    logger.error("Error starting session:", error);
+    
+    // Return user-friendly error messages
+    if (error.message.includes("already has an")) {
+      throw new Error("You already have an active session. Please end your current session before starting a new one.");
+    } else if (error.message.includes("not assigned")) {
+      throw new Error("You are not authorized to check in at this location.");
+    } else if (error.message.includes("not active")) {
+      throw new Error("This location is currently unavailable for check-in.");
+    } else if (error.message.includes("User not found")) {
+      throw new Error("User account not found. Please contact support.");
+    } else if (error.message.includes("Only providers")) {
+      throw new Error("Only provider accounts can start sessions.");
+    } else if (error.message.includes("Missing required")) {
+      throw new Error("Invalid session data provided.");
+    }
+    
+    throw new Error("Failed to start session. Please try again.");
+  }
+});
+
 exports.cleanupStaleSessions = onSchedule("every 1 hours", async (_event) => {
   try {
     const db = admin.firestore();
