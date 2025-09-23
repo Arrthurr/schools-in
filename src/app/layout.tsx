@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/provider/AuthProvider";
 import ClientLayout from "@/components/layout/ClientLayout";
-import { SkipToContent } from "@/lib/accessibility.tsx";
+
 import { NetworkStatusIndicator } from "@/components/common/NetworkStatusIndicator";
 
 export function generateMetadata(): Metadata {
@@ -56,7 +56,6 @@ export default function RootLayout({
       <body
         className={`${inter.className} h-full bg-background text-foreground antialiased`}
       >
-        <SkipToContent />
         <AuthProvider>
           <div className="min-h-full safe-area-inset">
             <ClientLayout>{children}</ClientLayout>
