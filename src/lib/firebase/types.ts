@@ -1,8 +1,8 @@
-import { Timestamp, GeoPoint } from 'firebase/firestore';
+import { Timestamp, GeoPoint } from "firebase/firestore";
 
 export interface User {
   uid: string;
-  role: 'provider' | 'admin';
+  role: "provider" | "admin";
   displayName: string;
   email: string;
   photoURL?: string;
@@ -42,9 +42,9 @@ export interface Session {
   locationId: string;
   startTime: Timestamp;
   endTime?: Timestamp; // optional until completed
-  status: 'active' | 'paused' | 'completed' | 'cancelled';
+  status: "active" | "paused" | "completed" | "cancelled";
   durationMinutes?: number; // derived on completion; excludes paused time
-  checkInMethod: 'geo' | 'manual' | 'offline-sync';
+  checkInMethod: "geo" | "manual" | "offline-sync";
   distanceFromCenterAtCheckIn: number; // in meters
   dayKey: string; // YYYY-MM-DD for America/Chicago, computed from startTime
   notes?: string;
@@ -61,14 +61,14 @@ export interface Assignment {
   userId: string;
   locationId: string;
   active?: boolean;
-  role?: 'provider';
+  role?: "provider";
   assignedAt?: Timestamp;
   updatedAt?: Timestamp;
 }
 
 // Additional utility types
 export interface UserFilters {
-  role?: 'provider' | 'admin';
+  role?: "provider" | "admin";
   search?: string;
   isActive?: boolean;
 }
@@ -120,7 +120,7 @@ export interface AdminMetrics {
 
 export interface SessionActivity {
   id: string;
-  type: 'check-in' | 'check-out' | 'pause' | 'resume';
+  type: "check-in" | "check-out" | "pause" | "resume";
   timestamp: Timestamp;
   userId: string;
   userName: string;

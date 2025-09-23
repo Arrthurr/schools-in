@@ -108,7 +108,7 @@ service cloud.firestore {
                          // Providers can only update their own sessions with valid transitions
                          (isOwner(resource.data.userId) && 
                           isProvider() &&
-                          !resource.data.status == 'completed' && // Cannot update completed sessions
+                          resource.data.status != 'completed' && // Cannot update completed sessions
                           (
                             // Valid state transitions for providers
                             (resource.data.status == 'active' && request.resource.data.status in ['paused', 'completed']) ||

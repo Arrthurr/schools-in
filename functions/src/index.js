@@ -29,8 +29,17 @@ exports.startSession = onCall(async (request) => {
     }
 
     // Validate input data
-    if (!data || !data.locationId || !data.startTime || !data.checkInMethod || !data.distanceFromCenterAtCheckIn || !data.dayKey) {
-      throw new Error("Missing required session data: locationId, startTime, checkInMethod, distanceFromCenterAtCheckIn, dayKey");
+    if (
+      !data ||
+      !data.locationId ||
+      !data.startTime ||
+      !data.checkInMethod ||
+      !data.distanceFromCenterAtCheckIn ||
+      !data.dayKey
+    ) {
+      throw new Error(
+        "Missing required session data: locationId, startTime, checkInMethod, distanceFromCenterAtCheckIn, dayKey"
+      );
     }
 
     const db = admin.firestore();
@@ -41,13 +50,13 @@ exports.startSession = onCall(async (request) => {
       // Check if user exists and is active
       const userRef = db.collection("users").doc(userId);
       const userDoc = await transaction.get(userRef);
-      
+
       if (!userDoc.exists) {
         throw new Error("User not found");
       }
 
       const userData = userDoc.data();
-      if (userData.role !== 'provider') {
+      if (userData.role !== "provider") {
         throw new Error("Only providers can start sessions");
       }
 
@@ -56,21 +65,28 @@ exports.startSession = onCall(async (request) => {
       }
 
       // Check for existing active or paused sessions for this provider
-      const existingSessionsQuery = db.collection("sessions")
+      const existingSessionsQuery = db
+        .collection("sessions")
         .where("userId", "==", userId)
         .where("status", "in", ["active", "paused"]);
-      
-      const existingSessionsSnapshot = await transaction.get(existingSessionsQuery);
+
+      const existingSessionsSnapshot = await transaction.get(
+        existingSessionsQuery
+      );
 
       if (!existingSessionsSnapshot.empty) {
         const existingSession = existingSessionsSnapshot.docs[0];
-        throw new Error(`Provider already has an ${existingSession.data().status} session: ${existingSession.id}`);
+        throw new Error(
+          `Provider already has an ${existingSession.data().status} session: ${
+            existingSession.id
+          }`
+        );
       }
 
       // Verify the location exists and provider has access
       const locationRef = db.collection("locations").doc(data.locationId);
       const locationDoc = await transaction.get(locationRef);
-      
+
       if (!locationDoc.exists) {
         throw new Error("Location not found");
       }
@@ -81,7 +97,10 @@ exports.startSession = onCall(async (request) => {
       }
 
       // Check if provider is assigned to this location
-      if (!locationData.assignedProviders || !locationData.assignedProviders.includes(userId)) {
+      if (
+        !locationData.assignedProviders ||
+        !locationData.assignedProviders.includes(userId)
+      ) {
         throw new Error("Provider is not assigned to this location");
       }
 
@@ -92,13 +111,13 @@ exports.startSession = onCall(async (request) => {
         locationId: data.locationId,
         startTime: admin.firestore.Timestamp.fromDate(new Date(data.startTime)),
         endTime: null,
-        status: 'active',
+        status: "active",
         checkInMethod: data.checkInMethod,
         distanceFromCenterAtCheckIn: data.distanceFromCenterAtCheckIn,
         dayKey: data.dayKey,
-        notes: data.notes || '',
+        notes: data.notes || "",
         createdAt: admin.firestore.Timestamp.now(),
-        updatedAt: admin.firestore.Timestamp.now()
+        updatedAt: admin.firestore.Timestamp.now(),
       };
 
       // Add optional fields if provided
@@ -108,34 +127,37 @@ exports.startSession = onCall(async (request) => {
 
       const sessionRef = db.collection("sessions").doc();
       sessionData.id = sessionRef.id;
-      
+
       transaction.set(sessionRef, sessionData);
 
       // Update user's last activity
       transaction.update(userRef, {
-        lastActiveAt: admin.firestore.Timestamp.now()
+        lastActiveAt: admin.firestore.Timestamp.now(),
       });
 
       return {
         sessionId: sessionRef.id,
-        sessionData: sessionData
+        sessionData: sessionData,
       };
     });
 
-    logger.info(`Session started successfully for user ${userId}: ${result.sessionId}`);
-    
+    logger.info(
+      `Session started successfully for user ${userId}: ${result.sessionId}`
+    );
+
     return {
       success: true,
       sessionId: result.sessionId,
-      session: result.sessionData
+      session: result.sessionData,
     };
-
   } catch (error) {
     logger.error("Error starting session:", error);
-    
+
     // Return user-friendly error messages
     if (error.message.includes("already has an")) {
-      throw new Error("You already have an active session. Please end your current session before starting a new one.");
+      throw new Error(
+        "You already have an active session. Please end your current session before starting a new one."
+      );
     } else if (error.message.includes("not assigned")) {
       throw new Error("You are not authorized to check in at this location.");
     } else if (error.message.includes("not active")) {
@@ -147,7 +169,7 @@ exports.startSession = onCall(async (request) => {
     } else if (error.message.includes("Missing required")) {
       throw new Error("Invalid session data provided.");
     }
-    
+
     throw new Error("Failed to start session. Please try again.");
   }
 });

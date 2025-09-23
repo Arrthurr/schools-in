@@ -1,13 +1,28 @@
 "use client";
 
-import React from 'react';
-import { Clock, MapPin, TrendingUp, Activity, Play, Pause, Square, Timer } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Alert, AlertDescription } from '../ui/alert';
-import { useProviderMetrics } from '../../lib/hooks/useProviderMetrics';
-import { formatDuration } from '../../lib/utils/time';
+import React from "react";
+import {
+  Clock,
+  MapPin,
+  TrendingUp,
+  Activity,
+  Play,
+  Pause,
+  Square,
+  Timer,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { Alert, AlertDescription } from "../ui/alert";
+import { useProviderMetrics } from "../../lib/hooks/useProviderMetrics";
+import { formatDuration } from "../../lib/utils/time";
 
 interface ProviderDashboardCardsProps {
   onStartSession?: (locationId: string) => void;
@@ -19,10 +34,10 @@ interface ProviderDashboardCardsProps {
  * Provider Dashboard Cards - Real-time metrics and session management
  * Displays current session status and weekly metrics for providers
  */
-export function ProviderDashboardCards({ 
-  onStartSession, 
+export function ProviderDashboardCards({
+  onStartSession,
   onSelectLocation,
-  availableLocations = []
+  availableLocations = [],
 }: ProviderDashboardCardsProps) {
   const {
     currentSession,
@@ -37,7 +52,7 @@ export function ProviderDashboardCards({
     sessionDuration,
     canStartSession,
     canEndSession,
-    refresh
+    refresh,
   } = useProviderMetrics();
 
   const handleStartSession = async () => {
@@ -46,7 +61,7 @@ export function ProviderDashboardCards({
       try {
         await startSession(availableLocations[0].id);
       } catch (error) {
-        console.error('Failed to start session:', error);
+        console.error("Failed to start session:", error);
       }
     } else if (onSelectLocation) {
       // Multiple locations - show selection dialog
@@ -59,8 +74,10 @@ export function ProviderDashboardCards({
 
   const getCurrentSessionLocationName = () => {
     if (!currentSession) return null;
-    const location = availableLocations.find(loc => loc.id === currentSession.locationId);
-    return location?.name || 'Unknown Location';
+    const location = availableLocations.find(
+      (loc) => loc.id === currentSession.locationId
+    );
+    return location?.name || "Unknown Location";
   };
 
   if (error) {
@@ -68,9 +85,9 @@ export function ProviderDashboardCards({
       <Alert variant="destructive" className="mb-6">
         <AlertDescription>
           {error}
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={refresh}
             className="ml-2"
           >
@@ -101,14 +118,14 @@ export function ProviderDashboardCards({
                     at {getCurrentSessionLocationName()}
                   </p>
                 </div>
-                <Badge 
+                <Badge
                   variant={isSessionActive ? "default" : "secondary"}
                   className="capitalize"
                 >
                   {currentSession.status}
                 </Badge>
               </div>
-              
+
               <div className="flex gap-2">
                 {isSessionActive && (
                   <Button
@@ -121,8 +138,8 @@ export function ProviderDashboardCards({
                     Pause
                   </Button>
                 )}
-                
-                {currentSession.status === 'paused' && (
+
+                {currentSession.status === "paused" && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -133,7 +150,7 @@ export function ProviderDashboardCards({
                     Resume
                   </Button>
                 )}
-                
+
                 {canEndSession && (
                   <Button
                     variant="destructive"
@@ -155,7 +172,7 @@ export function ProviderDashboardCards({
                   Ready to start a new session
                 </p>
               </div>
-              
+
               {canStartSession && availableLocations.length > 0 && (
                 <Button
                   onClick={handleStartSession}
@@ -166,7 +183,7 @@ export function ProviderDashboardCards({
                   Start Session
                 </Button>
               )}
-              
+
               {availableLocations.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   No locations available
@@ -184,10 +201,10 @@ export function ProviderDashboardCards({
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{weeklyMetrics.weeklySessionsCount}</div>
-          <p className="text-xs text-muted-foreground">
-            completed sessions
-          </p>
+          <div className="text-2xl font-bold">
+            {weeklyMetrics.weeklySessionsCount}
+          </div>
+          <p className="text-xs text-muted-foreground">completed sessions</p>
           <div className="mt-2 text-sm text-muted-foreground">
             {weeklyMetrics.weeklyTotalHours.toFixed(1)} hours total
           </div>
@@ -201,15 +218,16 @@ export function ProviderDashboardCards({
           <MapPin className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{weeklyMetrics.locationsVisited}</div>
-          <p className="text-xs text-muted-foreground">
-            visited this week
-          </p>
+          <div className="text-2xl font-bold">
+            {weeklyMetrics.locationsVisited}
+          </div>
+          <p className="text-xs text-muted-foreground">visited this week</p>
           {weeklyMetrics.mostVisitedLocation && (
             <div className="mt-2 text-sm text-muted-foreground">
-              Most visited: {availableLocations.find(loc => 
-                loc.id === weeklyMetrics.mostVisitedLocation
-              )?.name || 'Unknown'}
+              Most visited:{" "}
+              {availableLocations.find(
+                (loc) => loc.id === weeklyMetrics.mostVisitedLocation
+              )?.name || "Unknown"}
             </div>
           )}
         </CardContent>
@@ -225,9 +243,7 @@ export function ProviderDashboardCards({
           <div className="text-2xl font-bold">
             {formatDuration(weeklyMetrics.averageSessionDuration)}
           </div>
-          <p className="text-xs text-muted-foreground">
-            per session
-          </p>
+          <p className="text-xs text-muted-foreground">per session</p>
           <div className="mt-2 text-sm text-muted-foreground">
             {weeklyMetrics.completionRate.toFixed(0)}% completion rate
           </div>
@@ -244,16 +260,15 @@ export function ProviderDashboardCards({
           <div className="text-2xl font-bold">
             {weeklyMetrics.completionRate.toFixed(0)}%
           </div>
-          <p className="text-xs text-muted-foreground">
-            completion rate
-          </p>
+          <p className="text-xs text-muted-foreground">completion rate</p>
           <div className="mt-2 space-y-1">
             <div className="text-sm text-muted-foreground">
               Longest: {formatDuration(weeklyMetrics.longestSessionDuration)}
             </div>
             {weeklyMetrics.shortestSessionDuration > 0 && (
               <div className="text-sm text-muted-foreground">
-                Shortest: {formatDuration(weeklyMetrics.shortestSessionDuration)}
+                Shortest:{" "}
+                {formatDuration(weeklyMetrics.shortestSessionDuration)}
               </div>
             )}
           </div>

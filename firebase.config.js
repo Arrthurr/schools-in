@@ -47,8 +47,6 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
   }
 }
 
-
-
 // Development emulators
 if (process.env.NODE_ENV === "development") {
   connectAuthEmulator(auth, "http://localhost:9099");

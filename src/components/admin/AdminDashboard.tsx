@@ -27,6 +27,7 @@ import {
 import { SkeletonCard, Skeleton } from "@/components/ui/skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/error-empty-states";
 import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
+import { CsvExportButton } from "@/components/admin/CsvExportButton";
 import Link from "next/link";
 
 interface DashboardStats {
@@ -66,7 +67,9 @@ export function AdminDashboard() {
     let cancelled = false;
     async function loadSchools() {
       try {
-        const { CachedSchoolService } = await import("@/lib/services/cachedSchoolService");
+        const { CachedSchoolService } = await import(
+          "@/lib/services/cachedSchoolService"
+        );
         const s = await CachedSchoolService.getSchoolStats();
         if (!cancelled) setTotalSchools(s.totalSchools);
       } catch {
@@ -182,7 +185,7 @@ export function AdminDashboard() {
             <School className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalSchools ?? '—'}</div>
+            <div className="text-2xl font-bold">{totalSchools ?? "—"}</div>
             <p className="text-xs text-muted-foreground">+2 from last month</p>
           </CardContent>
         </Card>
@@ -195,7 +198,9 @@ export function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeProviders ?? 0}</div>
+            <div className="text-2xl font-bold">
+              {stats?.activeProviders ?? 0}
+            </div>
             <p className="text-xs text-muted-foreground">
               {stats?.activeSessions ?? 0} currently checked in
             </p>
@@ -210,9 +215,15 @@ export function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.todayCheckIns ?? 0}</div>
+            <div className="text-2xl font-bold">
+              {stats?.todayCheckIns ?? 0}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {stats ? `${stats.percentChange >= 0 ? '+' : ''}${stats.percentChange}% from yesterday` : '—'}
+              {stats
+                ? `${stats.percentChange >= 0 ? "+" : ""}${
+                    stats.percentChange
+                  }% from yesterday`
+                : "—"}
             </p>
           </CardContent>
         </Card>
@@ -256,9 +267,17 @@ export function AdminDashboard() {
                   </div>
                   <div className="flex-1 space-y-1 min-w-0">
                     <p className="text-sm font-medium leading-none break-words">
-                      {activity.type === 'check-in'
-                        ? `${activity.providerName || activity.userId} checked in at ${activity.locationName || activity.locationId}`
-                        : `${activity.providerName || activity.userId} checked out from ${activity.locationName || activity.locationId}`}
+                      {activity.type === "check-in"
+                        ? `${
+                            activity.providerName || activity.userId
+                          } checked in at ${
+                            activity.locationName || activity.locationId
+                          }`
+                        : `${
+                            activity.providerName || activity.userId
+                          } checked out from ${
+                            activity.locationName || activity.locationId
+                          }`}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatRelativeTime(activity.timestamp as any)}
@@ -302,6 +321,10 @@ export function AdminDashboard() {
                 <span className="truncate">View Reports</span>
               </Button>
             </Link>
+            <CsvExportButton
+              variant="outline"
+              className="w-full justify-start"
+            />
             <Button
               variant="outline"
               className="w-full justify-start touch-target"

@@ -1,18 +1,24 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Button } from '../ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Alert, AlertDescription } from '../ui/alert';
-import { Badge } from '../ui/badge';
-import { ProviderDashboardCards } from './ProviderDashboardCards';
-import { useProviderMetrics } from '../../lib/hooks/useProviderMetrics';
+import React, { useState } from "react";
+import { Button } from "../ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { Alert, AlertDescription } from "../ui/alert";
+import { Badge } from "../ui/badge";
+import { ProviderDashboardCards } from "./ProviderDashboardCards";
+import { useProviderMetrics } from "../../lib/hooks/useProviderMetrics";
 
 // Mock locations for testing
 const mockLocations = [
-  { id: 'loc1', name: 'Elementary School A' },
-  { id: 'loc2', name: 'High School B' },
-  { id: 'loc3', name: 'Middle School C' }
+  { id: "loc1", name: "Elementary School A" },
+  { id: "loc2", name: "High School B" },
+  { id: "loc3", name: "Middle School C" },
 ];
 
 /**
@@ -20,10 +26,10 @@ const mockLocations = [
  * Demonstrates and tests the complete provider dashboard functionality
  */
 export function ProviderDashboardTest() {
-  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
   const [showLocationSelector, setShowLocationSelector] = useState(false);
   const [testResults, setTestResults] = useState<string[]>([]);
-  
+
   const {
     currentSession,
     weeklyMetrics,
@@ -35,49 +41,74 @@ export function ProviderDashboardTest() {
     sessionDuration,
     canStartSession,
     canEndSession,
-    refresh
+    refresh,
   } = useProviderMetrics();
 
   const addTestResult = (result: string) => {
-    setTestResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${result}`]);
+    setTestResults((prev) => [
+      ...prev,
+      `${new Date().toLocaleTimeString()}: ${result}`,
+    ]);
   };
 
   const handleStartTestSession = async (locationId: string) => {
     try {
-      await startSession(locationId, 'manual', 0);
-      addTestResult(`✅ Started session at ${mockLocations.find(l => l.id === locationId)?.name}`);
+      await startSession(locationId, "manual", 0);
+      addTestResult(
+        `✅ Started session at ${
+          mockLocations.find((l) => l.id === locationId)?.name
+        }`
+      );
       setShowLocationSelector(false);
     } catch (err) {
-      addTestResult(`❌ Failed to start session: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      addTestResult(
+        `❌ Failed to start session: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     }
   };
 
   const handleEndTestSession = async () => {
     try {
-      await endSession('Test session completed');
-      addTestResult('✅ Session ended successfully');
+      await endSession("Test session completed");
+      addTestResult("✅ Session ended successfully");
     } catch (err) {
-      addTestResult(`❌ Failed to end session: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      addTestResult(
+        `❌ Failed to end session: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     }
   };
 
   const runComprehensiveTest = async () => {
-    addTestResult('🧪 Starting comprehensive dashboard test...');
-    
+    addTestResult("🧪 Starting comprehensive dashboard test...");
+
     // Test metrics loading
     try {
       await refresh();
-      addTestResult('✅ Metrics refresh successful');
+      addTestResult("✅ Metrics refresh successful");
     } catch (err) {
-      addTestResult(`❌ Metrics refresh failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      addTestResult(
+        `❌ Metrics refresh failed: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     }
 
     // Test state validation
-    addTestResult(`📊 Current state: ${currentSession ? 'Has active session' : 'No active session'}`);
+    addTestResult(
+      `📊 Current state: ${
+        currentSession ? "Has active session" : "No active session"
+      }`
+    );
     addTestResult(`📈 Weekly sessions: ${weeklyMetrics.weeklySessionsCount}`);
     addTestResult(`⏱️ Session duration: ${sessionDuration} minutes`);
     addTestResult(`🏢 Locations visited: ${weeklyMetrics.locationsVisited}`);
-    addTestResult(`📉 Completion rate: ${weeklyMetrics.completionRate.toFixed(1)}%`);
+    addTestResult(
+      `📉 Completion rate: ${weeklyMetrics.completionRate.toFixed(1)}%`
+    );
   };
 
   return (
@@ -85,18 +116,14 @@ export function ProviderDashboardTest() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Provider Dashboard Test</h1>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={runComprehensiveTest}
             disabled={isLoading}
           >
             Run Test
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={refresh}
-            disabled={isLoading}
-          >
+          <Button variant="outline" onClick={refresh} disabled={isLoading}>
             Refresh
           </Button>
         </div>
@@ -114,11 +141,13 @@ export function ProviderDashboardTest() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Select Location</CardTitle>
-            <CardDescription>Choose a location to start your session</CardDescription>
+            <CardDescription>
+              Choose a location to start your session
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-2">
-              {mockLocations.map(location => (
+              {mockLocations.map((location) => (
                 <Button
                   key={location.id}
                   variant="outline"
@@ -130,8 +159,8 @@ export function ProviderDashboardTest() {
                 </Button>
               ))}
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => setShowLocationSelector(false)}
               className="w-full"
             >
@@ -177,15 +206,22 @@ export function ProviderDashboardTest() {
                 </div>
               </div>
             </div>
-            
+
             <div>
               <h4 className="font-medium mb-2">Metrics Summary</h4>
               <div className="space-y-2 text-sm">
                 <div>Weekly Sessions: {weeklyMetrics.weeklySessionsCount}</div>
-                <div>Weekly Hours: {weeklyMetrics.weeklyTotalHours.toFixed(1)}</div>
+                <div>
+                  Weekly Hours: {weeklyMetrics.weeklyTotalHours.toFixed(1)}
+                </div>
                 <div>Locations: {weeklyMetrics.locationsVisited}</div>
-                <div>Avg Duration: {weeklyMetrics.averageSessionDuration.toFixed(0)}min</div>
-                <div>Completion: {weeklyMetrics.completionRate.toFixed(1)}%</div>
+                <div>
+                  Avg Duration:{" "}
+                  {weeklyMetrics.averageSessionDuration.toFixed(0)}min
+                </div>
+                <div>
+                  Completion: {weeklyMetrics.completionRate.toFixed(1)}%
+                </div>
               </div>
             </div>
           </div>
@@ -207,18 +243,23 @@ export function ProviderDashboardTest() {
         <CardContent>
           <div className="space-y-1 font-mono text-sm max-h-60 overflow-y-auto">
             {testResults.length === 0 ? (
-              <div className="text-muted-foreground">Click "Run Test" to start testing...</div>
+              <div className="text-muted-foreground">
+                Click "Run Test" to start testing...
+              </div>
             ) : (
               testResults.map((result, index) => (
-                <div key={index} className="py-1 border-b border-border/50 last:border-0">
+                <div
+                  key={index}
+                  className="py-1 border-b border-border/50 last:border-0"
+                >
                   {result}
                 </div>
               ))
             )}
           </div>
           {testResults.length > 0 && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => setTestResults([])}
               className="mt-4"

@@ -61,7 +61,9 @@ export default function DashboardPage() {
       if (!user?.uid) return;
 
       try {
-        const schools = await CachedSchoolService.getSchoolsByProvider(user.uid);
+        const schools = await CachedSchoolService.getSchoolsByProvider(
+          user.uid
+        );
         setAssignedSchoolsCount(schools.length);
       } catch (error) {
         console.error("Error loading schools count:", error);
@@ -298,7 +300,9 @@ export default function DashboardPage() {
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{metrics.weekly.completedCount}</div>
+                    <div className="text-2xl font-bold">
+                      {metrics.weeklyMetrics?.weeklySessionsCount || 0}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       Sessions completed
                     </p>
@@ -313,7 +317,11 @@ export default function DashboardPage() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{metrics.weekly.totalHours.toFixed(1)}</div>
+                    <div className="text-2xl font-bold">
+                      {(metrics.weeklyMetrics?.weeklyTotalHours || 0).toFixed(
+                        1
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">This week</p>
                   </CardContent>
                 </Card>

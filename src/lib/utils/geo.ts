@@ -1,4 +1,4 @@
-import { GeoPoint } from 'firebase/firestore';
+import { GeoPoint } from "firebase/firestore";
 
 // Earth's radius in meters
 const EARTH_RADIUS_METERS = 6371000;
@@ -83,7 +83,11 @@ export function isWithinGeofence(
   locationGeo: GeoPoint,
   radiusMeters: number = 100 // Default radius from PRD
 ): boolean {
-  const distance = calculateDistanceToLocation(userLatitude, userLongitude, locationGeo);
+  const distance = calculateDistanceToLocation(
+    userLatitude,
+    userLongitude,
+    locationGeo
+  );
   return distance <= radiusMeters;
 }
 
@@ -100,10 +104,14 @@ export function validateGeofence(
   distance: number;
   isWithinGeofence: boolean;
 } {
-  const distance = calculateDistanceToLocation(userLatitude, userLongitude, locationGeo);
+  const distance = calculateDistanceToLocation(
+    userLatitude,
+    userLongitude,
+    locationGeo
+  );
   return {
     distance,
-    isWithinGeofence: distance <= radiusMeters
+    isWithinGeofence: distance <= radiusMeters,
   };
 }
 
@@ -118,7 +126,10 @@ export function createGeoPoint(latitude: number, longitude: number): GeoPoint {
 /**
  * Validate that coordinates are valid latitude and longitude values
  */
-export function areValidCoordinates(latitude: number, longitude: number): boolean {
+export function areValidCoordinates(
+  latitude: number,
+  longitude: number
+): boolean {
   return (
     latitude >= -90 &&
     latitude <= 90 &&
@@ -133,23 +144,21 @@ export function areValidCoordinates(latitude: number, longitude: number): boolea
  * Get the user's current position using the Geolocation API
  * Returns a Promise that resolves with coordinates or rejects with error
  */
-export function getCurrentPosition(options?: PositionOptions): Promise<GeolocationPosition> {
+export function getCurrentPosition(
+  options?: PositionOptions
+): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by this browser'));
+      reject(new Error("Geolocation is not supported by this browser"));
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      resolve,
-      reject,
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
-        ...options
-      }
-    );
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000,
+      ...options,
+    });
   });
 }
 
@@ -168,16 +177,21 @@ export async function validateCurrentPositionAgainstGeofence(
 }> {
   const position = await getCurrentPosition();
   const { latitude, longitude } = position.coords;
-  
+
   if (!areValidCoordinates(latitude, longitude)) {
-    throw new Error('Invalid coordinates received from device');
+    throw new Error("Invalid coordinates received from device");
   }
-  
-  const validation = validateGeofence(latitude, longitude, locationGeo, radiusMeters);
-  
+
+  const validation = validateGeofence(
+    latitude,
+    longitude,
+    locationGeo,
+    radiusMeters
+  );
+
   return {
     latitude,
     longitude,
-    ...validation
+    ...validation,
   };
 }
