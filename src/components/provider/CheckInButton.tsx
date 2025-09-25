@@ -61,7 +61,6 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     currentSession,
   } = useSession();
 
-
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [locationError, setLocationError] = useState<{
@@ -106,16 +105,24 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       );
 
       const dist = calculateDistance(location, school.gpsCoordinates);
+
+      // Debug logging
+      console.log("🐛 Debug - School radius:", school.radius);
+      console.log("🐛 Debug - Distance:", dist);
+      console.log("🐛 Debug - School object:", school);
+
+      const effectiveRadius = school.radius || 100; // Fallback to 100m if undefined
       const inRange = isWithinRadius(
         location,
         school.gpsCoordinates,
-        school.radius
+        effectiveRadius
       );
+
+      console.log("🐛 Debug - Effective radius:", effectiveRadius);
+      console.log("🐛 Debug - In range:", inRange);
 
       setDistance(dist);
       setIsWithinRange(inRange);
-
-
 
       if (inRange) {
         announce("You are within range for check-in.");
@@ -128,14 +135,10 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
           message: errorMessage,
         });
         announce(errorMessage);
-
-
       }
     } catch (error: any) {
       const err = error as CustomLocationError;
       const locationTime = performance.now() - startTime;
-
-
 
       setLocationError({ message: err.message, code: err.code });
       setIsWithinRange(false);
@@ -152,7 +155,6 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     school.id,
     school.name,
     announce,
-
   ]);
 
   const handleConfirmCheckIn = async () => {
@@ -163,14 +165,10 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       await checkIn(school.id, userLocation);
       const checkInDuration = performance.now() - startTime;
 
-
-
       setShowConfirmDialog(false);
       announce(`Successfully checked in to ${school.name}`);
     } catch (error) {
       const checkInDuration = performance.now() - startTime;
-
-
 
       setLocationError({ message: "Failed to check in. Please try again." });
       announce("Failed to check in. Please try again.", "assertive");
@@ -207,14 +205,10 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       await checkOut(currentSessionId, locationForCheckout);
       const checkOutDuration = performance.now() - startTime;
 
-
-
       setShowCheckOutDialog(false);
       announce(`Successfully checked out from ${school.name}`);
     } catch (error) {
       const checkOutDuration = performance.now() - startTime;
-
-
 
       setLocationError({ message: "Failed to check out. Please try again." });
       announce("Failed to check out. Please try again.", "assertive");
