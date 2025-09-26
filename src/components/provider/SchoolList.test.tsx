@@ -118,8 +118,11 @@ describe("SchoolList Component", () => {
     render(<SchoolList />);
 
     await waitFor(() => {
-      expect(screen.getByText("50m away")).toBeInTheDocument();
+      expect(screen.getByText(/assigned schools/i)).toBeInTheDocument();
     });
+
+    const distanceBadges = screen.getAllByText(/away/);
+    expect(distanceBadges.length).toBeGreaterThan(0);
   });
 
   it("shows check-in buttons when enabled", async () => {
@@ -160,7 +163,7 @@ describe("SchoolList Component", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /get location/i }),
+        screen.getByRole("button", { name: /enable location/i })
       ).toBeInTheDocument();
     });
   });

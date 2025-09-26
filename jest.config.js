@@ -17,6 +17,7 @@ const config = {
   // Module name mapping for path aliases
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^firebase/(.*)$": "<rootDir>/node_modules/firebase/$1",
   },
 
   // Test file patterns

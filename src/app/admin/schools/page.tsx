@@ -17,19 +17,18 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminNavigation } from "@/components/admin/AdminNavigation";
 import { SchoolForm } from "@/components/admin/SchoolForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CachedSchoolService } from "@/lib/services/cachedSchoolService";
 
-interface School {
-  id: string;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  radius: number;
+type SchoolRecord = Awaited<
+  ReturnType<typeof CachedSchoolService.getAllSchools>
+>[number];
+
+interface School extends Omit<SchoolRecord, "createdAt" | "updatedAt"> {
+  createdAt?: Date;
+  updatedAt?: Date;
   description?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  activeProviders?: number;
   totalSessions?: number;
+  activeProviders?: number;
 }
 
 interface SchoolFormData {
@@ -41,6 +40,31 @@ interface SchoolFormData {
   description: string;
 }
 
+interface GeoPoint {
+  latitude: number;
+  longitude: number;
+}
+
+function mapSchool(raw: School): School {
+  const geoPoint = raw.geo as GeoPoint | undefined;
+
+  const latitude =
+    raw.latitude ?? (geoPoint ? geoPoint.latitude : undefined);
+  const longitude =
+    raw.longitude ?? (geoPoint ? geoPoint.longitude : undefined);
+
+  return {
+    ...raw,
+    radius: raw.radius ?? raw.radiusMeters ?? 100,
+    latitude,
+    longitude,
+    description:
+      raw.description || (raw as any)?.metadata?.description || "",
+    activeProviders:
+      raw.activeProviders ?? raw.assignedProviders?.length ?? 0,
+  };
+}
+
 function SchoolManagementContent() {
   const [schools, setSchools] = useState<School[]>([]);
   const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
@@ -50,66 +74,40 @@ function SchoolManagementContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data based on schools.json structure
-  const mockSchools: School[] = [
-    {
-      id: "1",
-      name: "Walter Payton College Preparatory High School",
-      address: "1034 N Wells St, Chicago, IL 60610",
-      latitude: 41.899441,
-      longitude: -87.633997,
-      radius: 100,
-      description: "High-performing selective enrollment high school",
-      createdAt: new Date("2024-01-15"),
-      updatedAt: new Date("2024-01-15"),
-      activeProviders: 3,
-      totalSessions: 45,
-    },
-    {
-      id: "2",
-      name: "Jones College Prep High School",
-      address: "700 S State St, Chicago, IL 60605",
-      latitude: 41.871431,
-      longitude: -87.627683,
-      radius: 150,
-      description: "Selective enrollment high school in the South Loop",
-      createdAt: new Date("2024-01-20"),
-      updatedAt: new Date("2024-01-20"),
-      activeProviders: 2,
-      totalSessions: 32,
-    },
-    {
-      id: "3",
-      name: "Lane Tech College Prep High School",
-      address: "2501 W Addison St, Chicago, IL 60618",
-      latitude: 41.947068,
-      longitude: -87.693497,
-      radius: 120,
-      description: "Large selective enrollment high school",
-      createdAt: new Date("2024-01-25"),
-      updatedAt: new Date("2024-01-25"),
-      activeProviders: 5,
-      totalSessions: 78,
-    },
-  ];
-
   useEffect(() => {
-    // Simulate loading schools from API
+    let cancelled = false;
+
     const loadSchools = async () => {
       setIsLoading(true);
       try {
-        // In a real app, this would be an API call
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setSchools(mockSchools);
-        setFilteredSchools(mockSchools);
-      } catch (error) {
-        setError("Failed to load schools");
+        const data = await CachedSchoolService.getAllSchools(
+          {},
+          { orderBy: { field: "name", direction: "asc" }, limit: 200 }
+        );
+
+        if (!cancelled) {
+          const normalized = (data as School[]).map(mapSchool);
+          setSchools(normalized);
+          setFilteredSchools(normalized);
+          setError(null);
+        }
+      } catch (err) {
+        console.error("Failed to load schools", err);
+        if (!cancelled) {
+          setError("Failed to load schools");
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadSchools();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -132,25 +130,32 @@ function SchoolManagementContent() {
     try {
       setIsLoading(true);
 
-      // In a real app, this would be an API call to create the school
-      const newSchool: School = {
-        id: Date.now().toString(),
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        activeProviders: 0,
-        totalSessions: 0,
-      };
+      const payload = {
+        name: data.name,
+        address: data.address,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        radiusMeters: data.radius,
+        metadata: { description: data.description },
+      } as const;
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const newId = await CachedSchoolService.createSchool(payload);
+      const created = await CachedSchoolService.getSchoolById(newId, {
+        forceRefresh: true,
+      });
 
-      setSchools((prev) => [...prev, newSchool]);
+      if (created) {
+        setSchools((prev) => [...prev, mapSchool(created as School)]);
+        setFilteredSchools((prev) => [...prev, mapSchool(created as School)]);
+      }
+
       setError(null);
     } catch (error) {
+      console.error("Failed to create school", error);
       throw new Error("Failed to create school");
     } finally {
       setIsLoading(false);
+      setIsFormOpen(false);
     }
   };
 
@@ -160,26 +165,40 @@ function SchoolManagementContent() {
     try {
       setIsLoading(true);
 
-      const updatedSchool: School = {
-        ...editingSchool,
-        ...data,
-        updatedAt: new Date(),
-      };
+      const payload = {
+        name: data.name,
+        address: data.address,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        radiusMeters: data.radius,
+        metadata: { description: data.description },
+      } as const;
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await CachedSchoolService.updateSchool(editingSchool.id, payload);
 
-      setSchools((prev) =>
-        prev.map((school) =>
-          school.id === editingSchool.id ? updatedSchool : school
-        )
+      const refreshed = await CachedSchoolService.getSchoolById(
+        editingSchool.id,
+        { forceRefresh: true }
       );
+
+      if (refreshed) {
+        const mapped = mapSchool(refreshed as School);
+        setSchools((prev) =>
+          prev.map((school) => (school.id === editingSchool.id ? mapped : school))
+        );
+        setFilteredSchools((prev) =>
+          prev.map((school) => (school.id === editingSchool.id ? mapped : school))
+        );
+      }
+
       setEditingSchool(null);
       setError(null);
     } catch (error) {
+      console.error("Failed to update school", error);
       throw new Error("Failed to update school");
     } finally {
       setIsLoading(false);
+      setIsFormOpen(false);
     }
   };
 
@@ -195,12 +214,15 @@ function SchoolManagementContent() {
     try {
       setIsLoading(true);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await CachedSchoolService.deleteSchool(schoolId);
 
       setSchools((prev) => prev.filter((school) => school.id !== schoolId));
+      setFilteredSchools((prev) =>
+        prev.filter((school) => school.id !== schoolId)
+      );
       setError(null);
     } catch (error) {
+      console.error("Failed to delete school", error);
       setError("Failed to delete school");
     } finally {
       setIsLoading(false);
@@ -296,8 +318,12 @@ function SchoolManagementContent() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSchools.map((school) => (
-            <Card key={school.id} className="hover:shadow-lg transition-shadow">
+          {filteredSchools.map((school) => {
+            const radiusMeters = school.radius ?? 100;
+            const providerCount = school.activeProviders ?? 0;
+
+            return (
+              <Card key={school.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -318,7 +344,7 @@ function SchoolManagementContent() {
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <div className="flex items-center">
                       <Users className="h-4 w-4 mr-1" />
-                      <span>{school.activeProviders || 0} providers</span>
+                      <span>{providerCount} providers</span>
                     </div>
                     <div>
                       <span>{school.totalSessions || 0} sessions</span>
@@ -329,13 +355,18 @@ function SchoolManagementContent() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Check-in radius:</span>
-                      <Badge variant="outline">{school.radius}m</Badge>
+                      <Badge variant="outline">{radiusMeters}m</Badge>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Coordinates:</span>
                       <span className="text-gray-900 font-mono text-xs">
-                        {school.latitude.toFixed(4)},{" "}
-                        {school.longitude.toFixed(4)}
+                        {typeof school.latitude === "number"
+                          ? school.latitude.toFixed(4)
+                          : "--"}
+                        ,
+                        {typeof school.longitude === "number"
+                          ? school.longitude.toFixed(4)
+                          : "--"}
                       </span>
                     </div>
                   </div>
@@ -370,7 +401,8 @@ function SchoolManagementContent() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

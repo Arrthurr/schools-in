@@ -27,6 +27,18 @@ Object.defineProperty(window, "sessionStorage", {
   value: mockSessionStorage,
 });
 
+const setupPromptEvent = (outcome: "accepted" | "dismissed" = "accepted") => {
+  const event = new Event("beforeinstallprompt") as any;
+  event.prompt = jest.fn();
+  event.userChoice = Promise.resolve({ outcome });
+  Object.defineProperty(window, "deferredPrompt", {
+    value: event,
+    writable: true,
+  });
+  window.dispatchEvent(event);
+  return event;
+};
+
 describe("PWAInstallPrompt", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -42,17 +54,7 @@ describe("PWAInstallPrompt", () => {
   it("renders install prompt when beforeinstallprompt event is triggered", async () => {
     render(<PWAInstallPrompt />);
 
-    // Simulate the beforeinstallprompt event
-    const mockEvent = {
-      preventDefault: jest.fn(),
-      prompt: jest.fn().mockResolvedValue(undefined),
-      userChoice: Promise.resolve({ outcome: "accepted" }),
-    };
-
-    // Trigger the event
-    window.dispatchEvent(
-      new CustomEvent("beforeinstallprompt", mockEvent as any)
-    );
+    const promptEvent = setupPromptEvent("accepted");
 
     await waitFor(() => {
       expect(screen.getByText("Install Schools In")).toBeInTheDocument();
@@ -62,21 +64,13 @@ describe("PWAInstallPrompt", () => {
         )
       ).toBeInTheDocument();
     });
+    expect(promptEvent.prompt).toHaveBeenCalled();
   });
 
   it("handles install button click", async () => {
     render(<PWAInstallPrompt />);
 
-    const mockEvent = {
-      preventDefault: jest.fn(),
-      prompt: jest.fn().mockResolvedValue(undefined),
-      userChoice: Promise.resolve({ outcome: "accepted" }),
-    };
-
-    // Trigger the beforeinstallprompt event
-    window.dispatchEvent(
-      new CustomEvent("beforeinstallprompt", mockEvent as any)
-    );
+    const promptEvent = setupPromptEvent("accepted");
 
     await waitFor(() => {
       expect(screen.getByText("Install App")).toBeInTheDocument();
@@ -86,23 +80,14 @@ describe("PWAInstallPrompt", () => {
     fireEvent.click(screen.getByText("Install App"));
 
     await waitFor(() => {
-      expect(mockEvent.prompt).toHaveBeenCalled();
+      expect(promptEvent.prompt).toHaveBeenCalled();
     });
   });
 
   it("handles dismiss button click", async () => {
     render(<PWAInstallPrompt />);
 
-    const mockEvent = {
-      preventDefault: jest.fn(),
-      prompt: jest.fn().mockResolvedValue(undefined),
-      userChoice: Promise.resolve({ outcome: "dismissed" }),
-    };
-
-    // Trigger the beforeinstallprompt event
-    window.dispatchEvent(
-      new CustomEvent("beforeinstallprompt", mockEvent as any)
-    );
+    const promptEvent = setupPromptEvent("dismissed");
 
     await waitFor(() => {
       expect(screen.getByText("Not Now")).toBeInTheDocument();
@@ -124,16 +109,7 @@ describe("PWAInstallPrompt", () => {
 
     render(<PWAInstallPrompt />);
 
-    const mockEvent = {
-      preventDefault: jest.fn(),
-      prompt: jest.fn().mockResolvedValue(undefined),
-      userChoice: Promise.resolve({ outcome: "dismissed" }),
-    };
-
-    // Trigger the beforeinstallprompt event
-    window.dispatchEvent(
-      new CustomEvent("beforeinstallprompt", mockEvent as any)
-    );
+    const promptEvent = setupPromptEvent("dismissed");
 
     expect(screen.queryByText("Install Schools In")).not.toBeInTheDocument();
   });

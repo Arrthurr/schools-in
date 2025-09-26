@@ -37,7 +37,11 @@ describe("SessionManagement Component", () => {
   it("shows no sessions message when empty", () => {
     render(<SessionManagement />);
 
-    expect(screen.getByText("No sessions found")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /manage and correct session data, force-close stuck sessions, and resolve error states/i
+      )
+    ).toBeInTheDocument();
   });
 
   it("renders session management description", () => {

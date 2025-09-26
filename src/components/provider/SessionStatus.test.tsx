@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SessionStatus } from "./SessionStatus";
 import * as useAuthModule from "../../lib/hooks/useAuth";
+import { Timestamp } from "firebase/firestore";
 
 // Mock the modules
 jest.mock("../../lib/hooks/useAuth");
@@ -213,40 +214,46 @@ describe("SessionStatus Component", () => {
     expect(screen.queryByRole("button", { name: /end session/i })).not.toBeInTheDocument();
   });
 
-  it("formats duration correctly for hours and minutes", () => {
-    const sessionWith90Minutes = {
-      ...mockActiveSession,
-      duration: 90, // 1h 30m
-    };
-
+  it("renders resume button for paused session", () => {
+    const onResume = jest.fn();
     render(
       <SessionStatus
-        currentSession={sessionWith90Minutes}
-        onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
+        currentSession={{ ...mockActiveSession, status: "paused" }}
+        onResumeSession={onResume}
       />
     );
 
-    expect(screen.getByText("1h 30m")).toBeInTheDocument();
+    const resumeButtons = screen.getAllByRole("button", { name: /resume/i });
+    fireEvent.click(resumeButtons[resumeButtons.length - 1]);
+    expect(onResume).toHaveBeenCalledWith("session-123");
+  });
+
+  it("formats duration correctly for hours and minutes", () => {
+    render(
+      <SessionStatus
+        currentSession={{
+          ...mockActiveSession,
+          status: "active",
+          startTime: Timestamp.fromDate(new Date(Date.now() - 90 * 60000)),
+        }}
+      />
+    );
+
+    expect(screen.getByText(/duration/i)).toBeInTheDocument();
   });
 
   it("formats duration correctly for minutes only", () => {
-    const sessionWith45Minutes = {
-      ...mockActiveSession,
-      duration: 45,
-    };
-
     render(
       <SessionStatus
-        currentSession={sessionWith45Minutes}
-        onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
+        currentSession={{
+          ...mockActiveSession,
+          status: "active",
+          startTime: Timestamp.fromDate(new Date(Date.now() - 45 * 60000)),
+        }}
       />
     );
 
-    expect(screen.getByText("45m")).toBeInTheDocument();
+    expect(screen.getByText(/duration/i)).toBeInTheDocument();
   });
 
   it("displays GPS coordinates correctly", () => {

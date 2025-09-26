@@ -11,6 +11,7 @@ import {
   smartCacheRefresh,
   CACHE_STORES,
   CACHE_CONFIG,
+  DEFAULT_CACHE_KEY,
 } from "./cacheStrategy";
 
 export interface CacheManagerConfig {
@@ -63,12 +64,17 @@ class CacheManager {
         ? schools.filter((school) => school.assignedProviders?.includes(userId))
         : schools;
 
-      await cacheData(CACHE_STORES.SCHOOLS, userSchools, {
+      await cacheData(
+        CACHE_STORES.SCHOOLS,
+        userSchools,
+        {
         strategy: "STALE_WHILE_REVALIDATE",
         priority: "high",
         backgroundRefresh: true,
         staleTime: CACHE_CONFIG.EXPIRATION.SCHOOLS,
-      });
+        },
+        userId ?? DEFAULT_CACHE_KEY
+      );
 
       if (this.config.debugMode) {
         console.log(`Cached ${userSchools.length} schools for user ${userId}`);
@@ -87,9 +93,7 @@ class CacheManager {
     try {
       const result = await getCachedData(
         CACHE_STORES.SCHOOLS,
-        userId
-          ? (school: any) => school.assignedProviders?.includes(userId)
-          : undefined
+        userId ?? DEFAULT_CACHE_KEY
       );
 
       return {
@@ -110,12 +114,17 @@ class CacheManager {
         ? sessions.filter((session) => session.userId === userId)
         : sessions;
 
-      await cacheData(CACHE_STORES.SESSIONS, userSessions, {
+      await cacheData(
+        CACHE_STORES.SESSIONS,
+        userSessions,
+        {
         strategy: "STALE_WHILE_REVALIDATE",
         priority: "medium",
         backgroundRefresh: true,
         staleTime: CACHE_CONFIG.EXPIRATION.SESSIONS,
-      });
+        },
+        userId ?? DEFAULT_CACHE_KEY
+      );
 
       if (this.config.debugMode) {
         console.log(
@@ -136,7 +145,7 @@ class CacheManager {
     try {
       const result = await getCachedData(
         CACHE_STORES.SESSIONS,
-        userId ? (session: any) => session.userId === userId : undefined
+        userId ?? DEFAULT_CACHE_KEY
       );
 
       return {
@@ -184,12 +193,17 @@ class CacheManager {
   // Cache user data with long expiration
   async cacheUserData(userData: any): Promise<void> {
     try {
-      await cacheData(CACHE_STORES.USER_DATA, [userData], {
+      await cacheData(
+        CACHE_STORES.USER_DATA,
+        [userData],
+        {
         strategy: "BACKGROUND",
         priority: "high",
         backgroundRefresh: true,
         staleTime: CACHE_CONFIG.EXPIRATION.USER_DATA,
-      });
+        },
+        userData.id ?? DEFAULT_CACHE_KEY
+      );
 
       if (this.config.debugMode) {
         console.log("Cached user data:", userData.id);
@@ -200,9 +214,12 @@ class CacheManager {
   }
 
   // Get cached user data
-  async getCachedUserData(): Promise<any | null> {
+  async getCachedUserData(userId?: string): Promise<any | null> {
     try {
-      const result = await getCachedData(CACHE_STORES.USER_DATA);
+      const result = await getCachedData(
+        CACHE_STORES.USER_DATA,
+        userId ?? DEFAULT_CACHE_KEY
+      );
       return result.data[0] || null;
     } catch (error) {
       console.error("Failed to get cached user data:", error);

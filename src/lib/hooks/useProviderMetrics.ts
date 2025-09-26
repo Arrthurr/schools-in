@@ -72,8 +72,9 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
   // Calculated session state
   const isSessionActive = currentSession?.status === "active";
   const canStartSession = !currentSession;
-  const canEndSession =
+  const hasValidSession =
     currentSession && ["active", "paused"].includes(currentSession.status);
+  const canEndSession = Boolean(hasValidSession);
 
   // Update session duration in real-time
   useEffect(() => {
@@ -129,16 +130,7 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
 
       // Calculate durations
       const sessionDurations = completedWeeklySessions
-        .map((session) => {
-          if (session.endTime) {
-            return (
-              (session.endTime.toDate().getTime() -
-                session.startTime.toDate().getTime()) /
-              (1000 * 60)
-            );
-          }
-          return 0;
-        })
+        .map((session) => session.durationMinutes ?? 0)
         .filter((duration) => duration > 0);
 
       const totalMinutes = sessionDurations.reduce(
@@ -191,7 +183,7 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
       });
     } catch (err) {
       console.error("Error fetching provider metrics:", err);
-      setError("Failed to load dashboard metrics");
+      setError("Failed to load metrics");
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect, useId, useMemo } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useLocation } from "../../lib/hooks/useLocation";
 
@@ -100,33 +100,33 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     loadSchools();
   }, [user?.uid, announce]);
 
-  // Update schools with distance when location is available
-  useEffect(() => {
-    const updateSchoolsWithDistance = async () => {
-      if (!location || !user?.uid) return;
+  const displayedSchools = useMemo(() => {
+    if (filteredSchools.length === 0) return [] as Array<School & { distance?: number }>;
 
-      const schoolsWithDistance = schools.map((school) => {
+    const withDistance = filteredSchools.map((school) => {
+      if (
+        location &&
+        typeof school.latitude === "number" &&
+        typeof school.longitude === "number"
+      ) {
         const distance = calculateDistance(
           location.latitude,
           location.longitude,
-          school.latitude!,
-          school.longitude!
+          school.latitude,
+          school.longitude
         );
         return { ...school, distance };
-      });
+      }
 
-      const sortedSchools = [...schoolsWithDistance].sort(
-        (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)
-      );
+      return { ...school, distance: undefined };
+    });
 
-      setSchools(sortedSchools);
-      setFilteredSchools(sortedSchools);
-    };
-
-    if (schools.length > 0) {
-      updateSchoolsWithDistance();
-    }
-  }, [location, user?.uid]);
+    return withDistance.sort((a, b) => {
+      const distanceA = typeof a.distance === "number" ? a.distance : Infinity;
+      const distanceB = typeof b.distance === "number" ? b.distance : Infinity;
+      return distanceA - distanceB;
+    });
+  }, [filteredSchools, location]);
 
   // Handle search
   useEffect(() => {
@@ -351,7 +351,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
       <CardContent>
         <div className="space-y-3">
-          {filteredSchools.length === 0 && searchQuery ? (
+          {displayedSchools.length === 0 && searchQuery ? (
             <EmptyState
               type="search"
               title="No schools found"
@@ -361,7 +361,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
               showAction={true}
             />
           ) : (
-            filteredSchools.map((school, index) => (
+            displayedSchools.map((school, index) => (
               <div
                 key={school.id}
                 className={`p-4 sm:p-5 border rounded-lg transition-colors ${
@@ -444,7 +444,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
           )}
         </div>
 
-        {filteredSchools.length > 0 && (
+        {displayedSchools.length > 0 && (
           <div className="mt-4 pt-4 border-t">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-gray-500">
               <span>

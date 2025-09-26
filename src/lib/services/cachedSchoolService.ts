@@ -16,11 +16,26 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
-import { Location } from "@/lib/firebase/types";
+import type { Location } from "@/lib/firebase/types";
 import { FirebaseCache, CacheTracker } from "@/lib/cache/FirebaseCache";
 import {
   getCachedLocationsByProvider,
 } from "@/lib/firebase/cachedFirestore";
+import {
+  normalizeLocationData,
+  NormalizedLocation,
+  buildLocationWriteData,
+  buildLocationUpdateData,
+} from "./locationNormalizer";
+
+type FirestoreDocSnapshot = {
+  id: string;
+  data: () => Record<string, any>;
+};
+
+function normalizeSnapshot(docRef: FirestoreDocSnapshot): NormalizedLocation {
+  return normalizeLocationData(docRef.id, docRef.data());
+}
 
 export interface SchoolFilters {
   providerId?: string;
@@ -111,12 +126,8 @@ export class CachedSchoolService {
         }
 
         const snapshot = await getDocs(queryRef);
-        let schools = snapshot.docs.map(
-          (doc) =>
-            ({
-              id: doc.id,
-              ...(doc.data() as object),
-            } as Location)
+        let schools = snapshot.docs.map((docSnapshot) =>
+          normalizeSnapshot(docSnapshot)
         );
 
         // Apply search filter (client-side)
@@ -159,7 +170,9 @@ export class CachedSchoolService {
       `school_${schoolId}`,
       async () => {
         const { getDocument } = await import("@/lib/firebase/firestore");
-        return await getDocument<Location>(COLLECTIONS.LOCATIONS, schoolId);
+        const raw = await getDocument<Record<string, any>>(COLLECTIONS.LOCATIONS, schoolId);
+        if (!raw) return null;
+        return normalizeLocationData(schoolId, raw);
       },
       {
         forceRefresh,
@@ -327,11 +340,12 @@ export class CachedSchoolService {
   }
 
   // Create school with cache invalidation
-  static async createSchool(schoolData: Omit<Location, "id">): Promise<string> {
-    const docRef = await addDoc(
-      collection(db, COLLECTIONS.LOCATIONS),
-      schoolData
-    );
+  static async createSchool(
+    schoolData: Parameters<typeof buildLocationWriteData>[0]
+  ): Promise<string> {
+    const data = buildLocationWriteData(schoolData);
+
+    const docRef = await addDoc(collection(db, COLLECTIONS.LOCATIONS), data);
 
     // Invalidate related cache
     await FirebaseCache.invalidateCache([
@@ -347,9 +361,10 @@ export class CachedSchoolService {
   // Update school with cache invalidation
   static async updateSchool(
     schoolId: string,
-    updates: Partial<Location>
+    updates: Partial<Parameters<typeof buildLocationWriteData>[0]>
   ): Promise<void> {
-    await updateDoc(doc(db, COLLECTIONS.LOCATIONS, schoolId), updates);
+    const updateData = buildLocationUpdateData(updates);
+    await updateDoc(doc(db, COLLECTIONS.LOCATIONS, schoolId), updateData);
 
     // Invalidate related cache
     await FirebaseCache.invalidateCache([

@@ -24,6 +24,7 @@ import { db } from "../../../firebase.config";
 import { User, Location, Session } from "./types";
 import { FirebaseCache, CacheTracker } from "../cache/FirebaseCache";
 import { COLLECTIONS } from "./firestore";
+import { normalizeLocationData } from "@/lib/services/locationNormalizer";
 
 // Re-export types and collections
 export { COLLECTIONS };
@@ -201,6 +202,11 @@ export const getCachedLocationsByProvider = async (
         .map((d) => (d.data() as any).locationId)
         .filter(Boolean);
 
+      const normalizeDocs = (docs: typeof assignmentsSnap.docs) =>
+        docs.map((docSnapshot) =>
+          normalizeLocationData(docSnapshot.id, docSnapshot.data())
+        ) as Location[];
+
       if (assignedLocationIds.length === 0) {
         // Fallback to legacy array-contains
         const qLegacy = query(
@@ -208,9 +214,31 @@ export const getCachedLocationsByProvider = async (
           where("assignedProviders", "array-contains", providerId)
         );
         const legacySnap = await getDocs(qLegacy);
-        return legacySnap.docs.map(
-          (doc) => ({ id: doc.id, ...(doc.data() as object) } as Location)
-        );
+        const normalizedLegacy = normalizeDocs(legacySnap.docs);
+
+        if (normalizedLegacy.length > 0) {
+          return normalizedLegacy;
+        }
+
+        // Final fallback: legacy field on user profile
+        const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, providerId));
+        const legacyAssigned = (userDoc.data() as any)?.assignedLocations;
+        if (Array.isArray(legacyAssigned) && legacyAssigned.length > 0) {
+          const results: Location[] = [];
+          const chunkSize = 10;
+          for (let i = 0; i < legacyAssigned.length; i += chunkSize) {
+            const chunk = legacyAssigned.slice(i, i + chunkSize);
+            const chunkQuery = query(
+              collection(db, COLLECTIONS.LOCATIONS),
+              where("__name__", "in", chunk)
+            );
+            const chunkSnap = await getDocs(chunkQuery);
+            results.push(...normalizeDocs(chunkSnap.docs));
+          }
+          return results;
+        }
+
+        return normalizedLegacy;
       }
 
       // Fetch locations by IDs (batched)
@@ -224,11 +252,7 @@ export const getCachedLocationsByProvider = async (
           where("__name__", "in", chunk)
         );
         const snap = await getDocs(qIds);
-        results.push(
-          ...snap.docs.map((doc) =>
-            ({ id: doc.id, ...(doc.data() as object) } as Location)
-          )
-        );
+        results.push(...normalizeDocs(snap.docs));
       }
       return results;
     },
