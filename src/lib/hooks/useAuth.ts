@@ -17,7 +17,7 @@ export function useAuth() {
     // Check if authentication bypass is enabled for testing
     if (isAuthBypassEnabled()) {
       // Use mock authentication state
-      const mockState = createMockAuthState("admin"); // Default to admin for testing
+      const mockState = createMockAuthState("provider"); // Default to provider for testing
       setUser(mockState.user as AuthUser);
       setLoading(false);
       return;
