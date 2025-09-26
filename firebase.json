@@ -17,6 +17,7 @@
     }
   ],
   "hosting": {
+    "site": "schools-in-check",
     "public": "out",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
