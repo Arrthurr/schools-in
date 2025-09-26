@@ -14,6 +14,7 @@ import {
   FIREBASE_CACHE_CONFIGS,
 } from "@/lib/cache/FirebaseCache";
 import { cacheManager } from "@/lib/cache/CacheManager";
+import { isAuthBypassEnabled, createMockAuthState } from "@/lib/firebase/authBypass";
 
 interface AuthUser extends User {
   role?: "provider" | "admin";
@@ -42,6 +43,18 @@ export function useCachedAuth() {
 
   useEffect(() => {
     let isMounted = true;
+
+    // Check if authentication bypass is enabled for testing
+    if (isAuthBypassEnabled()) {
+      // Use mock authentication state
+      const mockState = createMockAuthState("admin"); // Default to admin for testing
+      setState({
+        user: mockState.user as AuthUser,
+        loading: false,
+        error: null,
+      });
+      return;
+    }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!isMounted) return;
