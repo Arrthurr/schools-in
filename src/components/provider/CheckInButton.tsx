@@ -160,6 +160,15 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   const handleConfirmCheckIn = async () => {
     if (!user || !userLocation) return;
 
+    // Check if accuracy is too low (more than 50 meters)
+    if (locationAccuracy && locationAccuracy > 50) {
+      setLocationError({ 
+        message: "GPS accuracy is too low. Please try again or move to a location with better GPS signal.",
+        code: 2 
+      });
+      return;
+    }
+
     const startTime = performance.now();
     try {
       await checkIn(school.id, userLocation);
@@ -273,12 +282,23 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
             <p>School: {school.name}</p>
             <p>Distance: {distance?.toFixed(0)}m</p>
             <p>Status: {isWithinRange ? "In Range" : "Out of Range"}</p>
+            {locationAccuracy && locationAccuracy > 50 && (
+              <Alert className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  GPS accuracy is too low (±{locationAccuracy.toFixed(0)}m). Please try again or move to a location with better GPS signal.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowConfirmDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmCheckIn} disabled={sessionLoading}>
+            <Button 
+              onClick={handleConfirmCheckIn} 
+              disabled={sessionLoading || (locationAccuracy && locationAccuracy > 50)}
+            >
               {sessionLoading ? "Confirming..." : "Confirm"}
             </Button>
           </DialogFooter>

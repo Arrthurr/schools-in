@@ -2,17 +2,17 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SchoolList } from "./SchoolList";
 import * as useAuthModule from "../../lib/hooks/useAuth";
 import * as useLocationModule from "../../lib/hooks/useLocation";
-import * as SchoolServiceModule from "../../lib/services/schoolService";
+import * as CachedSchoolServiceModule from "../../lib/services/cachedSchoolService";
 
 // Mock the modules
 jest.mock("../../lib/hooks/useAuth");
 jest.mock("../../lib/hooks/useLocation");
-jest.mock("../../lib/services/schoolService");
+jest.mock("../../lib/services/cachedSchoolService");
 
 const mockUseAuth = jest.spyOn(useAuthModule, "useAuth");
 const mockUseLocation = jest.spyOn(useLocationModule, "useLocation");
-const mockSchoolService = SchoolServiceModule.SchoolService as jest.Mocked<
-  typeof SchoolServiceModule.SchoolService
+const mockCachedSchoolService = CachedSchoolServiceModule.CachedSchoolService as jest.Mocked<
+  typeof CachedSchoolServiceModule.CachedSchoolService
 >;
 
 const mockSchools = [
@@ -69,12 +69,12 @@ describe("SchoolList Component", () => {
       clearError: jest.fn(),
     });
 
-    mockSchoolService.getAssignedSchools = jest
+    mockCachedSchoolService.getSchoolsByProvider = jest
       .fn()
       .mockResolvedValue(mockSchools);
-    mockSchoolService.searchSchools = jest.fn().mockResolvedValue(mockSchools);
-    mockSchoolService.isWithinRadius = jest.fn().mockReturnValue(true);
-    mockSchoolService.getSchoolsWithDistance = jest
+    mockCachedSchoolService.searchSchools = jest.fn().mockResolvedValue(mockSchools);
+    mockCachedSchoolService.isWithinRadius = jest.fn().mockReturnValue(true);
+    mockCachedSchoolService.getSchoolsWithDistance = jest
       .fn()
       .mockResolvedValue(mockSchools);
   });
@@ -91,14 +91,14 @@ describe("SchoolList Component", () => {
   });
 
   it("renders empty state when no schools assigned", async () => {
-    mockSchoolService.getAssignedSchools = jest.fn().mockResolvedValue([]);
+    mockCachedSchoolService.getSchoolsByProvider = jest.fn().mockResolvedValue([]);
 
     render(<SchoolList />);
 
     await waitFor(() => {
       expect(
         screen.getByText(
-          "No schools assigned yet. Contact your administrator to get started.",
+          "You don't have any schools assigned yet. Contact your administrator to get access to schools.",
         ),
       ).toBeInTheDocument();
     });
@@ -166,7 +166,7 @@ describe("SchoolList Component", () => {
   });
 
   it("shows loading state initially", () => {
-    mockSchoolService.getAssignedSchools = jest.fn().mockImplementation(
+    mockCachedSchoolService.getSchoolsByProvider = jest.fn().mockImplementation(
       () => new Promise(() => {}), // Never resolves
     );
 

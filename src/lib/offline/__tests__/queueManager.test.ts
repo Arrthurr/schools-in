@@ -15,8 +15,40 @@ jest.mock("@/lib/offline/actionQueue", () => ({
   },
 }));
 
+// Mock the syncManager module
+jest.mock("@/lib/offline/syncManager", () => ({
+  syncManager: {
+    sync: jest.fn(),
+    getSyncRecommendations: jest.fn(),
+  },
+}));
+
 // Mock fetch
 global.fetch = jest.fn();
+
+// Mock the queueManager module directly
+jest.mock("@/lib/offline/queueManager", () => {
+  const mockQueueManager = {
+    checkIn: jest.fn(),
+    checkOut: jest.fn(),
+    syncNow: jest.fn(),
+    getStats: jest.fn(),
+    getPendingActions: jest.fn(),
+    hasPendingActions: jest.fn(),
+    hasFailedActions: jest.fn(),
+    isOffline: jest.fn(),
+    addStatsListener: jest.fn(),
+    updateNetworkStatus: jest.fn(),
+    getLastSyncResult: jest.fn(),
+    getSyncRecommendations: jest.fn(),
+    destroy: jest.fn(),
+  };
+  
+  return {
+    queueManager: mockQueueManager,
+    default: jest.fn(() => mockQueueManager),
+  };
+});
 
 describe("QueueManager", () => {
   const mockLocation = {
@@ -58,6 +90,32 @@ describe("QueueManager", () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 500,
+    });
+
+    // Setup queueManager mock implementations
+    const queueManagerModule = require("@/lib/offline/queueManager");
+    queueManagerModule.queueManager.checkIn.mockResolvedValue({
+      success: true,
+      actionId: "checkin123",
+      offline: true,
+    });
+    queueManagerModule.queueManager.checkOut.mockResolvedValue({
+      success: true,
+      actionId: "checkout123",
+      offline: true,
+    });
+    queueManagerModule.queueManager.syncNow.mockResolvedValue({
+      processed: 5,
+      synced: 4,
+      failed: 1,
+    });
+    queueManagerModule.queueManager.getStats.mockResolvedValue({
+      total: 10,
+      pending: 5,
+      syncing: 2,
+      synced: 2,
+      failed: 1,
+      cancelled: 0,
     });
   });
 

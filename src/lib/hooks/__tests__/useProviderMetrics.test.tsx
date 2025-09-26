@@ -64,7 +64,7 @@ describe("useProviderMetrics", () => {
     });
 
     // Default session service mocks
-    mockCachedSessionService.getCurrentSession = jest
+    mockCachedSessionService.getActiveSession = jest
       .fn()
       .mockResolvedValue(null);
     mockCachedSessionService.getUserWeeklySessions = jest
@@ -76,7 +76,10 @@ describe("useProviderMetrics", () => {
     mockCachedSessionService.endSession = jest
       .fn()
       .mockResolvedValue(mockCompletedSession);
-    mockCachedSessionService.updateSessionStatus = jest
+    mockCachedSessionService.pauseSession = jest
+      .fn()
+      .mockResolvedValue(mockSession);
+    mockCachedSessionService.resumeSession = jest
       .fn()
       .mockResolvedValue(mockSession);
   });
@@ -232,12 +235,13 @@ describe("useProviderMetrics", () => {
         await result.current.startSession("location-456", "geo", 25);
       });
 
-      expect(mockCachedSessionService.startSession).toHaveBeenCalledWith(
-        "test-user-123",
-        "location-456",
-        "geo",
-        25
-      );
+      expect(mockCachedSessionService.startSession).toHaveBeenCalledWith({
+        locationId: "location-456",
+        startTime: expect.any(Date),
+        checkInMethod: "geo",
+        distanceFromCenterAtCheckIn: 25,
+        dayKey: expect.any(String),
+      });
     });
 
     it("should end a session successfully", async () => {
@@ -251,7 +255,7 @@ describe("useProviderMetrics", () => {
 
       expect(mockCachedSessionService.endSession).toHaveBeenCalledWith(
         "session-123",
-        "Session complete"
+        { endTime: expect.any(Date), notes: "Session complete" }
       );
     });
 
@@ -264,9 +268,8 @@ describe("useProviderMetrics", () => {
         await result.current.pauseSession();
       });
 
-      expect(mockCachedSessionService.updateSessionStatus).toHaveBeenCalledWith(
-        "session-123",
-        "paused"
+      expect(mockCachedSessionService.pauseSession).toHaveBeenCalledWith(
+        "session-123"
       );
     });
 
@@ -282,9 +285,8 @@ describe("useProviderMetrics", () => {
         await result.current.resumeSession();
       });
 
-      expect(mockCachedSessionService.updateSessionStatus).toHaveBeenCalledWith(
-        "session-123",
-        "active"
+      expect(mockCachedSessionService.resumeSession).toHaveBeenCalledWith(
+        "session-123"
       );
     });
   });
@@ -394,7 +396,7 @@ describe("useProviderMetrics", () => {
         await result.current.refresh();
       });
 
-      expect(mockCachedSessionService.getCurrentSession).toHaveBeenCalled();
+      expect(mockCachedSessionService.getActiveSession).toHaveBeenCalled();
       expect(mockCachedSessionService.getUserWeeklySessions).toHaveBeenCalled();
     });
   });

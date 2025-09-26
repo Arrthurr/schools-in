@@ -143,7 +143,9 @@ export function useCachedAuth() {
 
     return () => {
       isMounted = false;
-      unsubscribe();
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
     };
   }, []);
 

@@ -90,10 +90,15 @@ describe("useOfflineQueue", () => {
   });
 
   describe("Hook Initialization", () => {
-    it("should initialize with default state", () => {
+    it("should initialize with default state", async () => {
       const { result } = renderHook(() => useOfflineQueue());
 
-      expect(result.current.isInitialized).toBe(false);
+      // Wait for initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(result.current.isInitialized).toBe(true);
       expect(result.current.pendingActions).toEqual([]);
       expect(result.current.stats).toEqual({
         total: 0,
@@ -186,6 +191,11 @@ describe("useOfflineQueue", () => {
 
       const { result } = renderHook(() => useOfflineQueue("user123"));
 
+      // Wait for initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
       await act(async () => {
         await result.current.addCheckOut(
           "session123",
@@ -211,6 +221,11 @@ describe("useOfflineQueue", () => {
 
       const { result } = renderHook(() => useOfflineQueue("user123"));
 
+      // Wait for initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
       await act(async () => {
         const result_sync = await result.current.syncQueue();
         expect(result_sync).not.toBeNull();
@@ -227,6 +242,11 @@ describe("useOfflineQueue", () => {
 
       const { result } = renderHook(() => useOfflineQueue("user123"));
 
+      // Wait for initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
       await act(async () => {
         const syncResult = await result.current.syncQueue();
         expect(syncResult).toBeNull();
@@ -238,6 +258,11 @@ describe("useOfflineQueue", () => {
       actionQueueModule.cancelAction.mockResolvedValue(true);
 
       const { result } = renderHook(() => useOfflineQueue("user123"));
+
+      // Wait for initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
 
       await act(async () => {
         await result.current.cancelQueuedAction("action123");
@@ -251,6 +276,11 @@ describe("useOfflineQueue", () => {
       actionQueueModule.removeCompletedActions.mockResolvedValue(5);
 
       const { result } = renderHook(() => useOfflineQueue("user123"));
+
+      // Wait for initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
 
       await act(async () => {
         const removed = await result.current.clearCompletedActions();
@@ -310,11 +340,16 @@ describe("useOfflineQueue", () => {
   });
 
   describe("Network Status Integration", () => {
-    it("should handle offline state", () => {
+    it("should handle offline state", async () => {
       mockNetworkStatus.isOnline = false;
       mockNetworkStatus.isConnected = false;
 
       const { result } = renderHook(() => useOfflineQueue());
+
+      // Wait for initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
 
       // Hook should still work offline
       expect(result.current.addCheckIn).toBeDefined();
@@ -326,6 +361,11 @@ describe("useOfflineQueue", () => {
       mockNetworkStatus.isOnline = false;
 
       const { result, rerender } = renderHook(() => useOfflineQueue());
+
+      // Wait for initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
 
       // Go online
       mockNetworkStatus.isOnline = true;
@@ -405,6 +445,7 @@ describe("useOfflineQueue", () => {
     it("should manage initialization state correctly", async () => {
       const { result } = renderHook(() => useOfflineQueue("user123"));
 
+      // Initially should not be initialized
       expect(result.current.isInitialized).toBe(false);
 
       await act(async () => {
@@ -424,6 +465,11 @@ describe("useOfflineQueue", () => {
       );
 
       const { result } = renderHook(() => useOfflineQueue("user123"));
+
+      // Wait for initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
 
       act(() => {
         result.current.addCheckIn("school123", "user123", mockLocationData);
