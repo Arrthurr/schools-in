@@ -57,8 +57,8 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.15",
-
     "@swc/core": "^1.13.5",
+    "@vis.gl/react-google-maps": "^1.5.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.2.1",
@@ -82,6 +82,7 @@
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/google.maps": "^3.58.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.0",

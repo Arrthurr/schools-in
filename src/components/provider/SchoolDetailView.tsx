@@ -28,6 +28,7 @@ import {
   Target,
   X,
 } from "lucide-react";
+import { NavigationButton } from "../maps/NavigationButton";
 
 interface SchoolDetailViewProps {
   school: School;
@@ -223,12 +224,23 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
 
             {/* Distance */}
             {distance !== null && (
-              <div className="flex items-start gap-3">
-                <Navigation className="h-4 w-4 text-gray-500 mt-1" />
-                <div>
-                  <p className="font-medium text-gray-900">Distance from You</p>
-                  <p className="text-gray-600">{formatDistance(distance)}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <Navigation className="h-4 w-4 text-gray-500 mt-1" />
+                  <div>
+                    <p className="font-medium text-gray-900">Distance from You</p>
+                    <p className="text-gray-600">{formatDistance(distance)}</p>
+                  </div>
                 </div>
+                
+                <NavigationButton
+                  destination={{
+                    lat: school.latitude,
+                    lng: school.longitude,
+                    address: school.address,
+                    name: school.name
+                  }}
+                />
               </div>
             )}
 

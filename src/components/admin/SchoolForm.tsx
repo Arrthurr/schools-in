@@ -35,6 +35,7 @@ import {
   type LocationValidationResult,
   type GeocodeResult,
 } from "@/lib/services/locationValidationService";
+import { LocationPicker } from "@/components/maps/LocationPicker";
 
 interface School {
   id?: string;
@@ -83,6 +84,8 @@ export function SchoolForm({
     distance?: number;
     error?: string;
   } | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const [mapLocation, setMapLocation] = useState<{lat: number; lng: number} | null>(null);
 
   const [formData, setFormData] = useState<SchoolFormData>({
     name: school?.name || "",
@@ -303,6 +306,16 @@ export function SchoolForm({
     }));
   };
 
+  // Handle location selection from map
+  const handleLocationSelect = (location: {lat: number; lng: number}) => {
+    setFormData(prev => ({
+      ...prev,
+      latitude: location.lat,
+      longitude: location.lng
+    }));
+    setMapLocation(location);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
@@ -403,6 +416,32 @@ export function SchoolForm({
               Enter the full address and click "Get Coords" to auto-fill
               coordinates
             </p>
+          </div>
+
+          {/* Map Integration */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Location Selection</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMap(!showMap)}
+              >
+                {showMap ? 'Hide Map' : 'Show Map'}
+              </Button>
+            </div>
+            
+            {showMap && (
+              <LocationPicker
+                initialLocation={{
+                  lat: formData.latitude || 41.8781,
+                  lng: formData.longitude || -87.6298
+                }}
+                onLocationSelect={handleLocationSelect}
+                className="h-64 w-full"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -71,6 +71,7 @@ check_environment() {
         "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"
         "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID"
         "NEXT_PUBLIC_FIREBASE_APP_ID"
+        "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"
     )
 
     source .env.production

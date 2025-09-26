@@ -219,7 +219,7 @@ export const validateLocation = (
   };
 };
 
-// Mock geocoding service (replace with real service in production)
+// Real Google Geocoding API integration
 export const geocodeAddress = async (
   address: string
 ): Promise<GeocodeResult> => {
@@ -234,47 +234,55 @@ export const geocodeAddress = async (
       };
     }
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Mock geocoding logic - in production, use Google Maps Geocoding API
-    const mockCoordinates = getMockCoordinatesForAddress(address);
-
-    if (!mockCoordinates) {
+    // Use Google Geocoding API
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
       return {
         success: false,
         confidence: "low",
-        error:
-          "Address could not be geocoded. Please check the address and try again.",
+        error: "Google Maps API key not configured",
       };
     }
 
-    // Validate the resulting coordinates
-    const coordValidation = validateCoordinates(
-      mockCoordinates.lat,
-      mockCoordinates.lng
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`
     );
+    
+    const data = await response.json();
+    
+    if (data.status !== 'OK' || !data.results.length) {
+      return {
+        success: false,
+        confidence: "low",
+        error: "Address could not be geocoded. Please check the address and try again.",
+      };
+    }
+
+    const result = data.results[0];
+    const location = result.geometry.location;
+    
+    // Validate the resulting coordinates
+    const coordValidation = validateCoordinates(location.lat, location.lng);
 
     return {
       success: true,
       coordinates: {
-        lat: coordValidation.normalizedLat || mockCoordinates.lat,
-        lng: coordValidation.normalizedLng || mockCoordinates.lng,
+        lat: coordValidation.normalizedLat || location.lat,
+        lng: coordValidation.normalizedLng || location.lng,
       },
-      standardizedAddress: addressValidation.standardizedAddress,
+      standardizedAddress: result.formatted_address,
       confidence: addressValidation.confidence,
     };
   } catch (error) {
     return {
       success: false,
       confidence: "low",
-      error:
-        "Geocoding service temporarily unavailable. Please enter coordinates manually.",
+      error: "Geocoding service temporarily unavailable. Please enter coordinates manually.",
     };
   }
 };
 
-// Reverse geocoding - get address from coordinates
+// Reverse geocoding - get address from coordinates using Google API
 export const reverseGeocode = async (
   latitude: number,
   longitude: number
@@ -288,20 +296,35 @@ export const reverseGeocode = async (
       };
     }
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      return {
+        success: false,
+        error: "Google Maps API key not configured",
+      };
+    }
 
-    // Mock reverse geocoding
-    const mockAddress = getMockAddressForCoordinates(latitude, longitude);
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`
+    );
+    
+    const data = await response.json();
+    
+    if (data.status !== 'OK' || !data.results.length) {
+      return {
+        success: false,
+        error: "Could not find address for these coordinates.",
+      };
+    }
 
     return {
       success: true,
-      address: mockAddress,
+      address: data.results[0].formatted_address,
     };
   } catch (error) {
     return {
       success: false,
-      error: "Reverse geocoding failed. Please enter address manually.",
+      error: "Reverse geocoding service temporarily unavailable.",
     };
   }
 };
