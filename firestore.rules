@@ -63,6 +63,12 @@ service cloud.firestore {
 
     // Locations collection rules - Enhanced with provider access per PRD
     match /locations/{locationId} {
+      allow get: if isAuthenticated() &&
+                     (isAdmin() || 
+                      (isProvider() && (
+                        resource.data.assignedProviders.hasAny([request.auth.uid]) ||
+                        exists(/databases/$(database)/documents/assignments/$(request.auth.uid + '_' + locationId))
+                      )));
       allow read: if isAuthenticated() &&
                      (isAdmin() || 
                       (isProvider() && (
@@ -82,7 +88,8 @@ service cloud.firestore {
       allow delete: if isAdmin();
       
       // List operations - admins can see all, providers only their assigned locations
-      allow list: if isAdmin() || isProvider();
+      allow list: if isAdmin() || 
+                    (isProvider() && request.query.where.path == "assignedProviders" && request.query.where.op == "array-contains" && request.query.where.value == request.auth.uid);
     }
 
     // Sessions collection rules - Enhanced validation per PRD
