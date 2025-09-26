@@ -4,7 +4,8 @@ import { useState, useEffect, useId } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useLocation } from "../../lib/hooks/useLocation";
 
-import { SchoolService, School } from "../../lib/services/schoolService";
+import { CachedSchoolService as SchoolService } from "../../lib/services/cachedSchoolService";
+import { Location } from "@/lib/firebase/types";
 import {
   Card,
   CardContent,
@@ -33,6 +34,8 @@ import {
   ScreenReaderOnly,
   ARIA,
 } from "../../lib/accessibility";
+
+type School = Location;
 
 interface SchoolListProps {
   onSchoolSelect?: (school: School) => void;
@@ -72,7 +75,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
       setError(null);
 
       try {
-        const assignedSchools = await SchoolService.getAssignedSchools(
+        const assignedSchools = await SchoolService.getSchoolsByProvider(
           user.uid
         );
         const loadTime = performance.now() - startTime;
@@ -102,37 +105,28 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     const updateSchoolsWithDistance = async () => {
       if (!location || !user?.uid) return;
 
-      try {
-        const schoolsWithDistance = await SchoolService.getSchoolsWithDistance(
+      const schoolsWithDistance = schools.map((school) => {
+        const distance = calculateDistance(
           location.latitude,
           location.longitude,
-          user.uid
+          school.latitude!,
+          school.longitude!
         );
-        setSchools(schoolsWithDistance);
+        return { ...school, distance };
+      });
 
-        // Re-apply search filter if active
-        if (searchQuery.trim()) {
-          const filtered = await SchoolService.searchSchools(
-            searchQuery,
-            user.uid
-          );
-          const filteredWithDistance = filtered.map((school) => {
-            const schoolWithDistance = schoolsWithDistance.find(
-              (s) => s.id === school.id
-            );
-            return schoolWithDistance || school;
-          });
-          setFilteredSchools(filteredWithDistance);
-        } else {
-          setFilteredSchools(schoolsWithDistance);
-        }
-      } catch (err) {
-        console.error("Error updating schools with distance:", err);
-      }
+      const sortedSchools = [...schoolsWithDistance].sort(
+        (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)
+      );
+
+      setSchools(sortedSchools);
+      setFilteredSchools(sortedSchools);
     };
 
-    updateSchoolsWithDistance();
-  }, [location, user?.uid, searchQuery]);
+    if (schools.length > 0) {
+      updateSchoolsWithDistance();
+    }
+  }, [location, user?.uid]);
 
   // Handle search
   useEffect(() => {
@@ -141,10 +135,9 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
       const startTime = performance.now();
       try {
-        const filtered = await SchoolService.searchSchools(
-          searchQuery,
-          user.uid
-        );
+        const filtered = await SchoolService.searchSchools(searchQuery, {
+          providerId: user.uid,
+        });
         const searchTime = performance.now() - startTime;
 
         setFilteredSchools(filtered);
@@ -168,6 +161,14 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     return () => clearTimeout(timeoutId);
   }, [searchQuery, user?.uid, announce]);
 
+  const isWithinRadius = (school: School) => {
+    if (!location || typeof school.distance !== "number") {
+      return false;
+    }
+    const radius = school.radiusMeters ?? school.radius ?? 100;
+    return school.distance <= radius;
+  };
+
   // Format distance for display
   const formatDistance = (distance?: number): string => {
     if (typeof distance !== "number") return "";
@@ -185,13 +186,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
       return null;
     }
 
-    const withinRadius = SchoolService.isWithinRadius(
-      location.latitude,
-      location.longitude,
-      school
-    );
-
-    if (withinRadius) {
+    if (isWithinRadius(school)) {
       return (
         <Badge
           variant="secondary"
@@ -415,7 +410,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                       )}
                       <div className="flex items-center">
                         <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
-                        <span>{school.radius || 100}m radius</span>
+                        <span>{school.radiusMeters || school.radius || 100}m radius</span>
                       </div>
                     </div>
                   </div>
@@ -435,15 +430,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                     {showCheckInButtons && (
                       <Button
                         size="sm"
-                        disabled={
-                          !location ||
-                          (typeof school.distance === "number" &&
-                            !SchoolService.isWithinRadius(
-                              location?.latitude || 0,
-                              location?.longitude || 0,
-                              school
-                            ))
-                        }
+                        disabled={!location || !isWithinRadius(school)}
                         className="btn-brand-primary touch-target w-full sm:w-auto"
                       >
                         <Clock className="h-4 w-4 mr-2" />
@@ -480,3 +467,24 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 };
 
 export default SchoolList;
+
+// Haversine distance calculation
+const calculateDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R = 6371e3; // meters
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+};
