@@ -6,7 +6,8 @@ import { getAuth, connectAuthEmulator } from "firebase/auth";
 import {
   getFirestore,
   connectFirestoreEmulator,
-  enableMultiTabIndexedDbPersistence,
+  initializeFirestore,
+  CACHE_SIZE_UNLIMITED,
 } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
@@ -28,8 +29,11 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
-// Initialize Cloud Firestore and get a reference to the service
-export const db = getFirestore(app);
+// Initialize Cloud Firestore with modern cache settings
+export const db = initializeFirestore(app, {
+  cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+  ignoreUndefinedProperties: true,
+});
 
 // Initialize Firebase Storage
 export const storage = getStorage(app);
@@ -55,19 +59,7 @@ if (process.env.NODE_ENV === "development") {
   connectFunctionsEmulator(functions, "localhost", 5001);
 }
 
-// Enable offline persistence in production
-if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
-  try {
-    enableMultiTabIndexedDbPersistence(db).catch((err) => {
-      if (err.code === "failed-precondition") {
-        console.warn("Firebase persistence failed: Multiple tabs open");
-      } else if (err.code === "unimplemented") {
-        console.warn("Firebase persistence not supported by browser");
-      }
-    });
-  } catch (error) {
-    console.warn("Failed to enable Firebase persistence:", error);
-  }
-}
+// Note: Offline persistence is now configured via initializeFirestore settings above
+// The modern approach uses FirestoreSettings.cache instead of enableMultiTabIndexedDbPersistence()
 
 export default app;
