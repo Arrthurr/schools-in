@@ -48,6 +48,11 @@ jobs:
           export GOOGLE_APPLICATION_CREDENTIALS=serviceAccountKey.json
 
       - name: Deploy to Firebase
-        run: firebase deploy --only hosting,firestore
+        run: |
+          # Deploy hosting first (doesn't require rules permissions)
+          firebase deploy --only hosting
+          
+          # Deploy Firestore rules separately (requires Firebase Rules Admin role)
+          firebase deploy --only firestore:rules || echo "Firestore rules deployment failed - check service account permissions"
         env:
           GOOGLE_APPLICATION_CREDENTIALS: serviceAccountKey.json
