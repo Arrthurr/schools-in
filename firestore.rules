@@ -61,23 +61,14 @@ service cloud.firestore {
       allow list: if isAdmin();
     }
 
-    // Locations collection rules - Enhanced with provider access per PRD
+    // Locations collection rules - Simplified to use only assignedProviders
     match /locations/{locationId} {
-      allow get: if isAuthenticated() &&
-                     (isAdmin() || 
-                      (isProvider() && (
-                        resource.data.assignedProviders.hasAny([request.auth.uid]) ||
-                        exists(/databases/$(database)/documents/assignments/$(request.auth.uid + '_' + locationId))
-                      )));
-      allow read: if isAuthenticated() &&
-                     (isAdmin() || 
-                      (isProvider() && (
-                        // Primary: assignedProviders array (authoritative for RBAC per PRD)
-                        resource.data.assignedProviders.hasAny([request.auth.uid]) ||
-                        // Fallback: assignment document exists for (uid, locationId)
-                        exists(/databases/$(database)/documents/assignments/$(request.auth.uid + '_' + locationId))
-                      )));
+      // Providers can read locations they are assigned to; admins can read all
+      allow get, read: if isAuthenticated() &&
+                          (isAdmin() || 
+                           (isProvider() && resource.data.assignedProviders.hasAny([request.auth.uid])));
       
+      // Only admins can create/update/delete locations
       allow create, update: if isAdmin() && 
                               hasValidTimestamp(request.resource.data) &&
                               request.resource.data.geo != null && // GeoPoint validation
@@ -87,9 +78,14 @@ service cloud.firestore {
       
       allow delete: if isAdmin();
       
-      // List operations - admins can see all, providers only their assigned locations
+      // List operations - admins can list all, providers only with array-contains query
       allow list: if isAdmin() || 
-                    (isProvider() && request.query.where.path == "assignedProviders" && request.query.where.op == "array-contains" && request.query.where.value == request.auth.uid);
+                    (isProvider() && 
+                     request.query.limit != null &&
+                     request.query.orderBy != null &&
+                     request.query.where.path == "assignedProviders" && 
+                     request.query.where.op == "array-contains" && 
+                     request.query.where.value == request.auth.uid);
     }
 
     // Sessions collection rules - Enhanced validation per PRD
@@ -131,26 +127,11 @@ service cloud.firestore {
       allow list: if isAdmin() || isProvider();
     }
 
-    // Assignments collection - provider-location relationships per PRD
+    // Assignments collection - DEPRECATED
+    // Use Location.assignedProviders instead
+    // Keeping rules for backward compatibility during migration
     match /assignments/{assignmentId} {
-      allow create: if isAdmin() &&
-                       hasValidTimestamp(request.resource.data) &&
-                       request.resource.data.userId is string &&
-                       request.resource.data.locationId is string &&
-                       assignmentId == request.resource.data.userId + '_' + request.resource.data.locationId;
-                       
-      allow update: if isAdmin() &&
-                       hasValidTimestamp(request.resource.data);
-                       
-      allow delete: if isAdmin();
-      
-      allow read: if isAuthenticated() && (
-        isAdmin() ||
-        // Providers can read their own assignments only
-        assignmentId.matches('^' + request.auth.uid + '_.*$')
-      );
-      
-      allow list: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
     // System metadata collection for analytics (admin only)

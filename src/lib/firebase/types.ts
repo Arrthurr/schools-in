@@ -10,8 +10,6 @@ export interface User {
   isActive?: boolean;
   createdAt: Timestamp;
   lastActiveAt: Timestamp;
-  // Legacy fields for backward compatibility
-  assignedLocations?: string[];
   phoneNumber?: string | null;
   updatedAt?: Timestamp;
 }
@@ -56,6 +54,8 @@ export interface Session {
   duration?: number; // legacy total minutes
 }
 
+// Assignment collection is deprecated - use Location.assignedProviders instead
+// Keeping interface for backward compatibility during migration
 export interface Assignment {
   id: string; // `${userId}_${locationId}`
   userId: string;
