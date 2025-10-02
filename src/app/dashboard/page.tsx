@@ -30,7 +30,7 @@ import {
 import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "../../../firebase.config";
-import { CachedSchoolService } from "@/lib/services/cachedSchoolService";
+import { getAssignedLocations } from "@/lib/services/locationService";
 import { Logo } from "../../components/ui/logo";
 
 interface SessionData {
@@ -61,10 +61,8 @@ export default function DashboardPage() {
       if (!user?.uid) return;
 
       try {
-        const schools = await CachedSchoolService.getSchoolsByProvider(
-          user.uid
-        );
-        setAssignedSchoolsCount(schools.length);
+        const locations = await getAssignedLocations(user.uid);
+        setAssignedSchoolsCount(locations.length);
       } catch (error) {
         console.error("Error loading schools count:", error);
       }

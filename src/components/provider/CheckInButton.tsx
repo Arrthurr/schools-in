@@ -25,17 +25,9 @@ import {
 import { formatDuration } from "../../lib/utils/session";
 import { AnnouncementRegion, useAnnouncement } from "@/lib/accessibility";
 import { ErrorDisplay } from "../common/ErrorDisplay";
+import { Location } from "@/lib/firebase/types";
 
-interface School {
-  id: string;
-  name: string;
-  address: string;
-  gpsCoordinates: {
-    latitude: number;
-    longitude: number;
-  };
-  radius: number; // in meters
-}
+type School = Location;
 
 interface CheckInButtonProps {
   school: School;
@@ -104,22 +96,18 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         )} meters.`
       );
 
-      const dist = calculateDistance(location, school.gpsCoordinates);
+      const schoolCoords = {
+        latitude: school.geo.latitude,
+        longitude: school.geo.longitude
+      };
+      const dist = calculateDistance(location, schoolCoords);
 
-      // Debug logging
-      console.log("🐛 Debug - School radius:", school.radius);
-      console.log("🐛 Debug - Distance:", dist);
-      console.log("🐛 Debug - School object:", school);
-
-      const effectiveRadius = school.radius || 100; // Fallback to 100m if undefined
+      const effectiveRadius = school.radiusMeters ?? 100;
       const inRange = isWithinRadius(
         location,
-        school.gpsCoordinates,
+        schoolCoords,
         effectiveRadius
       );
-
-      console.log("🐛 Debug - Effective radius:", effectiveRadius);
-      console.log("🐛 Debug - In range:", inRange);
 
       setDistance(dist);
       setIsWithinRange(inRange);
@@ -150,8 +138,8 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   }, [
     user,
     onLocationUpdate,
-    school.gpsCoordinates,
-    school.radius,
+    school.geo,
+    school.radiusMeters,
     school.id,
     school.name,
     announce,

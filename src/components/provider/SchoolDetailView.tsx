@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useLocation } from "../../lib/hooks/useLocation";
-import { SchoolService, School } from "../../lib/services/schoolService";
+import { calculateDistance, isWithinRadius } from "../../lib/services/locationService";
+import { Location } from "@/lib/firebase/types";
+
+type School = Location;
 import {
   Card,
   CardContent,
@@ -54,15 +57,15 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
   // Calculate distance and radius status when location is available
   useEffect(() => {
     if (location && school) {
-      const calculatedDistance = SchoolService.calculateDistance(
+      const calculatedDistance = calculateDistance(
         location.latitude,
         location.longitude,
-        school.latitude,
-        school.longitude
+        school.geo.latitude,
+        school.geo.longitude
       );
       setDistance(calculatedDistance);
 
-      const withinRadius = SchoolService.isWithinRadius(
+      const withinRadius = isWithinRadius(
         location.latitude,
         location.longitude,
         school

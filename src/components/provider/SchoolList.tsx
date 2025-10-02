@@ -4,7 +4,12 @@ import { useState, useEffect, useId, useMemo } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useLocation } from "../../lib/hooks/useLocation";
 
-import { CachedSchoolService as SchoolService } from "../../lib/services/cachedSchoolService";
+import { 
+  getAssignedLocations, 
+  calculateDistance as calcDistance,
+  addDistances,
+  sortByDistance 
+} from "../../lib/services/locationService";
 import { Location } from "@/lib/firebase/types";
 import {
   Card,
@@ -75,16 +80,14 @@ export const SchoolList: React.FC<SchoolListProps> = ({
       setError(null);
 
       try {
-        const assignedSchools = await SchoolService.getSchoolsByProvider(
-          user.uid
-        );
+        const assignedLocations = await getAssignedLocations(user.uid);
         const loadTime = performance.now() - startTime;
 
-        setSchools(assignedSchools);
-        setFilteredSchools(assignedSchools);
+        setSchools(assignedLocations);
+        setFilteredSchools(assignedLocations);
 
         // Announce results to screen readers
-        announce(`${assignedSchools.length} assigned schools loaded`, "polite");
+        announce(`${assignedLocations.length} assigned schools loaded`, "polite");
       } catch (err) {
         const loadTime = performance.now() - startTime;
         console.error("Error loading schools:", err);
@@ -103,69 +106,47 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   const displayedSchools = useMemo(() => {
     if (filteredSchools.length === 0) return [] as Array<School & { distance?: number }>;
 
-    const withDistance = filteredSchools.map((school) => {
-      if (
-        location &&
-        typeof school.latitude === "number" &&
-        typeof school.longitude === "number"
-      ) {
-        const distance = calculateDistance(
-          location.latitude,
-          location.longitude,
-          school.latitude,
-          school.longitude
-        );
-        return { ...school, distance };
-      }
+    // Add distances if user location is available
+    if (location) {
+      const withDistances = addDistances(filteredSchools, location.latitude, location.longitude);
+      return sortByDistance(withDistances);
+    }
 
-      return { ...school, distance: undefined };
-    });
-
-    return withDistance.sort((a, b) => {
-      const distanceA = typeof a.distance === "number" ? a.distance : Infinity;
-      const distanceB = typeof b.distance === "number" ? b.distance : Infinity;
-      return distanceA - distanceB;
-    });
+    return filteredSchools.map(school => ({ ...school, distance: undefined }));
   }, [filteredSchools, location]);
 
-  // Handle search
+  // Handle search (client-side filtering)
   useEffect(() => {
-    const filterSchools = async () => {
-      if (!user?.uid) return;
-
-      const startTime = performance.now();
-      try {
-        const filtered = await SchoolService.searchSchools(searchQuery, {
-          providerId: user.uid,
-        });
-        const searchTime = performance.now() - startTime;
-
-        setFilteredSchools(filtered);
-
-        // Announce search results to screen readers
-        if (searchQuery.trim()) {
-          announce(
-            `${filtered.length} schools found for "${searchQuery}"`,
-            "polite"
-          );
-        }
-      } catch (err) {
-        const searchTime = performance.now() - startTime;
-        console.error("Error filtering schools:", err);
-
-        announce("Error filtering schools", "assertive");
+    const filterSchools = () => {
+      if (!searchQuery.trim()) {
+        setFilteredSchools(schools);
+        return;
       }
+
+      const query = searchQuery.toLowerCase();
+      const filtered = schools.filter(school => 
+        school.name.toLowerCase().includes(query) ||
+        school.address?.toLowerCase().includes(query)
+      );
+
+      setFilteredSchools(filtered);
+
+      // Announce search results to screen readers
+      announce(
+        `${filtered.length} schools found for "${searchQuery}"`,
+        "polite"
+      );
     };
 
     const timeoutId = setTimeout(filterSchools, 300); // Debounce search
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, user?.uid, announce]);
+  }, [searchQuery, schools, announce]);
 
   const isWithinRadius = (school: School) => {
     if (!location || typeof school.distance !== "number") {
       return false;
     }
-    const radius = school.radiusMeters ?? school.radius ?? 100;
+    const radius = school.radiusMeters ?? 100;
     return school.distance <= radius;
   };
 
@@ -410,7 +391,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                       )}
                       <div className="flex items-center">
                         <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
-                        <span>{school.radiusMeters || school.radius || 100}m radius</span>
+                        <span>{school.radiusMeters ?? 100}m radius</span>
                       </div>
                     </div>
                   </div>
@@ -467,24 +448,3 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 };
 
 export default SchoolList;
-
-// Haversine distance calculation
-const calculateDistance = (
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number => {
-  const R = 6371e3; // meters
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
-};
