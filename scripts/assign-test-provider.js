@@ -66,7 +66,7 @@ async function assignProvider(providerId, locationIds = TEST_LOCATIONS) {
       const locationRef = db.collection('locations').doc(locationId);
       const locationDoc = await locationRef.get();
 
-      if (!locationDoc.exists()) {
+      if (!locationDoc.exists) {
         console.log(`⏭️  Skipping ${locationId} (not found)`);
         continue;
       }
