@@ -72,10 +72,10 @@
 
 ## Key Utilities
 
-- **Cached Services**:
+- **Location Services**:
+  - `src/lib/services/locationService.ts` - **USE THIS**: Real Firestore location queries (getAssignedLocations, calculateDistance, isWithinRadius)
+  - `src/lib/services/assignmentService.ts` - Admin assignment operations (updates Location.assignedProviders)
   - `src/lib/services/cachedUserService.ts` - User operations with caching
-  - `src/lib/services/cachedSchoolService.ts` - School/location operations with caching
-  - `src/lib/firebase/cachedFirestore.ts` - Cached Firestore wrapper
 - **Hooks**:
   - `src/lib/hooks/useCachedAuth.ts` - Enhanced auth with user data caching
   - `src/lib/hooks/useCachedSession.ts` - Session management with real-time sync
@@ -107,23 +107,23 @@
 - **Types**: Exported from `src/lib/firebase/types.ts`
 - **Error handling**: Try/catch with proper TypeScript error types
 - **Naming**: camelCase for variables/functions, SCREAMING_SNAKE_CASE for constants
-- **Caching**: Use cached services (`CachedUserService`, `CachedSchoolService`) over direct Firestore
+- **Locations**: Use `locationService` (`getAssignedLocations`, `calculateDistance`) - `Location.assignedProviders` is single source of truth
 - **Images**: Use `OptimizedImage` or `LazyImage` instead of `<img>` tags
 - **Performance**: Prefer cached hooks (`useCachedAuth`, `useCachedSession`) for better performance
 - **Maps**: Use `@vis.gl/react-google-maps` components for Google Maps integration
 - **Testing**: Write tests for all new components and utilities
-- **Accessibility**: Include proper ARIA labels and semantic HTML
+- **Accessibility**: Include proper ARIA labels and semantic HTML (see `src/AGENTS.md` for detailed UI/UX rules)
 
-## Recent Updates (as of September 2025)
+## Recent Updates (as of October 2025)
 
+- **Data Model Fix**: Migrated to `Location.assignedProviders` as single source of truth; removed `User.assignedSchools`; created `locationService.ts` with Firestore queries
+- **UI Migration**: All provider components now use real Firestore data via `locationService` instead of mock `schoolService`
+- **Auth Fix**: Registration and Google sign-in now automatically create Firestore user documents with default `provider` role
+- **Security Rules**: Simplified to use only `Location.assignedProviders` for access control; removed assignments collection fallback
+- **School Import**: 31 schools imported to Firestore with proper GeoPoint fields and metadata
 - **Google Maps Integration**: Added comprehensive Google Maps support with `@vis.gl/react-google-maps` for geolocation, navigation, and interactive location selection
 - **Enhanced Testing Infrastructure**: Expanded test suite with Cypress E2E testing, Lighthouse CI performance auditing, and comprehensive accessibility testing with axe-core
 - **PWA Features**: Complete Progressive Web App implementation with service worker, offline support, install prompts, and update notifications
-- **Performance Monitoring**: Integrated Web Vitals tracking, bundle analysis, and real-time performance monitoring
-- **Offline Capabilities**: Multi-layer caching system with IndexedDB persistence, offline action queues, and background sync
-- **Testing Coverage**: 87.8% test pass rate with 564 total tests including unit, integration, E2E, performance, and accessibility tests
-- **Production Readiness**: Comprehensive UAT documentation with 200+ test scenarios, responsive design testing, and accessibility compliance validation
-- **CI/CD Enhancement**: GitHub Actions workflows for automated testing, performance monitoring, and deployment with rollback capabilities
 
 ## Key Dependencies
 
