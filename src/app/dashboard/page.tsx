@@ -329,7 +329,7 @@ export default function DashboardPage() {
               <div className="grid gap-6 lg:grid-cols-2">
                 {/* Current Session Status */}
                 <SessionStatus
-                  currentSession={metrics.activeSession as any}
+                  currentSession={metrics.currentSession as any}
                   onEndSession={handleEndSession}
                 />
 

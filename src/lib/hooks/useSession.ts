@@ -61,14 +61,24 @@ export const useSession = (): UseSessionReturn => {
       setError(null);
 
       try {
+        const now = Timestamp.now();
+        const startDate = new Date();
+        const chicagoOffset = -6;
+        const chicagoDate = new Date(startDate.getTime() + chicagoOffset * 60 * 60 * 1000);
+        const dayKey = chicagoDate.toISOString().split('T')[0];
+
         const sessionData = {
           userId: user.uid,
-          schoolId,
-          checkInTime: Timestamp.now(),
+          locationId: schoolId,
+          startTime: now,
+          checkInTime: now,
           checkInLocation: location,
           status: "active" as const,
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now(),
+          checkInMethod: "geo" as const,
+          distanceFromCenterAtCheckIn: location.accuracy ?? 0,
+          dayKey,
+          createdAt: now,
+          updatedAt: now,
         };
 
         const sessionId = await createDocument(
