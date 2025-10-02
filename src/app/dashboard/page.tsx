@@ -33,29 +33,12 @@ import { auth } from "../../../firebase.config";
 import { getAssignedLocations } from "@/lib/services/locationService";
 import { Logo } from "../../components/ui/logo";
 
-interface SessionData {
-  id: string;
-  schoolId: string;
-  schoolName: string;
-  startTime: Date;
-  status: "active" | "paused" | "completed";
-  duration: number;
-  location: {
-    latitude: number;
-    longitude: number;
-  };
-}
-
 export default function DashboardPage() {
   const { user } = useCachedAuth();
-  const metrics = useProviderMetrics(user?.uid);
+  const metrics = useProviderMetrics();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
-  const [currentSession, setCurrentSession] = useState<SessionData | null>(
-    null
-  );
 
-  // Load assigned schools count for dashboard stats
   useEffect(() => {
     const loadSchoolsCount = async () => {
       if (!user?.uid) return;
@@ -71,13 +54,13 @@ export default function DashboardPage() {
     loadSchoolsCount();
   }, [user?.uid]);
 
-  // Mock session handlers - in real app these would integrate with Firebase
-  const handleEndSession = (sessionId: string) => {
-    console.log("Ending session:", sessionId);
-    setCurrentSession(null);
+  const handleEndSession = async (_sessionId: string) => {
+    try {
+      await metrics.endSession();
+    } catch (err) {
+      console.error("Error ending session:", err);
+    }
   };
-
-  // Pause/Resume not supported in v1
 
   const handleSignOut = async () => {
     try {
@@ -107,7 +90,6 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute roles={["provider", "admin"]}>
       <div className="min-h-screen bg-gray-50">
-        {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 md:hidden"
@@ -115,14 +97,12 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Sidebar */}
         <div
           className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
           <div className="flex h-full flex-col">
-            {/* Sidebar header */}
             <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
               <Logo size="sm" priority />
               <Button
@@ -135,7 +115,6 @@ export default function DashboardPage() {
               </Button>
             </div>
 
-            {/* User info */}
             <div className="p-4 border-b">
               <div className="flex items-center">
                 <div className="h-10 w-10 rounded-full bg-brand-primary flex items-center justify-center">
@@ -152,7 +131,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Navigation */}
             <nav className="flex-1 space-y-1 px-2 py-4">
               {navigationItems.map((item) => (
                 <a
@@ -160,7 +138,6 @@ export default function DashboardPage() {
                   href={item.href}
                   onClick={(e) => {
                     e.preventDefault();
-                    // Handle navigation, for now just log
                     console.log(`Navigating to ${item.href}`);
                   }}
                   className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
@@ -181,7 +158,6 @@ export default function DashboardPage() {
               ))}
             </nav>
 
-            {/* Sign out button */}
             <div className="p-4 border-t">
               <Button
                 variant="outline"
@@ -195,9 +171,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Main content */}
         <div className="md:ml-64">
-          {/* Top navigation */}
           <div className="sticky top-0 z-40 bg-white shadow-sm border-b">
             <div className="flex h-16 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6">
               <Button
@@ -224,10 +198,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Dashboard content */}
           <main className="py-6">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              {/* Welcome section */}
               <div className="mb-8">
                 <div className="flex items-center justify-between">
                   <div>
@@ -252,7 +224,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Status overview cards */}
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -263,11 +234,11 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {metrics.activeSession ? "Active" : "Not Active"}
+                      {metrics.isSessionActive ? "Active" : "Not Active"}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {metrics.activeSession
-                        ? `At ${metrics.activeSession.locationId}`
+                      {metrics.isSessionActive
+                        ? `At ${metrics.currentSession?.locationId ?? ""}`
                         : "No current session"}
                     </p>
                   </CardContent>
@@ -325,18 +296,14 @@ export default function DashboardPage() {
                 </Card>
               </div>
 
-              {/* Main content grid */}
               <div className="grid gap-6 lg:grid-cols-2">
-                {/* Current Session Status */}
                 <SessionStatus
                   currentSession={metrics.currentSession as any}
                   onEndSession={handleEndSession}
                 />
 
-                {/* School List */}
                 <SchoolList showCheckInButtons={true} />
 
-                {/* Recent Activity */}
                 <Card className="lg:col-span-2">
                   <CardHeader>
                     <CardTitle>Recent Activity</CardTitle>

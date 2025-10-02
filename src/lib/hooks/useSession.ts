@@ -64,12 +64,15 @@ export const useSession = (): UseSessionReturn => {
         const now = Timestamp.now();
         const startDate = new Date();
         const chicagoOffset = -6;
-        const chicagoDate = new Date(startDate.getTime() + chicagoOffset * 60 * 60 * 1000);
-        const dayKey = chicagoDate.toISOString().split('T')[0];
+        const chicagoDate = new Date(
+          startDate.getTime() + chicagoOffset * 60 * 60 * 1000
+        );
+        const dayKey = chicagoDate.toISOString().split("T")[0];
 
-        const sessionData = {
+        const sessionPersistData = {
           userId: user.uid,
           locationId: schoolId,
+          schoolId,
           startTime: now,
           checkInTime: now,
           checkInLocation: location,
@@ -83,10 +86,10 @@ export const useSession = (): UseSessionReturn => {
 
         const sessionId = await createDocument(
           COLLECTIONS.SESSIONS,
-          sessionData
+          sessionPersistData
         );
 
-        const newSession = {
+        const newSession: SessionData = {
           id: sessionId,
           ...sessionData,
         };
