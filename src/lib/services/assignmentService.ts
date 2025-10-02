@@ -1,4 +1,9 @@
-// Service for handling school-to-provider assignments
+/**
+ * Assignment Service - Manages provider-to-location assignments
+ * 
+ * IMPORTANT: This service now uses Location.assignedProviders as the
+ * single source of truth. User documents no longer store assignment arrays.
+ */
 
 import {
   collection,
@@ -11,10 +16,13 @@ import {
   writeBatch,
   Timestamp,
   getDoc,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "../firebase/firestore";
 import { UserRecord } from "./userService";
+import { Location } from "../firebase/types";
 
 export interface SchoolAssignment {
   schoolId: string;
@@ -45,52 +53,59 @@ export interface AssignmentStats {
 // Get all school assignments with provider information
 export const getSchoolAssignments = async (): Promise<SchoolAssignment[]> => {
   try {
-    // Get all schools
-    const schoolsQuery = query(
+    // Get all locations
+    const locationsQuery = query(
       collection(db, COLLECTIONS.LOCATIONS),
       orderBy("name")
     );
-    const schoolsSnapshot = await getDocs(schoolsQuery);
+    const locationsSnapshot = await getDocs(locationsQuery);
 
-    // Get all providers
+    // Get all providers for name lookups
     const providersQuery = query(
       collection(db, COLLECTIONS.USERS),
       where("role", "==", "provider")
     );
     const providersSnapshot = await getDocs(providersQuery);
 
-    const providers = providersSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as UserRecord[];
+    const providersMap = new Map<string, UserRecord>();
+    providersSnapshot.docs.forEach((doc) => {
+      providersMap.set(doc.id, {
+        id: doc.id,
+        ...doc.data(),
+      } as UserRecord);
+    });
 
-    // Build school assignments
+    // Build school assignments from Location.assignedProviders
     const assignments: SchoolAssignment[] = [];
 
-    for (const schoolDoc of schoolsSnapshot.docs) {
-      const schoolData = schoolDoc.data();
-      const schoolId = schoolDoc.id;
+    for (const locationDoc of locationsSnapshot.docs) {
+      const locationData = locationDoc.data() as Location;
+      const locationId = locationDoc.id;
 
-      // Find providers assigned to this school
-      const assignedProviders: ProviderAssignment[] = providers
-        .filter((provider) => provider.assignedSchools?.includes(schoolId))
-        .map((provider) => ({
-          userId: provider.id,
-          userEmail: provider.email || "",
-          displayName: provider.displayName || "Unknown",
-          assignedAt: provider.createdAt || Timestamp.now(),
-          isActive: provider.isActive,
-        }));
+      // Get providers from Location.assignedProviders array
+      const assignedProviders: ProviderAssignment[] = (locationData.assignedProviders || [])
+        .map((providerId) => {
+          const provider = providersMap.get(providerId);
+          if (!provider) return null;
+          
+          return {
+            userId: provider.id,
+            userEmail: provider.email || "",
+            displayName: provider.displayName || "Unknown",
+            assignedAt: provider.createdAt || Timestamp.now(),
+            isActive: provider.isActive,
+          };
+        })
+        .filter((p): p is ProviderAssignment => p !== null);
 
       assignments.push({
-        schoolId,
-        schoolName: schoolData.name || "Unknown School",
-        schoolAddress: schoolData.address || "",
+        schoolId: locationId,
+        schoolName: locationData.name || "Unknown School",
+        schoolAddress: locationData.address || "",
         assignedProviders,
-        isActive: schoolData.isActive !== false,
+        isActive: locationData.active !== false,
         totalProviders: assignedProviders.length,
-        lastUpdated:
-          schoolData.updatedAt || schoolData.createdAt || Timestamp.now(),
+        lastUpdated: locationData.updatedAt || locationData.createdAt || Timestamp.now(),
       });
     }
 
@@ -107,6 +122,7 @@ export const assignProviderToSchool = async (
   schoolId: string
 ): Promise<void> => {
   try {
+    // Verify provider exists
     const userRef = doc(db, COLLECTIONS.USERS, providerId);
     const userDoc = await getDoc(userRef);
 
@@ -114,18 +130,12 @@ export const assignProviderToSchool = async (
       throw new Error("Provider not found");
     }
 
-    const userData = userDoc.data();
-    const currentAssignments = userData.assignedSchools || [];
-
-    // Add school if not already assigned
-    if (!currentAssignments.includes(schoolId)) {
-      const updatedAssignments = [...currentAssignments, schoolId];
-
-      await updateDoc(userRef, {
-        assignedSchools: updatedAssignments,
-        updatedAt: Timestamp.now(),
-      });
-    }
+    // Update Location.assignedProviders (single source of truth)
+    const locationRef = doc(db, COLLECTIONS.LOCATIONS, schoolId);
+    await updateDoc(locationRef, {
+      assignedProviders: arrayUnion(providerId),
+      updatedAt: Timestamp.now(),
+    });
   } catch (error) {
     console.error("Error assigning provider to school:", error);
     throw new Error("Failed to assign provider to school");
@@ -138,23 +148,10 @@ export const removeProviderFromSchool = async (
   schoolId: string
 ): Promise<void> => {
   try {
-    const userRef = doc(db, COLLECTIONS.USERS, providerId);
-    const userDoc = await getDoc(userRef);
-
-    if (!userDoc.exists()) {
-      throw new Error("Provider not found");
-    }
-
-    const userData = userDoc.data();
-    const currentAssignments = userData.assignedSchools || [];
-
-    // Remove school from assignments
-    const updatedAssignments = currentAssignments.filter(
-      (assignedSchoolId: string) => assignedSchoolId !== schoolId
-    );
-
-    await updateDoc(userRef, {
-      assignedSchools: updatedAssignments,
+    // Update Location.assignedProviders (single source of truth)
+    const locationRef = doc(db, COLLECTIONS.LOCATIONS, schoolId);
+    await updateDoc(locationRef, {
+      assignedProviders: arrayRemove(providerId),
       updatedAt: Timestamp.now(),
     });
   } catch (error) {
@@ -169,28 +166,24 @@ export const bulkAssignProvidersToSchool = async (
   schoolId: string
 ): Promise<void> => {
   try {
-    const batch = writeBatch(db);
-    const timestamp = Timestamp.now();
-
-    for (const providerId of providerIds) {
-      const userRef = doc(db, COLLECTIONS.USERS, providerId);
-      const userDoc = await getDoc(userRef);
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const currentAssignments = userData.assignedSchools || [];
-
-        if (!currentAssignments.includes(schoolId)) {
-          const updatedAssignments = [...currentAssignments, schoolId];
-          batch.update(userRef, {
-            assignedSchools: updatedAssignments,
-            updatedAt: timestamp,
-          });
-        }
-      }
+    // Get current location data
+    const locationRef = doc(db, COLLECTIONS.LOCATIONS, schoolId);
+    const locationDoc = await getDoc(locationRef);
+    
+    if (!locationDoc.exists()) {
+      throw new Error("Location not found");
     }
-
-    await batch.commit();
+    
+    const locationData = locationDoc.data() as Location;
+    const currentProviders = locationData.assignedProviders || [];
+    
+    // Merge new providers with existing (avoiding duplicates)
+    const updatedProviders = Array.from(new Set([...currentProviders, ...providerIds]));
+    
+    await updateDoc(locationRef, {
+      assignedProviders: updatedProviders,
+      updatedAt: Timestamp.now(),
+    });
   } catch (error) {
     console.error("Error bulk assigning providers to school:", error);
     throw new Error("Failed to bulk assign providers to school");
@@ -203,29 +196,26 @@ export const bulkRemoveProvidersFromSchool = async (
   schoolId: string
 ): Promise<void> => {
   try {
-    const batch = writeBatch(db);
-    const timestamp = Timestamp.now();
-
-    for (const providerId of providerIds) {
-      const userRef = doc(db, COLLECTIONS.USERS, providerId);
-      const userDoc = await getDoc(userRef);
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const currentAssignments = userData.assignedSchools || [];
-
-        const updatedAssignments = currentAssignments.filter(
-          (assignedSchoolId: string) => assignedSchoolId !== schoolId
-        );
-
-        batch.update(userRef, {
-          assignedSchools: updatedAssignments,
-          updatedAt: timestamp,
-        });
-      }
+    // Get current location data
+    const locationRef = doc(db, COLLECTIONS.LOCATIONS, schoolId);
+    const locationDoc = await getDoc(locationRef);
+    
+    if (!locationDoc.exists()) {
+      throw new Error("Location not found");
     }
-
-    await batch.commit();
+    
+    const locationData = locationDoc.data() as Location;
+    const currentProviders = locationData.assignedProviders || [];
+    
+    // Remove specified providers
+    const updatedProviders = currentProviders.filter(
+      (providerId) => !providerIds.includes(providerId)
+    );
+    
+    await updateDoc(locationRef, {
+      assignedProviders: updatedProviders,
+      updatedAt: Timestamp.now(),
+    });
   } catch (error) {
     console.error("Error bulk removing providers from school:", error);
     throw new Error("Failed to bulk remove providers from school");
@@ -238,38 +228,12 @@ export const replaceSchoolAssignments = async (
   newProviderIds: string[]
 ): Promise<void> => {
   try {
-    // Get all current providers
-    const providersQuery = query(
-      collection(db, COLLECTIONS.USERS),
-      where("role", "==", "provider")
-    );
-    const providersSnapshot = await getDocs(providersQuery);
-
-    const batch = writeBatch(db);
-    const timestamp = Timestamp.now();
-
-    // Update all providers
-    for (const providerDoc of providersSnapshot.docs) {
-      const providerId = providerDoc.id;
-      const providerData = providerDoc.data();
-      const currentAssignments = providerData.assignedSchools || [];
-
-      const updatedAssignments = currentAssignments.filter(
-        (assignedSchoolId: string) => assignedSchoolId !== schoolId
-      );
-
-      // Add school if this provider should be assigned
-      if (newProviderIds.includes(providerId)) {
-        updatedAssignments.push(schoolId);
-      }
-
-      batch.update(doc(db, COLLECTIONS.USERS, providerId), {
-        assignedSchools: updatedAssignments,
-        updatedAt: timestamp,
-      });
-    }
-
-    await batch.commit();
+    // Simply replace the assignedProviders array
+    const locationRef = doc(db, COLLECTIONS.LOCATIONS, schoolId);
+    await updateDoc(locationRef, {
+      assignedProviders: newProviderIds,
+      updatedAt: Timestamp.now(),
+    });
   } catch (error) {
     console.error("Error replacing school assignments:", error);
     throw new Error("Failed to replace school assignments");
@@ -312,9 +276,10 @@ export const getAssignmentStats = async (): Promise<AssignmentStats> => {
   }
 };
 
-// Get unassigned providers
+// Get unassigned providers (providers not in any Location.assignedProviders)
 export const getUnassignedProviders = async (): Promise<UserRecord[]> => {
   try {
+    // Get all active providers
     const providersQuery = query(
       collection(db, COLLECTIONS.USERS),
       where("role", "==", "provider"),
@@ -322,12 +287,23 @@ export const getUnassignedProviders = async (): Promise<UserRecord[]> => {
     );
     const providersSnapshot = await getDocs(providersQuery);
 
+    // Get all locations to check assignedProviders
+    const locationsQuery = query(collection(db, COLLECTIONS.LOCATIONS));
+    const locationsSnapshot = await getDocs(locationsQuery);
+
+    // Build set of assigned provider IDs
+    const assignedProviderIds = new Set<string>();
+    locationsSnapshot.docs.forEach((doc) => {
+      const locationData = doc.data() as Location;
+      (locationData.assignedProviders || []).forEach((providerId) => {
+        assignedProviderIds.add(providerId);
+      });
+    });
+
+    // Filter out assigned providers
     return providersSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() } as UserRecord))
-      .filter(
-        (provider) =>
-          !provider.assignedSchools || provider.assignedSchools.length === 0
-      );
+      .filter((provider) => !assignedProviderIds.has(provider.id));
   } catch (error) {
     console.error("Error getting unassigned providers:", error);
     throw new Error("Failed to fetch unassigned providers");
