@@ -102,10 +102,16 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
 
   // Set up real-time listener for current session
   useEffect(() => {
-    if (!user?.uid || !currentSession?.id) return;
+    if (!user?.uid || !currentSession?.id) {
+      console.log("No session to listen to:", { userId: user?.uid, sessionId: currentSession?.id });
+      return;
+    }
 
+    console.log("Setting up real-time listener for session:", currentSession.id);
     const sessionRef = doc(db, COLLECTIONS.SESSIONS, currentSession.id);
     const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
+      console.log("Session snapshot received:", { exists: snapshot.exists(), data: snapshot.data() });
+      
       if (snapshot.exists()) {
         const data = snapshot.data();
         const sessionData: Session = {
@@ -126,19 +132,27 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
           notes: data.notes,
         };
 
+        console.log("Processed session data:", sessionData);
+
         if (sessionData.status === "completed") {
+          console.log("Session completed, clearing from UI");
           setCurrentSession(null);
           setSessionDuration(0);
         } else {
+          console.log("Session still active, updating state");
           setCurrentSession(sessionData);
         }
       } else {
+        console.log("Session document no longer exists");
         setCurrentSession(null);
         setSessionDuration(0);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log("Cleaning up real-time listener");
+      unsubscribe();
+    };
   }, [user?.uid, currentSession?.id]);
 
   // Fetch current session and weekly metrics
