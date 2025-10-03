@@ -21,6 +21,7 @@ interface ExtendedProviderMetrics extends ProviderMetrics {
 interface UseProviderMetricsReturn {
   // Current session data
   currentSession: Session | null;
+  lastCompletedSession: Session | null;
   isLoading: boolean;
   error: string | null;
 
@@ -54,6 +55,7 @@ interface UseProviderMetricsReturn {
 export function useProviderMetrics(): UseProviderMetricsReturn {
   const { user, loading: authLoading } = useCachedAuth();
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [lastCompletedSession, setLastCompletedSession] = useState<Session | null>(null);
   const [weeklyMetrics, setWeeklyMetrics] = useState<ExtendedProviderMetrics>({
     currentSession: null,
     weeklySessionsCount: 0,
@@ -123,7 +125,8 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
         console.log("Processed session data:", sessionData);
 
         if (sessionData.status === "completed") {
-          console.log("Session completed, clearing from UI");
+          console.log("Session completed, storing as last completed and clearing current");
+          setLastCompletedSession(sessionData);
           setCurrentSession(null);
           setSessionDuration(0);
         } else {
@@ -362,6 +365,7 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
 
   return {
     currentSession,
+    lastCompletedSession,
     isLoading: authLoading || isLoading,
     error,
     weeklyMetrics,
