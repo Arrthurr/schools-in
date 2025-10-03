@@ -3,6 +3,7 @@
 import { useState, useEffect, useId, useMemo } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useLocation } from "../../lib/hooks/useLocation";
+import { useSession } from "../../lib/hooks/useSession";
 
 import { 
   getAssignedLocations, 
@@ -59,12 +60,14 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 }) => {
   const { user } = useAuth();
   const { location, loading: locationLoading, getLocation } = useLocation();
+  const { checkIn, currentSession, loading: sessionLoading } = useSession();
 
   const [schools, setSchools] = useState<School[]>([]);
   const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [checkingInSchoolId, setCheckingInSchoolId] = useState<string | null>(null);
 
   // Accessibility hooks
   const { announce } = useAnnouncement();
@@ -409,14 +412,43 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                       </Button>
                     )}
                     {showCheckInButtons && (
-                      <Button
-                        size="sm"
-                        disabled={!location || !isWithinRadius(school)}
-                        className="btn-brand-primary touch-target w-full sm:w-auto"
-                      >
-                        <Clock className="h-4 w-4 mr-2" />
-                        Check In
-                      </Button>
+                      currentSession?.locationId === school.id ? (
+                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Checked In
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          disabled={!location || !isWithinRadius(school) || checkingInSchoolId === school.id || !!currentSession}
+                          onClick={async () => {
+                            if (!location) {
+                              announce("Please enable location services to check in", "assertive");
+                              return;
+                            }
+                            setCheckingInSchoolId(school.id);
+                            try {
+                              await checkIn(school.id, location);
+                              announce(`Successfully checked in to ${school.name}`, "polite");
+                            } catch (err: any) {
+                              console.error("Check-in error:", err);
+                              const errorMsg = err?.message || "Failed to check in. Please try again.";
+                              announce(errorMsg, "assertive");
+                              alert(`Check-in failed: ${errorMsg}`);
+                            } finally {
+                              setCheckingInSchoolId(null);
+                            }
+                          }}
+                          className="btn-brand-primary touch-target w-full sm:w-auto"
+                        >
+                          {checkingInSchoolId === school.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Clock className="h-4 w-4 mr-2" />
+                          )}
+                          Check In
+                        </Button>
+                      )
                     )}
                   </div>
                 </div>

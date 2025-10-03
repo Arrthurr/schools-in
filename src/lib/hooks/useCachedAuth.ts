@@ -248,15 +248,15 @@ async function preWarmProviderCache(userId: string): Promise<void> {
     const { getCachedLocationsByProvider, getCachedUserSessions } =
       await import("@/lib/firebase/cachedFirestore");
 
-    // Pre-load in background without blocking
+    // Pre-load in background without blocking - silently fail if permissions issue
     Promise.all([
-      getCachedLocationsByProvider(userId),
-      getCachedUserSessions(userId, { limit: 20 }),
-    ]).catch((error) => {
-      console.warn("Failed to pre-warm provider cache:", error);
+      getCachedLocationsByProvider(userId).catch(() => null),
+      getCachedUserSessions(userId, { limit: 20 }).catch(() => null),
+    ]).catch(() => {
+      // Silently fail - cache warming is optional optimization
     });
   } catch (error) {
-    console.warn("Failed to pre-warm provider cache:", error);
+    // Silently fail - cache warming is optional optimization
   }
 }
 

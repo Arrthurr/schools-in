@@ -91,7 +91,15 @@ export const useSession = (): UseSessionReturn => {
 
         const newSession: SessionData = {
           id: sessionId,
-          ...sessionData,
+          userId: user.uid,
+          locationId: schoolId,
+          schoolId,
+          checkInTime: now,
+          checkInLocation: location,
+          status: "active",
+          checkInMethod: "geo",
+          distanceFromCenterAtCheckIn: location.accuracy ?? 0,
+          dayKey,
         };
 
         setCurrentSession(newSession);
