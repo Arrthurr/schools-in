@@ -123,9 +123,11 @@ service cloud.firestore {
       
       allow delete: if isAdmin();
       
-      // List operations - admins can list all, providers can only list with limit
-      // Note: Query validation for userId filtering happens via read rules above
-      allow list: if isAdmin() || isProvider();
+      // List operations - admins can list all, providers can query their own sessions
+      // Allow queries for active/paused/completed sessions by userId
+      allow list: if isAdmin() || 
+                     (isProvider() && isActiveUser() &&
+                      request.query.where != null);
     }
 
     // Assignments collection - DEPRECATED
