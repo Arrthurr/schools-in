@@ -52,14 +52,33 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({ currentSession, on
   const computedDuration = useMemo(() => {
     if (!currentSession) return 0;
     const s: any = currentSession as any;
-    if (typeof s.durationMinutes === "number") return s.durationMinutes;
-    if (typeof s.duration === "number") return s.duration;
+    
+    console.log("Computing duration for session:", {
+      durationMinutes: s.durationMinutes,
+      duration: s.duration,
+      endTime: s.endTime,
+      checkOutTime: s.checkOutTime,
+      startDate,
+      distanceFromCenterAtCheckIn: s.distanceFromCenterAtCheckIn
+    });
+    
+    if (typeof s.durationMinutes === "number") {
+      console.log("Using durationMinutes:", s.durationMinutes);
+      return s.durationMinutes;
+    }
+    if (typeof s.duration === "number") {
+      console.log("Using duration:", s.duration);
+      return s.duration;
+    }
     const endVal = s.endTime || s.checkOutTime;
     if (startDate && endVal) {
       const endDate = endVal instanceof Timestamp ? endVal.toDate() : typeof endVal?.toDate === "function" ? endVal.toDate() : new Date(endVal);
       const diffMs = endDate.getTime() - startDate.getTime();
-      return Math.max(0, Math.round(diffMs / 60000));
+      const minutes = Math.max(0, Math.round(diffMs / 60000));
+      console.log("Calculated duration from timestamps:", { diffMs, minutes });
+      return minutes;
     }
+    console.log("No duration data available, returning 0");
     return 0;
   }, [currentSession, startDate]);
 
