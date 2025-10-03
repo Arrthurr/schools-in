@@ -1,7 +1,7 @@
 // Custom React hook for session management
 
 import { useState, useCallback, useEffect } from "react";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, onSnapshot, collection, query, where, orderBy, limit } from "firebase/firestore";
 import {
   createDocument,
   updateDocument,
@@ -11,6 +11,7 @@ import {
 import { SessionData, calculateSessionDuration } from "../utils/session";
 import { Coordinates } from "../utils/location";
 import { useAuth } from "./useAuth";
+import { db } from "../../../firebase.config";
 
 interface UseSessionReturn {
   currentSession: SessionData | null;
@@ -138,8 +139,10 @@ export const useSession = (): UseSessionReturn => {
 
         const updateData = {
           checkOutTime,
+          endTime: checkOutTime,
           checkOutLocation: location,
           status: "completed" as const,
+          active: false,
           duration,
           updatedAt: checkOutTime,
         };
@@ -249,6 +252,62 @@ export const useSession = (): UseSessionReturn => {
       setSessions([]);
     }
   }, [user?.uid, loadSessions]);
+
+  // Real-time active/paused session listener to keep currentSession in sync
+  useEffect(() => {
+    if (!user?.uid) {
+      setCurrentSession(null);
+      return;
+    }
+
+    const activeQ = query(
+      collection(db, COLLECTIONS.SESSIONS),
+      where("userId", "==", user.uid),
+      where("status", "in", ["active", "paused"]),
+      orderBy("startTime", "desc"),
+      limit(1)
+    );
+
+    const legacyQ = query(
+      collection(db, COLLECTIONS.SESSIONS),
+      where("userId", "==", user.uid),
+      where("active", "==", true),
+      orderBy("startTime", "desc"),
+      limit(1)
+    );
+
+    const unsubNew = onSnapshot(activeQ, (snap) => {
+      if (snap.empty) {
+        setCurrentSession(null);
+        return;
+      }
+      const d = snap.docs[0];
+      const data = d.data() as any;
+      const session: SessionData = {
+        id: d.id,
+        ...(data as SessionData),
+      };
+      setCurrentSession(session);
+    });
+
+    const unsubLegacy = onSnapshot(legacyQ, (snap) => {
+      if (!snap.empty) {
+        const d = snap.docs[0];
+        const data = d.data() as any;
+        const session: SessionData = {
+          id: d.id,
+          ...(data as SessionData),
+          status: "active",
+        };
+        setCurrentSession((curr) => curr ?? session);
+      }
+    });
+
+    return () => {
+      unsubNew();
+      unsubLegacy();
+    };
+  }, [user?.uid]);
 
   return {
     currentSession,

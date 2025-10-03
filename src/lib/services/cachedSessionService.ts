@@ -130,7 +130,9 @@ export class CachedSessionService {
 
       const updatedSessionData = {
         endTime: Timestamp.fromDate(endData.endTime),
+        checkOutTime: Timestamp.fromDate(endData.endTime),
         status: "completed" as const,
+        active: false,
         durationMinutes,
         notes: endData.notes || sessionData.notes,
         updatedAt: Timestamp.now(),
@@ -182,6 +184,7 @@ export class CachedSessionService {
 
       const updatedSessionData = {
         status: "paused" as const,
+        active: true,
         updatedAt: Timestamp.now(),
       };
 
@@ -231,6 +234,7 @@ export class CachedSessionService {
 
       const updatedSessionData = {
         status: "active" as const,
+        active: true,
         updatedAt: Timestamp.now(),
       };
 

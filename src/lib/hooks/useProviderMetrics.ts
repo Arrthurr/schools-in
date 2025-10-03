@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Timestamp, onSnapshot, doc } from "firebase/firestore";
+import { Timestamp, onSnapshot, doc, collection, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { Session, ProviderMetrics } from "../firebase/types";
 import { useCachedAuth } from "./useCachedAuth";
@@ -86,12 +86,24 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
     }
 
     const updateDuration = () => {
+      if (!currentSession || currentSession.status !== "active") {
+        setSessionDuration(0);
+        return;
+      }
+      
+      const toDate = (v: any): Date | null => {
+        if (!v) return null;
+        if (typeof v.toDate === "function") return v.toDate();
+        if (v instanceof Date) return v;
+        const d = new Date(v);
+        return isNaN(d.getTime()) ? null : d;
+      };
+      
+      const start = toDate(currentSession.startTime) || toDate(currentSession.checkInTime);
+      if (!start) return;
+      
       const now = new Date();
-      const startTime = currentSession.startTime?.toDate ? 
-        currentSession.startTime.toDate() : 
-        new Date(currentSession.startTime as any);
-      const durationMs = now.getTime() - startTime.getTime();
-      const durationMinutes = Math.floor(durationMs / (1000 * 60));
+      const durationMinutes = Math.floor((now.getTime() - start.getTime()) / 60000);
       setSessionDuration(durationMinutes);
     };
 
@@ -104,47 +116,88 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
     return () => clearInterval(interval);
   }, [currentSession]);
 
-  // Set up real-time listener for current session
+  // Real-time: active/paused session for the current user
   useEffect(() => {
-    if (!user?.uid || !currentSession?.id) {
-      console.log("No session to listen to:", { userId: user?.uid, sessionId: currentSession?.id });
-      return;
-    }
+    if (!user?.uid) return;
 
-    console.log("Setting up real-time listener for session:", currentSession.id);
-    const sessionRef = doc(db, COLLECTIONS.SESSIONS, currentSession.id);
-    const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
-      console.log("Session snapshot received:", { exists: snapshot.exists(), data: snapshot.data() });
-      
-      if (snapshot.exists()) {
-        const sessionData: Session = {
-          id: snapshot.id,
-          ...snapshot.data()
-        } as Session;
+    // New schema: status in ['active', 'paused']
+    const activeQ = query(
+      collection(db, COLLECTIONS.SESSIONS),
+      where("userId", "==", user.uid),
+      where("status", "in", ["active", "paused"]),
+      orderBy("startTime", "desc"),
+      limit(1)
+    );
 
-        console.log("Processed session data:", sessionData);
+    // Legacy fallback: active == true
+    const legacyQ = query(
+      collection(db, COLLECTIONS.SESSIONS),
+      where("userId", "==", user.uid),
+      where("active", "==", true),
+      orderBy("startTime", "desc"),
+      limit(1)
+    );
 
-        if (sessionData.status === "completed") {
-          console.log("Session completed, storing as last completed and clearing current");
-          setLastCompletedSession(sessionData);
-          setCurrentSession(null);
-          setSessionDuration(0);
-        } else {
-          console.log("Session still active, updating state");
-          setCurrentSession(sessionData);
-        }
-      } else {
-        console.log("Session document no longer exists");
-        setCurrentSession(null);
-        setSessionDuration(0);
+    const unsubscribers: Array<() => void> = [];
+
+    const handleActiveSnapshot = (snap: any) => {
+      if (snap.empty) {
+        // Let legacy listener take over if it finds one; otherwise clear
+        setCurrentSession((prev) => {
+          // If we still had a session, drop it
+          if (prev) setSessionDuration(0);
+          return null;
+        });
+        return;
+      }
+      const d = snap.docs[0];
+      const data = d.data() as any;
+      const status =
+        data.status ??
+        (typeof data.active === "boolean" ? (data.active ? "active" : "completed") : undefined);
+      const sessionData: Session = { id: d.id, ...data, status };
+      setCurrentSession(sessionData);
+    };
+
+    const unsubNew = onSnapshot(activeQ, handleActiveSnapshot, (err) => {
+      console.error("Active session listener (status) error:", err);
+      setError("Failed to listen for active session");
+    });
+    const unsubLegacy = onSnapshot(legacyQ, (snap) => {
+      // Only set if we don't already have an active session from the new schema
+      if (!snap.empty) {
+        const d = snap.docs[0];
+        const data = d.data() as any;
+        const sessionData: Session = { id: d.id, ...data, status: "active" };
+        setCurrentSession((curr) => curr ?? sessionData);
+      }
+    });
+    unsubscribers.push(unsubNew, unsubLegacy);
+
+    return () => unsubscribers.forEach((u) => u());
+  }, [user?.uid]);
+
+  // Real-time: last completed session for the current user
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const completedQ = query(
+      collection(db, COLLECTIONS.SESSIONS),
+      where("userId", "==", user.uid),
+      where("status", "==", "completed"),
+      orderBy("endTime", "desc"),
+      limit(1)
+    );
+
+    const unsubscribe = onSnapshot(completedQ, (snap) => {
+      if (!snap.empty) {
+        const d = snap.docs[0];
+        setLastCompletedSession({ id: d.id, ...(d.data() as any) } as Session);
       }
     });
 
-    return () => {
-      console.log("Cleaning up real-time listener");
-      unsubscribe();
-    };
-  }, [user?.uid, currentSession?.id]);
+    return unsubscribe;
+  }, [user?.uid]);
 
   // Fetch current session and weekly metrics
   const fetchMetrics = useCallback(async () => {
@@ -279,9 +332,8 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
         endTime: new Date(),
         notes,
       });
-      setCurrentSession(null);
       setSessionDuration(0);
-      // Refresh metrics to update completion stats
+      // Do not setCurrentSession(null) here; let the listener drop it
       await fetchMetrics();
     } catch (err) {
       console.error("Error ending session:", err);
