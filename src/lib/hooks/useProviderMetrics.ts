@@ -85,7 +85,9 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
 
     const updateDuration = () => {
       const now = new Date();
-      const startTime = currentSession.startTime.toDate();
+      const startTime = currentSession.startTime?.toDate ? 
+        currentSession.startTime.toDate() : 
+        new Date(currentSession.startTime as any);
       const durationMs = now.getTime() - startTime.getTime();
       const durationMinutes = Math.floor(durationMs / (1000 * 60));
       setSessionDuration(durationMinutes);
