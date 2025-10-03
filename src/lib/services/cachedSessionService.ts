@@ -125,7 +125,7 @@ export class CachedSessionService {
       if (!durationMinutes && sessionData.startTime) {
         const startMs = sessionData.startTime.toMillis();
         const endMs = endData.endTime.getTime();
-        durationMinutes = Math.max(0, (endMs - startMs) / (1000 * 60));
+        durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
       }
 
       const updatedSessionData = {
