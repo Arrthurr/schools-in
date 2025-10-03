@@ -100,6 +100,32 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
     return () => clearInterval(interval);
   }, [currentSession]);
 
+  // Set up real-time listener for current session
+  useEffect(() => {
+    if (!user?.uid || !currentSession?.id) return;
+
+    const sessionRef = doc(db, COLLECTIONS.SESSIONS, currentSession.id);
+    const unsubscribe = onSnapshot(sessionRef, (doc) => {
+      if (doc.exists()) {
+        const sessionData = doc.data() as Session;
+        if (sessionData.status === "completed") {
+          // Session was completed, clear current session
+          setCurrentSession(null);
+          setSessionDuration(0);
+        } else {
+          // Update current session with latest data
+          setCurrentSession({ id: doc.id, ...sessionData });
+        }
+      } else {
+        // Session was deleted
+        setCurrentSession(null);
+        setSessionDuration(0);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid, currentSession?.id]);
+
   // Fetch current session and weekly metrics
   const fetchMetrics = useCallback(async () => {
     if (!user) {
