@@ -105,19 +105,34 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
     if (!user?.uid || !currentSession?.id) return;
 
     const sessionRef = doc(db, COLLECTIONS.SESSIONS, currentSession.id);
-    const unsubscribe = onSnapshot(sessionRef, (doc) => {
-      if (doc.exists()) {
-        const sessionData = doc.data() as Session;
+    const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        const sessionData: Session = {
+          id: snapshot.id,
+          userId: data.userId,
+          locationId: data.locationId,
+          status: data.status,
+          startTime: data.startTime,
+          checkInTime: data.checkInTime,
+          checkInLocation: data.checkInLocation,
+          checkInMethod: data.checkInMethod,
+          distanceFromCenterAtCheckIn: data.distanceFromCenterAtCheckIn,
+          dayKey: data.dayKey,
+          endTime: data.endTime,
+          checkOutTime: data.checkOutTime,
+          checkOutLocation: data.checkOutLocation,
+          durationMinutes: data.durationMinutes,
+          notes: data.notes,
+        };
+
         if (sessionData.status === "completed") {
-          // Session was completed, clear current session
           setCurrentSession(null);
           setSessionDuration(0);
         } else {
-          // Update current session with latest data
-          setCurrentSession({ id: doc.id, ...sessionData });
+          setCurrentSession(sessionData);
         }
       } else {
-        // Session was deleted
         setCurrentSession(null);
         setSessionDuration(0);
       }
