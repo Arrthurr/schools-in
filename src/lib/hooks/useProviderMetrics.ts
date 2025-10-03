@@ -115,24 +115,10 @@ export function useProviderMetrics(): UseProviderMetricsReturn {
       console.log("Session snapshot received:", { exists: snapshot.exists(), data: snapshot.data() });
       
       if (snapshot.exists()) {
-        const data = snapshot.data();
         const sessionData: Session = {
           id: snapshot.id,
-          userId: data.userId,
-          locationId: data.locationId,
-          status: data.status,
-          startTime: data.startTime,
-          checkInTime: data.checkInTime,
-          checkInLocation: data.checkInLocation,
-          checkInMethod: data.checkInMethod,
-          distanceFromCenterAtCheckIn: data.distanceFromCenterAtCheckIn,
-          dayKey: data.dayKey,
-          endTime: data.endTime,
-          checkOutTime: data.checkOutTime,
-          checkOutLocation: data.checkOutLocation,
-          durationMinutes: data.durationMinutes,
-          notes: data.notes,
-        };
+          ...snapshot.data()
+        } as Session;
 
         console.log("Processed session data:", sessionData);
 
