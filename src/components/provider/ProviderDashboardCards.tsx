@@ -155,7 +155,16 @@ export function ProviderDashboardCards({
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => endSession()}
+                    onClick={async () => {
+                      try {
+                        console.log("Ending session...");
+                        await endSession();
+                        console.log("Session ended successfully");
+                      } catch (err: any) {
+                        console.error("Error ending session:", err);
+                        alert(`Failed to end session: ${err?.message || "Unknown error"}`);
+                      }
+                    }}
                     disabled={isLoading}
                   >
                     <Square className="h-4 w-4 mr-1" />

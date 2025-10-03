@@ -302,7 +302,10 @@ export default function DashboardPage() {
                   onEndSession={handleEndSession}
                 />
 
-                <SchoolList showCheckInButtons={true} />
+                <SchoolList 
+                  showCheckInButtons={true}
+                  currentSessionLocationId={metrics.currentSession?.locationId}
+                />
 
                 <Card className="lg:col-span-2">
                   <CardHeader>

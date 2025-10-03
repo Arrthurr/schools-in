@@ -49,6 +49,7 @@ interface SchoolListProps {
   showCheckInButtons?: boolean;
   showDetailButtons?: boolean;
   className?: string;
+  currentSessionLocationId?: string;
 }
 
 export const SchoolList: React.FC<SchoolListProps> = ({
@@ -57,6 +58,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   showCheckInButtons = false,
   showDetailButtons = true,
   className = "",
+  currentSessionLocationId,
 }) => {
   const { user } = useAuth();
   const { location, loading: locationLoading, getLocation } = useLocation();
@@ -412,7 +414,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                       </Button>
                     )}
                     {showCheckInButtons && (
-                      currentSession?.locationId === school.id ? (
+                      (currentSession?.locationId === school.id || currentSessionLocationId === school.id) ? (
                         <Badge className="bg-green-100 text-green-800 border-green-200">
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Checked In
