@@ -73,6 +73,14 @@
         { "fieldPath": "locationId", "order": "ASCENDING" },
         { "fieldPath": "dayKey", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "endTime", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

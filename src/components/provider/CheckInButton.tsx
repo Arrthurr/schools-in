@@ -194,8 +194,8 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
     const startTime = performance.now();
     try {
       const locationForCheckout = userLocation || {
-        latitude: school.gpsCoordinates.latitude,
-        longitude: school.gpsCoordinates.longitude,
+        latitude: school.geo.latitude,
+        longitude: school.geo.longitude,
         accuracy: 0,
       };
 

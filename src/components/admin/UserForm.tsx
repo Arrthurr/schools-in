@@ -74,42 +74,18 @@ export function UserForm({
 
   const loadSchools = async () => {
     try {
-      // Mock school data for now - replace with actual service call
-      const mockSchools = [
-        {
-          id: "1",
-          name: "Walter Payton HS",
-          address: "1034 N Wells St",
-          isActive: true,
-        },
-        {
-          id: "2",
-          name: "Estrella Foothills HS",
-          address: "18315 W Lower Buckeye Rd",
-          isActive: true,
-        },
-        {
-          id: "3",
-          name: "Augustus Tolton",
-          address: "1729 S Ashland Ave",
-          isActive: true,
-        },
-        {
-          id: "4",
-          name: "Cambridge School",
-          address: "1047 W 47th St",
-          isActive: true,
-        },
-        {
-          id: "5",
-          name: "Chicago SDA Academy",
-          address: "7347 S Emerald Ave",
-          isActive: false,
-        },
-      ];
-      setSchools(mockSchools);
+      const { CachedSchoolService } = await import("@/lib/services/cachedSchoolService");
+      const locationList = await CachedSchoolService.getAllSchools();
+      const formattedSchools = locationList.map(loc => ({
+        id: loc.id,
+        name: loc.name,
+        address: loc.address,
+        isActive: loc.active ?? true,
+      }));
+      setSchools(formattedSchools);
     } catch (error) {
       console.error("Error loading schools:", error);
+      setSchools([]);
     }
   };
 
