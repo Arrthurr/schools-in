@@ -54,13 +54,25 @@ export function LoginForm() {
 
     const startTime = performance.now();
     try {
-      await signInWithEmail(values.email, values.password);
+      const result = await signInWithEmail(values.email, values.password);
       const loginTime = performance.now() - startTime;
 
       // Track successful email login
       const redirectTo = searchParams.get("redirectTo");
-      // Navigate to intended destination (or dashboard)
-      router.replace((redirectTo || "/dashboard") as Route);
+      
+      // Redirect based on user role
+      if (!redirectTo) {
+        const { getDocument } = await import("@/lib/firebase/cachedFirestore");
+        const userDoc = await getDocument<{ role: "provider" | "admin" }>(
+          "users",
+          result.user.uid
+        );
+        const defaultRoute = userDoc?.role === "admin" ? "/admin" : "/dashboard";
+        router.replace(defaultRoute as Route);
+      } else {
+        router.replace(redirectTo as Route);
+      }
+      
       announce("Successfully signed in", "polite");
     } catch (error: any) {
       const loginTime = performance.now() - startTime;
@@ -79,10 +91,23 @@ export function LoginForm() {
 
     const startTime = performance.now();
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
       const loginTime = performance.now() - startTime;
       const redirectTo = searchParams.get("redirectTo");
-      router.replace((redirectTo || "/dashboard") as Route);
+      
+      // Redirect based on user role
+      if (!redirectTo) {
+        const { getDocument } = await import("@/lib/firebase/cachedFirestore");
+        const userDoc = await getDocument<{ role: "provider" | "admin" }>(
+          "users",
+          result.user.uid
+        );
+        const defaultRoute = userDoc?.role === "admin" ? "/admin" : "/dashboard";
+        router.replace(defaultRoute as Route);
+      } else {
+        router.replace(redirectTo as Route);
+      }
+      
       announce("Successfully signed in with Google", "polite");
     } catch (error: any) {
       const loginTime = performance.now() - startTime;
@@ -95,10 +120,11 @@ export function LoginForm() {
     }
   };
 
-  // Prefetch dashboard for faster transition
+  // Prefetch both dashboards for faster transition
   useEffect(() => {
     try {
       router.prefetch?.("/dashboard" as Route);
+      router.prefetch?.("/admin" as Route);
     } catch {}
   }, [router]);
 
