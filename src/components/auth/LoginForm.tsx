@@ -62,11 +62,16 @@ export function LoginForm() {
       
       // Redirect based on user role
       if (!redirectTo) {
-        const { getDocument } = await import("@/lib/firebase/cachedFirestore");
+        // Wait a bit for Firestore document to be available
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const { getDocument } = await import("@/lib/firebase/firestore");
         const userDoc = await getDocument<{ role: "provider" | "admin" }>(
           "users",
           result.user.uid
         );
+        
+        console.log("User role:", userDoc?.role);
         const defaultRoute = userDoc?.role === "admin" ? "/admin" : "/dashboard";
         router.replace(defaultRoute as Route);
       } else {
@@ -97,11 +102,16 @@ export function LoginForm() {
       
       // Redirect based on user role
       if (!redirectTo) {
-        const { getDocument } = await import("@/lib/firebase/cachedFirestore");
+        // Wait a bit for Firestore document to be available
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const { getDocument } = await import("@/lib/firebase/firestore");
         const userDoc = await getDocument<{ role: "provider" | "admin" }>(
           "users",
           result.user.uid
         );
+        
+        console.log("User role:", userDoc?.role);
         const defaultRoute = userDoc?.role === "admin" ? "/admin" : "/dashboard";
         router.replace(defaultRoute as Route);
       } else {
