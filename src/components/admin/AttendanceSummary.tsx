@@ -197,8 +197,6 @@ export function AttendanceSummary() {
 
   // Load attendance data
   const loadAttendanceData = useCallback(async () => {
-    if (loading) return;
-
     try {
       setLoading(true);
       setError(null);
@@ -258,7 +256,7 @@ export function AttendanceSummary() {
     } finally {
       setLoading(false);
     }
-  }, [filters, loading, getDateRange]);
+  }, [filters, getDateRange]);
 
   // Calculate provider attendance data
   const calculateProviderAttendance = (

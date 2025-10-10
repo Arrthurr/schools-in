@@ -167,8 +167,6 @@ export function SessionReports() {
 
   // Load sessions based on filters
   const loadSessions = useCallback(async () => {
-    if (loading) return;
-
     setLoading(true);
     setError(null);
 
@@ -259,7 +257,7 @@ export function SessionReports() {
     } finally {
       setLoading(false);
     }
-  }, [filters, loading, getDateRange]);
+  }, [filters, getDateRange]);
 
   // Load sessions when filters change
   useEffect(() => {
