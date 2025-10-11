@@ -28,7 +28,7 @@
   - [x] 1.5 Export the `signInWithMicrosoft` function for use in components
   - [x] 1.6 Verify TypeScript types are correct (should return `Promise<UserCredential>`)
 
-- [ ] 2.0 Implement Microsoft Sign-In Button in LoginForm Component
+- [x] 2.0 Implement Microsoft Sign-In Button in LoginForm Component
   - [x] 2.1 Import `signInWithMicrosoft` from `@/lib/firebase/auth` in `LoginForm.tsx`
   - [x] 2.2 Create `handleMicrosoftSignIn` async function following the same pattern as `handleGoogleSignIn`
   - [x] 2.3 Add performance tracking with `performance.now()` for start time and login time
@@ -43,12 +43,12 @@
   - [x] 2.12 Set `loadingText` to "Connecting..." for consistency
 
 - [ ] 3.0 Add Authorization Check for Unauthorized Microsoft Accounts
-  - [ ] 3.1 Update `handleMicrosoftSignIn` to check if user document exists after authentication
-  - [ ] 3.2 If user document doesn't exist or user doesn't have proper access, throw a custom error
-  - [ ] 3.3 Set custom error message to "Your account is not authorized." for unauthorized accounts
-  - [ ] 3.4 Ensure the error is caught and displayed in the Alert component
-  - [ ] 3.5 Add screen reader announcement for authorization errors using the `announce` function
-  - [ ] 3.6 Consider edge case: If `userDoc` is null, treat as unauthorized and show the error message
+  - [x] 3.1 Update `handleMicrosoftSignIn` to check if user document exists after authentication
+  - [x] 3.2 If user document doesn't exist or user doesn't have proper access, throw a custom error
+  - [x] 3.3 Set custom error message to "Your account is not authorized." for unauthorized accounts
+  - [x] 3.4 Ensure the error is caught and displayed in the Alert component
+  - [x] 3.5 Add screen reader announcement for authorization errors using the `announce` function
+  - [x] 3.6 Consider edge case: If `userDoc` is null, treat as unauthorized and show the error message
 
 - [ ] 4.0 Create Unit Tests for Microsoft Authentication
   - [ ] 4.1 Add `OAuthProvider` to the mock imports in `src/lib/firebase/auth.test.ts`

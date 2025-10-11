@@ -151,6 +151,11 @@ export function LoginForm() {
           result.user.uid
         );
         
+        // Check if user document exists and has proper access
+        if (!userDoc || !userDoc.role) {
+          throw new Error("Your account is not authorized.");
+        }
+        
         console.log("User role:", userDoc?.role);
         const defaultRoute = userDoc?.role === "admin" ? "/admin" : "/dashboard";
         router.replace(defaultRoute as Route);
