@@ -20,7 +20,7 @@
 
 ## Tasks
 
-- [ ] 1.0 Add Microsoft OAuth Provider to Firebase Authentication Service
+- [x] 1.0 Add Microsoft OAuth Provider to Firebase Authentication Service
   - [x] 1.1 Import `OAuthProvider` from `firebase/auth` in `src/lib/firebase/auth.ts`
   - [x] 1.2 Create a new Microsoft OAuth provider instance with provider ID `microsoft.com`
   - [x] 1.3 Create `signInWithMicrosoft` async function that uses `signInWithPopup` with the Microsoft provider
@@ -29,18 +29,18 @@
   - [x] 1.6 Verify TypeScript types are correct (should return `Promise<UserCredential>`)
 
 - [ ] 2.0 Implement Microsoft Sign-In Button in LoginForm Component
-  - [ ] 2.1 Import `signInWithMicrosoft` from `@/lib/firebase/auth` in `LoginForm.tsx`
-  - [ ] 2.2 Create `handleMicrosoftSignIn` async function following the same pattern as `handleGoogleSignIn`
-  - [ ] 2.3 Add performance tracking with `performance.now()` for start time and login time
-  - [ ] 2.4 Implement error handling that sets the error state and announces to screen readers
-  - [ ] 2.5 Implement role-based redirect logic (admin → /admin, provider → /dashboard)
-  - [ ] 2.6 Add the same 100ms delay for Firestore document availability as Google sign-in
-  - [ ] 2.7 Add Microsoft sign-in button in the JSX, positioned **above** the Google sign-in button
-  - [ ] 2.8 Use `LoadingButton` component with outline variant and proper styling classes
-  - [ ] 2.9 Set button text to "Sign in with Microsoft" with proper `aria-label`
-  - [ ] 2.10 Connect the button's `onClick` handler to `handleMicrosoftSignIn`
-  - [ ] 2.11 Share the same `loading` state between all authentication buttons
-  - [ ] 2.12 Set `loadingText` to "Connecting..." for consistency
+  - [x] 2.1 Import `signInWithMicrosoft` from `@/lib/firebase/auth` in `LoginForm.tsx`
+  - [x] 2.2 Create `handleMicrosoftSignIn` async function following the same pattern as `handleGoogleSignIn`
+  - [x] 2.3 Add performance tracking with `performance.now()` for start time and login time
+  - [x] 2.4 Implement error handling that sets the error state and announces to screen readers
+  - [x] 2.5 Implement role-based redirect logic (admin → /admin, provider → /dashboard)
+  - [x] 2.6 Add the same 100ms delay for Firestore document availability as Google sign-in
+  - [x] 2.7 Add Microsoft sign-in button in the JSX, positioned **above** the Google sign-in button
+  - [x] 2.8 Use `LoadingButton` component with outline variant and proper styling classes
+  - [x] 2.9 Set button text to "Sign in with Microsoft" with proper `aria-label`
+  - [x] 2.10 Connect the button's `onClick` handler to `handleMicrosoftSignIn`
+  - [x] 2.11 Share the same `loading` state between all authentication buttons
+  - [x] 2.12 Set `loadingText` to "Connecting..." for consistency
 
 - [ ] 3.0 Add Authorization Check for Unauthorized Microsoft Accounts
   - [ ] 3.1 Update `handleMicrosoftSignIn` to check if user document exists after authentication

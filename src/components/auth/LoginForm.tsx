@@ -15,7 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { signInWithEmail, signInWithGoogle } from "@/lib/firebase/auth";
+import { signInWithEmail, signInWithGoogle, signInWithMicrosoft } from "@/lib/firebase/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadingButton } from "@/components/ui/loading";
 import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
@@ -125,6 +125,46 @@ export function LoginForm() {
 
       setError(errorMessage);
       announce(`Google sign in failed: ${errorMessage}`, "assertive");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMicrosoftSignIn = async () => {
+    setLoading(true);
+    setError(null);
+
+    const startTime = performance.now();
+    try {
+      const result = await signInWithMicrosoft();
+      const loginTime = performance.now() - startTime;
+      const redirectTo = searchParams.get("redirectTo");
+      
+      // Redirect based on user role
+      if (!redirectTo) {
+        // Wait a bit for Firestore document to be available
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const { getDocument } = await import("@/lib/firebase/firestore");
+        const userDoc = await getDocument<{ role: "provider" | "admin" }>(
+          "users",
+          result.user.uid
+        );
+        
+        console.log("User role:", userDoc?.role);
+        const defaultRoute = userDoc?.role === "admin" ? "/admin" : "/dashboard";
+        router.replace(defaultRoute as Route);
+      } else {
+        router.replace(redirectTo as Route);
+      }
+      
+      announce("Successfully signed in with Microsoft", "polite");
+    } catch (error: any) {
+      const loginTime = performance.now() - startTime;
+      const errorMessage = error.message;
+
+      setError(errorMessage);
+      announce(`Microsoft sign in failed: ${errorMessage}`, "assertive");
     } finally {
       setLoading(false);
     }
@@ -247,6 +287,17 @@ export function LoginForm() {
           </span>
         </div>
       </div>
+
+      <LoadingButton
+        variant="outline"
+        className="w-full touch-target text-base sm:text-sm micro-scale"
+        onClick={handleMicrosoftSignIn}
+        isLoading={loading}
+        loadingText="Connecting..."
+        aria-label="Sign in with Microsoft OAuth"
+      >
+        Sign in with Microsoft
+      </LoadingButton>
 
       <LoadingButton
         variant="outline"
