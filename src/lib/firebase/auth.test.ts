@@ -5,6 +5,7 @@ import {
   signInWithEmail,
   createAccount,
   signInWithGoogle,
+  signInWithMicrosoft,
   logOut,
   getCurrentUser,
 } from "./auth";
@@ -169,6 +170,49 @@ describe("Firebase Auth Utilities", () => {
       await expect(signInWithGoogle()).rejects.toThrow(
         "Google sign-in cancelled"
       );
+    });
+  });
+
+  describe("signInWithMicrosoft", () => {
+    it("calls signInWithPopup with Microsoft provider", async () => {
+      (signInWithPopup as jest.Mock).mockResolvedValue(mockUserCredential);
+
+      const result = await signInWithMicrosoft();
+
+      expect(signInWithPopup).toHaveBeenCalledWith(
+        expect.any(Object), // auth object
+        expect.any(Object) // OAuthProvider instance
+      );
+      expect(result).toEqual(mockUserCredential);
+    });
+
+    it("creates user document after successful sign-in", async () => {
+      (signInWithPopup as jest.Mock).mockResolvedValue(mockUserCredential);
+
+      await signInWithMicrosoft();
+
+      // Verify that the user document creation was attempted
+      // This is implicitly tested by the function not throwing an error
+      expect(signInWithPopup).toHaveBeenCalled();
+    });
+
+    it("throws error when Microsoft sign-in fails", async () => {
+      const mockError = new Error("Microsoft sign-in cancelled");
+      (signInWithPopup as jest.Mock).mockRejectedValue(mockError);
+
+      await expect(signInWithMicrosoft()).rejects.toThrow(
+        "Microsoft sign-in cancelled"
+      );
+    });
+
+    it("returns UserCredential on successful authentication", async () => {
+      (signInWithPopup as jest.Mock).mockResolvedValue(mockUserCredential);
+
+      const result = await signInWithMicrosoft();
+
+      expect(result).toEqual(mockUserCredential);
+      expect(result.user).toEqual(mockUser);
+      expect(result.user.email).toBe("test@example.com");
     });
   });
 

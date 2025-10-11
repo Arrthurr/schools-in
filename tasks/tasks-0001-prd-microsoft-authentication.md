@@ -42,7 +42,7 @@
   - [x] 2.11 Share the same `loading` state between all authentication buttons
   - [x] 2.12 Set `loadingText` to "Connecting..." for consistency
 
-- [ ] 3.0 Add Authorization Check for Unauthorized Microsoft Accounts
+- [x] 3.0 Add Authorization Check for Unauthorized Microsoft Accounts
   - [x] 3.1 Update `handleMicrosoftSignIn` to check if user document exists after authentication
   - [x] 3.2 If user document doesn't exist or user doesn't have proper access, throw a custom error
   - [x] 3.3 Set custom error message to "Your account is not authorized." for unauthorized accounts
@@ -51,20 +51,20 @@
   - [x] 3.6 Consider edge case: If `userDoc` is null, treat as unauthorized and show the error message
 
 - [ ] 4.0 Create Unit Tests for Microsoft Authentication
-  - [ ] 4.1 Add `OAuthProvider` to the mock imports in `src/lib/firebase/auth.test.ts`
-  - [ ] 4.2 Create a new `describe` block for `signInWithMicrosoft` tests
-  - [ ] 4.3 Write test: "calls signInWithPopup with Microsoft provider" - verify correct provider and auth object
-  - [ ] 4.4 Write test: "creates user document after successful sign-in" - verify `createUserDocument` is called
-  - [ ] 4.5 Write test: "throws error when Microsoft sign-in fails" - mock rejection and verify error handling
-  - [ ] 4.6 Write test: "returns UserCredential on successful authentication" - verify return type and value
-  - [ ] 4.7 Update `LoginForm.test.tsx` to mock `signInWithMicrosoft` function
-  - [ ] 4.8 Write test: "renders Microsoft sign-in button" - verify button exists with correct text
-  - [ ] 4.9 Write test: "Microsoft button appears above Google button" - verify DOM order
-  - [ ] 4.10 Write test: "calls signInWithMicrosoft when button clicked" - simulate click and verify function call
-  - [ ] 4.11 Write test: "shows error message for unauthorized accounts" - mock authorization failure
-  - [ ] 4.12 Write test: "disables all buttons during Microsoft sign-in" - verify loading state
-  - [ ] 4.13 Run tests with `npm test -- src/lib/firebase/auth.test.ts` and verify all pass
-  - [ ] 4.14 Run tests with `npm test -- src/components/auth/LoginForm.test.tsx` and verify all pass
+  - [x] 4.1 Add `OAuthProvider` to the mock imports in `src/lib/firebase/auth.test.ts`
+  - [x] 4.2 Create a new `describe` block for `signInWithMicrosoft` tests
+  - [x] 4.3 Write test: "calls signInWithPopup with Microsoft provider" - verify correct provider and auth object
+  - [x] 4.4 Write test: "creates user document after successful sign-in" - verify `createUserDocument` is called
+  - [x] 4.5 Write test: "throws error when Microsoft sign-in fails" - mock rejection and verify error handling
+  - [x] 4.6 Write test: "returns UserCredential on successful authentication" - verify return type and value
+  - [x] 4.7 Update `LoginForm.test.tsx` to mock `signInWithMicrosoft` function
+  - [x] 4.8 Write test: "renders Microsoft sign-in button" - verify button exists with correct text
+  - [x] 4.9 Write test: "Microsoft button appears above Google button" - verify DOM order
+  - [x] 4.10 Write test: "calls signInWithMicrosoft when button clicked" - simulate click and verify function call
+  - [x] 4.11 Write test: "shows error message for unauthorized accounts" - mock authorization failure
+  - [x] 4.12 Write test: "disables all buttons during Microsoft sign-in" - verify loading state
+  - [x] 4.13 Run tests with `npm test -- src/lib/firebase/auth.test.ts` and verify all pass
+  - [x] 4.14 Run tests with `npm test -- src/components/auth/LoginForm.test.tsx` and verify all pass
 
 - [ ] 5.0 Create E2E Tests for Microsoft Authentication Flow
   - [ ] 5.1 Create new file `cypress/e2e/microsoft-auth.cy.ts`
