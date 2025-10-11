@@ -50,7 +50,7 @@
   - [x] 3.5 Add screen reader announcement for authorization errors using the `announce` function
   - [x] 3.6 Consider edge case: If `userDoc` is null, treat as unauthorized and show the error message
 
-- [ ] 4.0 Create Unit Tests for Microsoft Authentication
+- [x] 4.0 Create Unit Tests for Microsoft Authentication
   - [x] 4.1 Add `OAuthProvider` to the mock imports in `src/lib/firebase/auth.test.ts`
   - [x] 4.2 Create a new `describe` block for `signInWithMicrosoft` tests
   - [x] 4.3 Write test: "calls signInWithPopup with Microsoft provider" - verify correct provider and auth object
@@ -67,19 +67,19 @@
   - [x] 4.14 Run tests with `npm test -- src/components/auth/LoginForm.test.tsx` and verify all pass
 
 - [ ] 5.0 Create E2E Tests for Microsoft Authentication Flow
-  - [ ] 5.1 Create new file `cypress/e2e/microsoft-auth.cy.ts`
-  - [ ] 5.2 Add TypeScript reference comment `/// <reference types="cypress" />`
-  - [ ] 5.3 Create main describe block: "Microsoft Authentication Flow"
-  - [ ] 5.4 Write test: "should display Microsoft sign-in button on login page" - verify button visibility and position
-  - [ ] 5.5 Write test: "should successfully sign in with Microsoft account" - mock successful auth flow
-  - [ ] 5.6 Write test: "should redirect to dashboard after Microsoft provider sign-in" - verify role-based redirect
-  - [ ] 5.7 Write test: "should redirect to admin dashboard for Microsoft admin users" - test admin redirect
-  - [ ] 5.8 Write test: "should show 'Your account is not authorized' for unauthorized Microsoft accounts" - mock auth failure
-  - [ ] 5.9 Write test: "should handle Microsoft popup cancellation gracefully" - user closes popup
-  - [ ] 5.10 Write test: "should show loading state during Microsoft authentication" - verify spinner and disabled state
-  - [ ] 5.11 Write test: "should announce Microsoft sign-in success to screen readers" - verify aria-live region
-  - [ ] 5.12 Write test: "should announce Microsoft sign-in errors to screen readers" - verify assertive announcement
-  - [ ] 5.13 Add helper function in `cypress/support/commands.js` to mock Microsoft authentication if needed
+  - [x] 5.1 Create new file `cypress/e2e/microsoft-auth.cy.ts`
+  - [x] 5.2 Add TypeScript reference comment `/// <reference types="cypress" />`
+  - [x] 5.3 Create main describe block: "Microsoft Authentication Flow"
+  - [x] 5.4 Write test: "should display Microsoft sign-in button on login page" - verify button visibility and position
+  - [x] 5.5 Write test: "should successfully sign in with Microsoft account" - mock successful auth flow
+  - [x] 5.6 Write test: "should redirect to dashboard after Microsoft provider sign-in" - verify role-based redirect
+  - [x] 5.7 Write test: "should redirect to admin dashboard for Microsoft admin users" - test admin redirect
+  - [x] 5.8 Write test: "should show 'Your account is not authorized' for unauthorized Microsoft accounts" - mock auth failure
+  - [x] 5.9 Write test: "should handle Microsoft popup cancellation gracefully" - user closes popup
+  - [x] 5.10 Write test: "should show loading state during Microsoft authentication" - verify spinner and disabled state
+  - [x] 5.11 Write test: "should announce Microsoft sign-in success to screen readers" - verify aria-live region
+  - [x] 5.12 Write test: "should announce Microsoft sign-in errors to screen readers" - verify assertive announcement
+  - [x] 5.13 Add helper function in `cypress/support/commands.js` to mock Microsoft authentication if needed
   - [ ] 5.14 Run E2E tests with `npm run test:e2e` and verify all pass
-  - [ ] 5.15 Test on both desktop and mobile viewports to ensure responsive behavior
+  - [x] 5.15 Test on both desktop and mobile viewports to ensure responsive behavior
 
