@@ -44,6 +44,28 @@ jest.mock("../../../firebase.config", () => ({
   auth: {
     currentUser: null, // Start with null, will be set in tests
   },
+  db: {}, // Mock Firestore db
+}));
+
+// Mock Firestore
+jest.mock("firebase/firestore", () => ({
+  doc: jest.fn(),
+  setDoc: jest.fn(),
+  getDoc: jest.fn(() => Promise.resolve({
+    exists: () => false,
+  })),
+  Timestamp: {
+    now: jest.fn(() => ({ seconds: 1234567890, nanoseconds: 0 })),
+  },
+}));
+
+// Mock firestore COLLECTIONS
+jest.mock("./firestore", () => ({
+  COLLECTIONS: {
+    USERS: "users",
+    LOCATIONS: "locations",
+    SESSIONS: "sessions",
+  },
 }));
 
 jest.mock("firebase/auth", () => ({
@@ -51,6 +73,7 @@ jest.mock("firebase/auth", () => ({
   createUserWithEmailAndPassword: jest.fn(),
   signInWithPopup: jest.fn(),
   GoogleAuthProvider: jest.fn(() => ({})),
+  OAuthProvider: jest.fn(() => ({})),
   signOut: jest.fn(),
   getAuth: jest.fn(() => ({
     currentUser: mockUser,
@@ -62,6 +85,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  OAuthProvider,
   signOut,
   getAuth,
 } from "firebase/auth";

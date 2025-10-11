@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  OAuthProvider,
   signOut,
   User,
   UserCredential
@@ -15,6 +16,9 @@ import { COLLECTIONS } from './firestore';
 
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
+
+// Microsoft Auth Provider
+const microsoftProvider = new OAuthProvider('microsoft.com');
 
 // Sign in with email and password
 export const signInWithEmail = async (email: string, password: string): Promise<UserCredential> => {
@@ -34,6 +38,16 @@ export const createAccount = async (email: string, password: string): Promise<Us
 // Sign in with Google
 export const signInWithGoogle = async (): Promise<UserCredential> => {
   const userCredential = await signInWithPopup(auth, googleProvider);
+  
+  // Create Firestore user document if it doesn't exist
+  await createUserDocument(userCredential.user);
+  
+  return userCredential;
+};
+
+// Sign in with Microsoft
+export const signInWithMicrosoft = async (): Promise<UserCredential> => {
+  const userCredential = await signInWithPopup(auth, microsoftProvider);
   
   // Create Firestore user document if it doesn't exist
   await createUserDocument(userCredential.user);
