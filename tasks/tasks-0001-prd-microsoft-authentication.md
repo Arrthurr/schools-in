@@ -66,7 +66,7 @@
   - [x] 4.13 Run tests with `npm test -- src/lib/firebase/auth.test.ts` and verify all pass
   - [x] 4.14 Run tests with `npm test -- src/components/auth/LoginForm.test.tsx` and verify all pass
 
-- [ ] 5.0 Create E2E Tests for Microsoft Authentication Flow
+- [x] 5.0 Create E2E Tests for Microsoft Authentication Flow
   - [x] 5.1 Create new file `cypress/e2e/microsoft-auth.cy.ts`
   - [x] 5.2 Add TypeScript reference comment `/// <reference types="cypress" />`
   - [x] 5.3 Create main describe block: "Microsoft Authentication Flow"
@@ -80,6 +80,6 @@
   - [x] 5.11 Write test: "should announce Microsoft sign-in success to screen readers" - verify aria-live region
   - [x] 5.12 Write test: "should announce Microsoft sign-in errors to screen readers" - verify assertive announcement
   - [x] 5.13 Add helper function in `cypress/support/commands.js` to mock Microsoft authentication if needed
-  - [ ] 5.14 Run E2E tests with `npm run test:e2e` and verify all pass
+  - [x] 5.14 Run E2E tests with `npm run test:e2e` and verify all pass
   - [x] 5.15 Test on both desktop and mobile viewports to ensure responsive behavior
 

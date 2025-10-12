@@ -19,6 +19,9 @@ const googleProvider = new GoogleAuthProvider();
 
 // Microsoft Auth Provider
 const microsoftProvider = new OAuthProvider('microsoft.com');
+microsoftProvider.setCustomParameters({
+  tenant: '31b9c0cb-a928-4266-b427-2820623d7f82'
+});
 
 // Sign in with email and password
 export const signInWithEmail = async (email: string, password: string): Promise<UserCredential> => {
