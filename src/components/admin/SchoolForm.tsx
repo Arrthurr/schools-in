@@ -87,16 +87,43 @@ export function SchoolForm({
   const [showMap, setShowMap] = useState(false);
   const [mapLocation, setMapLocation] = useState<{lat: number; lng: number} | null>(null);
 
-  const [formData, setFormData] = useState<SchoolFormData>({
-    name: school?.name || "",
-    address: school?.address || "",
-    latitude: school?.latitude || 0,
-    longitude: school?.longitude || 0,
-    radius: school?.radius || 100,
-    description: school?.description || "",
+  const isEditing = !!school?.id;
+
+  // Initialize form data with school data when available
+  const [formData, setFormData] = useState<SchoolFormData>(() => {
+    if (school) {
+      return {
+        name: school.name || "",
+        address: school.address || "",
+        latitude: school.latitude || 0,
+        longitude: school.longitude || 0,
+        radius: school.radius || 100,
+        description: school.description || "",
+      };
+    }
+    return {
+      name: "",
+      address: "",
+      latitude: 0,
+      longitude: 0,
+      radius: 100,
+      description: "",
+    };
   });
 
-  const isEditing = !!school?.id;
+  // Update form data when school prop changes (for editing different schools)
+  useEffect(() => {
+    if (school) {
+      setFormData({
+        name: school.name || "",
+        address: school.address || "",
+        latitude: school.latitude || 0,
+        longitude: school.longitude || 0,
+        radius: school.radius || 100,
+        description: school.description || "",
+      });
+    }
+  }, [school]);
 
   // Validate location whenever form data changes
   useEffect(() => {
@@ -154,6 +181,14 @@ export function SchoolForm({
     if (!addressValidation.isValid) {
       setError(
         "Address validation failed: " + addressValidation.errors.join(", ")
+      );
+      return;
+    }
+
+    // Skip coordinate validation if coordinates are still at default values during editing
+    if (isEditing && formData.latitude === 0 && formData.longitude === 0) {
+      setError(
+        "Please load the school coordinates by clicking 'Get Coords' or entering them manually"
       );
       return;
     }

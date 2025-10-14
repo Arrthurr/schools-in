@@ -61,7 +61,7 @@ function mapSchool(raw: School): School {
     description:
       raw.description || (raw as any)?.metadata?.description || "",
     activeProviders:
-      raw.activeProviders ?? raw.assignedProviders?.length ?? 0,
+      raw.assignedProviders?.length ?? 0,
   };
 }
 
