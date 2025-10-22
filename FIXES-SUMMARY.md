@@ -185,3 +185,63 @@ For your use case (educational providers), Location.assignedProviders is optimal
 **Status**: Core fixes complete ✅  
 **Remaining**: UI component updates (see MIGRATION.md)  
 **Estimated time**: 2-3 hours to update UI components
+
+## Provider Assignment Bug Fix (October 22, 2025)
+
+### What Was Fixed
+The Provider Dashboard failed to show assigned schools because the User Management admin form was updating the wrong collection:
+- ✅ User Management was updating: `users/[userId]` with `assignedSchools` field
+- ❌ Provider Dashboard was querying: `locations/[locationId]` for `assignedProviders` array
+- Result: Assignment data was never synchronized between collections
+
+### Root Cause
+The User Management form (`UserForm.tsx`) contained legacy code that predated the single-source-of-truth architecture. A separate, properly functioning Assignment Management page already existed at `/admin/assignments` that correctly updated `Location.assignedProviders`.
+
+### Solution Implemented
+1. **Removed legacy school assignment UI from UserForm.tsx**
+   - Removed state: `assignedSchools` field
+   - Removed functions: `loadSchools()`, `handleSchoolToggle()`
+   - Removed entire school selection section from form
+   - Added info banner directing admins to Assignment Management page
+
+2. **Cleaned up userService.ts interfaces**
+   - Removed `assignedSchools?: string[]` from `UserRecord` interface
+   - Removed `assignedSchools?: string[]` from `UserFormData` interface
+   - Removed `updateUserSchools()` function that attempted to update wrong collection
+
+3. **Created migration script**
+   - File: `scripts/migrate-assignments.js`
+   - Syncs any existing `User.assignedSchools` data to `Location.assignedProviders`
+   - Removes deprecated field after migration
+   - Provides detailed logging of all changes
+
+4. **Updated documentation**
+   - Added section to `MIGRATION.md` explaining the fix and migration process
+   - Directs admins to use Assignment Management page for all future assignments
+
+### Files Modified
+- `src/components/admin/UserForm.tsx` - Removed legacy school assignment UI
+- `src/lib/services/userService.ts` - Removed deprecated fields and functions
+- `scripts/migrate-assignments.js` - New migration script
+- `MIGRATION.md` - Added documentation of fix and migration steps
+
+### Next Steps for Users
+1. Run the migration script to fix any broken assignments:
+   ```bash
+   node scripts/migrate-assignments.js
+   ```
+
+2. Verify the fix by:
+   - Logging in as a provider who was previously assigned a school
+   - Checking that the school now appears in the Provider Dashboard
+
+3. For future assignments:
+   - Use the Assignment Management page at `/admin/assignments`
+   - Do NOT use User Management form for school assignments
+
+### Architecture Note
+This fix ensures consistency with the established data model:
+- **Single source of truth**: `Location.assignedProviders` (array of user IDs)
+- **Query pattern**: `getAssignedLocations(userId)` queries locations by `assignedProviders`
+- **Admin interface**: Assignment Management page handles all provider-location assignments
+- **User interface**: User Management form handles user profile, email, role, and active status only

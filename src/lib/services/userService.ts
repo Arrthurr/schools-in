@@ -22,7 +22,6 @@ export interface UserRecord {
   email: string | null;
   displayName: string | null;
   role: "provider" | "admin";
-  assignedSchools?: string[];
   createdAt: Timestamp;
   lastSignIn?: Timestamp;
   isActive: boolean;
@@ -33,7 +32,6 @@ export interface UserFormData {
   displayName: string;
   email: string;
   role: "provider" | "admin";
-  assignedSchools?: string[];
   isActive: boolean;
 }
 
@@ -125,23 +123,6 @@ export const toggleUserStatus = async (
   } catch (error) {
     console.error("Error updating user status:", error);
     throw new Error("Failed to update user status");
-  }
-};
-
-// Update user's assigned schools (for providers)
-export const updateUserSchools = async (
-  userId: string,
-  assignedSchools: string[]
-): Promise<void> => {
-  try {
-    const userRef = doc(db, COLLECTIONS.USERS, userId);
-    await updateDoc(userRef, {
-      assignedSchools,
-      updatedAt: Timestamp.now(),
-    });
-  } catch (error) {
-    console.error("Error updating user schools:", error);
-    throw new Error("Failed to update user schools");
   }
 };
 

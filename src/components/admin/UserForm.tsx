@@ -11,17 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
-import { CompactEmptyState } from "../ui/error-empty-states";
 import { UserRecord, updateUserProfile } from "@/lib/services/userService";
-
-interface School {
-  id: string;
-  name: string;
-  address: string;
-  isActive: boolean;
-}
 
 interface UserFormProps {
   user?: UserRecord | null;
@@ -38,19 +28,13 @@ export function UserForm({
   onSave,
   mode,
 }: UserFormProps) {
-  const [schools, setSchools] = useState<School[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     displayName: "",
     email: "",
     role: "provider" as "provider" | "admin",
     isActive: true,
-    assignedSchools: [] as string[],
   });
-
-  useEffect(() => {
-    loadSchools();
-  }, []);
 
   useEffect(() => {
     if (user && mode === "edit") {
@@ -59,7 +43,6 @@ export function UserForm({
         email: user.email || "",
         role: user.role,
         isActive: user.isActive,
-        assignedSchools: user.assignedSchools || [],
       });
     } else if (mode === "create") {
       setFormData({
@@ -67,35 +50,9 @@ export function UserForm({
         email: "",
         role: "provider",
         isActive: true,
-        assignedSchools: [],
       });
     }
   }, [user, mode]);
-
-  const loadSchools = async () => {
-    try {
-      const { CachedSchoolService } = await import("@/lib/services/cachedSchoolService");
-      const locationList = await CachedSchoolService.getAllSchools();
-      const formattedSchools = locationList.map(loc => ({
-        id: loc.id,
-        name: loc.name,
-        address: loc.address,
-        isActive: loc.active ?? true,
-      }));
-      setSchools(formattedSchools);
-    } catch (error) {
-      console.error("Error loading schools:", error);
-      setSchools([]);
-    }
-  };
-
-  const handleSchoolToggle = (schoolId: string) => {
-    const updated = formData.assignedSchools.includes(schoolId)
-      ? formData.assignedSchools.filter((id) => id !== schoolId)
-      : [...formData.assignedSchools, schoolId];
-
-    setFormData((prev) => ({ ...prev, assignedSchools: updated }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,11 +73,6 @@ export function UserForm({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const getSchoolName = (schoolId: string) => {
-    const school = schools.find((s) => s.id === schoolId);
-    return school?.name || schoolId;
   };
 
   return (
@@ -229,80 +181,11 @@ export function UserForm({
             </div>
           </div>
 
-          {/* School Assignment - Only for Providers */}
-          {formData.role === "provider" && (
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">
-                Assigned Schools
-              </label>
-
-              {/* Selected Schools */}
-              {formData.assignedSchools.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    Selected schools ({formData.assignedSchools.length}):
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.assignedSchools.map((schoolId) => (
-                      <Badge
-                        key={schoolId}
-                        variant="secondary"
-                        className="pr-1"
-                      >
-                        {getSchoolName(schoolId)}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-1 ml-2"
-                          onClick={() => handleSchoolToggle(schoolId)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* School Selection */}
-              <div className="border rounded-lg p-4 max-h-40 overflow-y-auto">
-                <p className="text-sm font-medium mb-3">Available Schools:</p>
-                <div className="space-y-2">
-                  {schools
-                    .filter((school) => school.isActive)
-                    .map((school) => (
-                      <div
-                        key={school.id}
-                        className="flex items-center space-x-2"
-                      >
-                        <input
-                          type="checkbox"
-                          id={school.id}
-                          checked={formData.assignedSchools.includes(school.id)}
-                          onChange={() => handleSchoolToggle(school.id)}
-                          className="rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
-                        />
-                        <label
-                          htmlFor={school.id}
-                          className="text-sm font-medium leading-none cursor-pointer flex-1"
-                        >
-                          <div>
-                            <p className="font-medium">{school.name}</p>
-                            <p className="text-xs text-gray-500">
-                              {school.address}
-                            </p>
-                          </div>
-                        </label>
-                      </div>
-                    ))}
-                </div>
-                {schools.filter((school) => school.isActive).length === 0 && (
-                  <CompactEmptyState message="No active schools available for assignment" />
-                )}
-              </div>
-            </div>
-          )}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-900">
+              <strong>School Assignments:</strong> To assign schools to this provider, use the <strong>Assignment Management</strong> page from the admin menu.
+            </p>
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
