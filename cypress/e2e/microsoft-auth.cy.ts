@@ -246,29 +246,29 @@ describe("Microsoft Authentication Flow", () => {
     });
   });
 
-  describe("Integration with Form", () => {
-    it("should work alongside email/password authentication", () => {
-      // Verify all auth options are present
-      cy.get('input[type="email"]').should("be.visible");
-      cy.get('input[type="password"]').should("be.visible");
-      cy.contains("button", "Sign In").should("be.visible");
+  describe("Single Sign-On Only", () => {
+    it("should only show Microsoft sign-in option", () => {
+      // Verify only Microsoft auth is present
       cy.contains("button", "Sign in with Microsoft").should("be.visible");
-      cy.contains("button", "Sign in with Google").should("be.visible");
+      
+      // Verify email/password and Google auth are not present
+      cy.get('input[type="email"]').should("not.exist");
+      cy.get('input[type="password"]').should("not.exist");
+      cy.contains("button", "Sign in with Google").should("not.exist");
     });
 
-    it("should share loading state with other auth methods", () => {
+    it("should disable button during Microsoft sign-in", () => {
       // Start Microsoft sign-in
       cy.intercept("POST", "**/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp*", {
         statusCode: 200,
         body: { localId: "user-123" },
         delay: 1000,
-      });
+      }).as("microsoftSignIn");
 
       cy.contains("button", "Sign in with Microsoft").click();
 
-      // All buttons should be disabled during loading
-      cy.contains("button", "Sign In").should("be.visible");
-      cy.contains("button", "Sign in with Google").should("be.visible");
+      // Button should show loading state
+      cy.contains("Connecting").should("be.visible");
     });
   });
 });

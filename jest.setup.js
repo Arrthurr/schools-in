@@ -25,10 +25,10 @@ jest.mock("firebase/auth", () => ({
   getAuth: jest.fn(() => ({})),
   onAuthStateChanged: jest.fn(),
   signInWithPopup: jest.fn(),
-  signInWithEmailAndPassword: jest.fn(),
-  createUserWithEmailAndPassword: jest.fn(),
   signOut: jest.fn(),
-  GoogleAuthProvider: jest.fn(),
+  OAuthProvider: jest.fn(() => ({
+    setCustomParameters: jest.fn(),
+  })),
 }));
 
 // Mock Firebase Firestore

@@ -1,33 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useId } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { signInWithEmail, signInWithGoogle, signInWithMicrosoft } from "@/lib/firebase/auth";
+import { signInWithMicrosoft } from "@/lib/firebase/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadingButton } from "@/components/ui/loading";
-import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
+import { useAnnouncement } from "@/lib/accessibility";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
-
-const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z
-    .string()
-    .min(6, { message: "Password must be at least 6 characters." }),
-});
 
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
@@ -35,100 +15,9 @@ export function LoginForm() {
 
   // Accessibility hooks
   const { announce } = useAnnouncement();
-  const formId = useId();
   const errorId = useId();
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setLoading(true);
-    setError(null);
-
-    const startTime = performance.now();
-    try {
-      const result = await signInWithEmail(values.email, values.password);
-      const loginTime = performance.now() - startTime;
-
-      // Track successful email login
-      const redirectTo = searchParams.get("redirectTo");
-      
-      // Redirect based on user role
-      if (!redirectTo) {
-        // Wait a bit for Firestore document to be available
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const { getDocument } = await import("@/lib/firebase/firestore");
-        const userDoc = await getDocument<{ role: "provider" | "admin" }>(
-          "users",
-          result.user.uid
-        );
-        
-        console.log("User role:", userDoc?.role);
-        const defaultRoute = userDoc?.role === "admin" ? "/admin" : "/dashboard";
-        router.replace(defaultRoute as Route);
-      } else {
-        router.replace(redirectTo as Route);
-      }
-      
-      announce("Successfully signed in", "polite");
-    } catch (error: any) {
-      const loginTime = performance.now() - startTime;
-      const errorMessage = error.message;
-
-      setError(errorMessage);
-      announce(`Sign in failed: ${errorMessage}`, "assertive");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError(null);
-
-    const startTime = performance.now();
-    try {
-      const result = await signInWithGoogle();
-      const loginTime = performance.now() - startTime;
-      const redirectTo = searchParams.get("redirectTo");
-      
-      // Redirect based on user role
-      if (!redirectTo) {
-        // Wait a bit for Firestore document to be available
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const { getDocument } = await import("@/lib/firebase/firestore");
-        const userDoc = await getDocument<{ role: "provider" | "admin" }>(
-          "users",
-          result.user.uid
-        );
-        
-        console.log("User role:", userDoc?.role);
-        const defaultRoute = userDoc?.role === "admin" ? "/admin" : "/dashboard";
-        router.replace(defaultRoute as Route);
-      } else {
-        router.replace(redirectTo as Route);
-      }
-      
-      announce("Successfully signed in with Google", "polite");
-    } catch (error: any) {
-      const loginTime = performance.now() - startTime;
-      const errorMessage = error.message;
-
-      setError(errorMessage);
-      announce(`Google sign in failed: ${errorMessage}`, "assertive");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleMicrosoftSignIn = async () => {
     setLoading(true);
@@ -185,113 +74,19 @@ export function LoginForm() {
 
   return (
     <div className="w-full space-y-4 sm:space-y-6">
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-4"
-          aria-labelledby={`${formId}-title`}
-          aria-describedby={error ? errorId : undefined}
-          noValidate
+      {error && (
+        <Alert
+          variant="destructive"
+          className="text-sm"
+          role="alert"
+          id={errorId}
         >
-          <ScreenReaderOnly>
-            <h2 id={`${formId}-title`}>Sign in to your account</h2>
-          </ScreenReaderOnly>
-
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm sm:text-base">Email</FormLabel>
-                <FormControl>
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    className="touch-target text-base sm:text-sm"
-                    autoComplete="email"
-                    aria-describedby={
-                      form.formState.errors.email
-                        ? `${field.name}-error`
-                        : undefined
-                    }
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage
-                  id={
-                    form.formState.errors.email
-                      ? `${field.name}-error`
-                      : undefined
-                  }
-                />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm sm:text-base">Password</FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    placeholder="Enter your password"
-                    className="touch-target text-base sm:text-sm"
-                    autoComplete="current-password"
-                    aria-describedby={
-                      form.formState.errors.password
-                        ? `${field.name}-error`
-                        : undefined
-                    }
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage
-                  id={
-                    form.formState.errors.password
-                      ? `${field.name}-error`
-                      : undefined
-                  }
-                />
-              </FormItem>
-            )}
-          />
-          {error && (
-            <Alert
-              variant="destructive"
-              className="text-sm"
-              role="alert"
-              id={errorId}
-            >
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription className="break-words">
-                {error}
-              </AlertDescription>
-            </Alert>
-          )}
-          <LoadingButton
-            type="submit"
-            className="w-full touch-target text-base sm:text-sm micro-scale"
-            isLoading={loading}
-            loadingText="Signing In..."
-            aria-describedby={error ? errorId : undefined}
-          >
-            Sign In
-          </LoadingButton>
-        </form>
-      </Form>
-
-      <div className="space-y-3">
-        <div className="flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="flex justify-center">
-          <span className="text-xs uppercase text-muted-foreground">
-            Or continue with
-          </span>
-        </div>
-      </div>
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription className="break-words">
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <LoadingButton
         variant="outline"
@@ -302,17 +97,6 @@ export function LoginForm() {
         aria-label="Sign in with Microsoft OAuth"
       >
         Sign in with Microsoft
-      </LoadingButton>
-
-      <LoadingButton
-        variant="outline"
-        className="w-full touch-target text-base sm:text-sm micro-scale"
-        onClick={handleGoogleSignIn}
-        isLoading={loading}
-        loadingText="Connecting..."
-        aria-label="Sign in with Google OAuth"
-      >
-        Sign in with Google
       </LoadingButton>
     </div>
   );

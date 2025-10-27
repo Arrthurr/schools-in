@@ -4,8 +4,6 @@ import { LoginForm } from "./LoginForm";
 import { signInWithMicrosoft } from "@/lib/firebase/auth";
 
 jest.mock("@/lib/firebase/auth", () => ({
-  signInWithEmail: jest.fn(),
-  signInWithGoogle: jest.fn(),
   signInWithMicrosoft: jest.fn(),
 }));
 
@@ -29,11 +27,6 @@ describe("LoginForm", () => {
     jest.clearAllMocks();
   });
 
-  it("renders the login form", () => {
-    render(<LoginForm />);
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-  });
-
   describe("Microsoft Authentication", () => {
     it("renders Microsoft sign-in button", () => {
       render(<LoginForm />);
@@ -43,27 +36,11 @@ describe("LoginForm", () => {
       expect(microsoftButton).toBeInTheDocument();
     });
 
-    it("Microsoft button appears above Google button", () => {
-      render(<LoginForm />);
-      const buttons = screen.getAllByRole("button");
-      const microsoftButton = screen.getByRole("button", {
-        name: /sign in with microsoft/i,
-      });
-      const googleButton = screen.getByRole("button", {
-        name: /sign in with google/i,
-      });
-
-      const microsoftIndex = buttons.indexOf(microsoftButton);
-      const googleIndex = buttons.indexOf(googleButton);
-
-      expect(microsoftIndex).toBeLessThan(googleIndex);
-    });
-
     it("calls signInWithMicrosoft when button clicked", async () => {
       const user = userEvent.setup();
       mockSignInWithMicrosoft.mockResolvedValue({
         user: { uid: "test-uid", email: "test@example.com" },
-      });
+      } as any);
 
       render(<LoginForm />);
       const microsoftButton = screen.getByRole("button", {
@@ -95,7 +72,7 @@ describe("LoginForm", () => {
       expect(errorMessage).toBeInTheDocument();
     });
 
-    it("disables all buttons during Microsoft sign-in", async () => {
+    it("disables button during Microsoft sign-in", async () => {
       const user = userEvent.setup();
       // Mock a delayed response to test loading state
       mockSignInWithMicrosoft.mockImplementation(
@@ -105,7 +82,7 @@ describe("LoginForm", () => {
               () =>
                 resolve({
                   user: { uid: "test-uid", email: "test@example.com" },
-                }),
+                } as any),
               50
             )
           )

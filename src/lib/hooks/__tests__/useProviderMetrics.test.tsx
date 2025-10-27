@@ -55,13 +55,8 @@ describe("useProviderMetrics", () => {
       loading: false,
       error: null,
       signOut: jest.fn(),
-      signInWithGoogle: jest.fn(),
-      signInWithEmail: jest.fn(),
-      signUpWithEmail: jest.fn(),
-      updateUserProfile: jest.fn(),
-      sendPasswordReset: jest.fn(),
       isAuthenticated: true,
-    });
+    } as any);
 
     // Default session service mocks
     mockCachedSessionService.getActiveSession = jest
@@ -104,13 +99,8 @@ describe("useProviderMetrics", () => {
         loading: true,
         error: null,
         signOut: jest.fn(),
-        signInWithGoogle: jest.fn(),
-        signInWithEmail: jest.fn(),
-        signUpWithEmail: jest.fn(),
-        updateUserProfile: jest.fn(),
-        sendPasswordReset: jest.fn(),
         isAuthenticated: false,
-      });
+      } as any);
 
       const { result } = renderHook(() => useProviderMetrics());
 
@@ -123,13 +113,8 @@ describe("useProviderMetrics", () => {
         loading: false,
         error: null,
         signOut: jest.fn(),
-        signInWithGoogle: jest.fn(),
-        signInWithEmail: jest.fn(),
-        signUpWithEmail: jest.fn(),
-        updateUserProfile: jest.fn(),
-        sendPasswordReset: jest.fn(),
         isAuthenticated: false,
-      });
+      } as any);
 
       const { result } = renderHook(() => useProviderMetrics());
 

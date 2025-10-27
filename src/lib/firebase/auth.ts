@@ -1,10 +1,7 @@
 // Firebase Authentication service and utilities
 
 import { 
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signInWithPopup,
-  GoogleAuthProvider,
   OAuthProvider,
   signOut,
   User,
@@ -14,39 +11,11 @@ import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../../../firebase.config';
 import { COLLECTIONS } from './firestore';
 
-// Google Auth Provider
-const googleProvider = new GoogleAuthProvider();
-
 // Microsoft Auth Provider
 const microsoftProvider = new OAuthProvider('microsoft.com');
 microsoftProvider.setCustomParameters({
   tenant: '31b9c0cb-a928-4266-b427-2820623d7f82'
 });
-
-// Sign in with email and password
-export const signInWithEmail = async (email: string, password: string): Promise<UserCredential> => {
-  return await signInWithEmailAndPassword(auth, email, password);
-};
-
-// Create account with email and password
-export const createAccount = async (email: string, password: string): Promise<UserCredential> => {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  
-  // Create corresponding Firestore user document
-  await createUserDocument(userCredential.user);
-  
-  return userCredential;
-};
-
-// Sign in with Google
-export const signInWithGoogle = async (): Promise<UserCredential> => {
-  const userCredential = await signInWithPopup(auth, googleProvider);
-  
-  // Create Firestore user document if it doesn't exist
-  await createUserDocument(userCredential.user);
-  
-  return userCredential;
-};
 
 // Sign in with Microsoft
 export const signInWithMicrosoft = async (): Promise<UserCredential> => {
@@ -70,7 +39,7 @@ export const getCurrentUser = (): User | null => {
 
 /**
  * Create or update Firestore user document
- * Called automatically on registration and Google sign-in
+ * Called automatically on Microsoft sign-in
  */
 async function createUserDocument(user: User): Promise<void> {
   const userRef = doc(db, COLLECTIONS.USERS, user.uid);

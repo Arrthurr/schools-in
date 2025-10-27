@@ -2,7 +2,6 @@
 
 import { LoginForm } from "@/components/auth/LoginForm";
 import { BrandHeader } from "@/components/ui/logo";
-import Link from "next/link";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect } from "react";
@@ -31,16 +30,6 @@ export default function LoginPage() {
         <Suspense fallback={null}>
           <LoginForm />
         </Suspense>
-
-        <p className="text-sm text-muted-foreground text-center">
-          Don't have an account?{" "}
-          <Link
-            href="/register"
-            className="underline hover:text-foreground transition-colors touch-target"
-          >
-            Sign Up
-          </Link>
-        </p>
       </div>
     </main>
   );
