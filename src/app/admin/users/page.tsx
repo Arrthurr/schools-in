@@ -304,10 +304,6 @@ function UserManagementContent() {
             Manage user accounts and role assignments
           </p>
         </div>
-        <Button onClick={handleCreateUser}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
       </div>
 
       {error && (
