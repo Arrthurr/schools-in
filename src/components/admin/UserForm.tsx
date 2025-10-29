@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { UserRecord, updateUserProfile } from "@/lib/services/userService";
+import { UserRecord, updateUserProfile, createUser } from "@/lib/services/userService";
 
 interface UserFormProps {
   user?: UserRecord | null;
@@ -62,8 +62,7 @@ export function UserForm({
       if (mode === "edit" && user) {
         await updateUserProfile(user.id, formData);
       } else {
-        // TODO: Implement user creation logic
-        console.log("Creating user:", formData);
+        await createUser(formData);
       }
 
       onSave();

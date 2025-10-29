@@ -12,6 +12,7 @@ import {
   getDoc,
   writeBatch,
   Timestamp,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "../firebase/firestore";
@@ -89,6 +90,31 @@ export const getUserById = async (
   } catch (error) {
     console.error("Error getting user:", error);
     throw new Error("Failed to fetch user");
+  }
+};
+
+// Create a new user
+export const createUser = async (data: UserFormData): Promise<string> => {
+  try {
+    const newUserRef = doc(collection(db, COLLECTIONS.USERS));
+    const timestamp = Timestamp.now();
+    
+    const newUser = {
+      uid: newUserRef.id,
+      email: data.email,
+      displayName: data.displayName,
+      role: data.role,
+      isActive: data.isActive,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      lastSignIn: timestamp,
+    };
+
+    await setDoc(newUserRef, newUser);
+    return newUserRef.id;
+  } catch (error) {
+    console.error("Error creating user:", error);
+    throw new Error("Failed to create user");
   }
 };
 
