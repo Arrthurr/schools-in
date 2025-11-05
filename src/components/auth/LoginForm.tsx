@@ -72,7 +72,7 @@ export function LoginForm() {
   }, [router]);
 
   return (
-    <div className="w-full space-y-4 sm:space-y-6">
+    <div className="w-full space-y-2 sm:space-y-4">
       {error && (
         <Alert
           variant="destructive"

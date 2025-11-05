@@ -24,7 +24,7 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-sm sm:max-w-md space-y-6 sm:space-y-8">
+      <div className="w-full max-w-sm sm:max-w-md space-y-4 sm:space-y-6">
         <BrandHeader title="Sign In" subtitle="Welcome back to Schools-In" />
 
         <Suspense fallback={null}>
