@@ -35,11 +35,11 @@ import {
 import { SkeletonCard, SkeletonList } from "../ui/skeleton";
 import { LoadingSpinner } from "../ui/loading";
 import { ErrorState, EmptyState } from "../ui/error-empty-states";
-import {
-  useAnnouncement,
-  ScreenReaderOnly,
-  ARIA,
-} from "../../lib/accessibility";
+// import {
+//   useAnnouncement,
+//   ScreenReaderOnly,
+//   ARIA,
+// } from "../../lib/accessibility";
 
 type School = Location;
 
@@ -72,7 +72,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   const [checkingInSchoolId, setCheckingInSchoolId] = useState<string | null>(null);
 
   // Accessibility hooks
-  const { announce } = useAnnouncement();
+  // const { announce } = useAnnouncement();
   const searchInputId = useId();
 
   // Load assigned schools

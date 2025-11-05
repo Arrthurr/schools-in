@@ -23,7 +23,7 @@ import {
   LocationError as CustomLocationError,
 } from "../../lib/utils/location";
 import { formatDuration } from "../../lib/utils/session";
-import { AnnouncementRegion, useAnnouncement } from "@/lib/accessibility";
+// import { AnnouncementRegion, useAnnouncement } from "@/lib/accessibility";
 import { ErrorDisplay } from "../common/ErrorDisplay";
 import { Location } from "@/lib/firebase/types";
 
@@ -65,7 +65,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   const [distance, setDistance] = useState<number | null>(null);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [sessionDuration, setSessionDuration] = useState<number | null>(null);
-  const { announce } = useAnnouncement();
+  // const { announce } = useAnnouncement();
 
   const handleCheckInClick = useCallback(async () => {
     if (!user) {
@@ -216,7 +216,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
 
   return (
     <>
-      <AnnouncementRegion />
+      {/* <AnnouncementRegion /> */}
       <div className={`space-y-4 ${className}`}>
         <Button
           onClick={isCheckedIn ? handleCheckOutClick : handleCheckInClick}

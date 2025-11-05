@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/provider/AuthProvider";
 import ClientLayout from "@/components/layout/ClientLayout";
+import { ThemeProvider } from "@/components/ui/theme-provider";
 
 import { NetworkStatusIndicator } from "@/components/common/NetworkStatusIndicator";
 
@@ -54,14 +55,21 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body
-        className={`${inter.className} h-full bg-background text-foreground antialiased`}
+      className={`${inter.className} h-full bg-background text-foreground antialiased`}
       >
-        <AuthProvider>
-          <div className="min-h-full safe-area-inset">
-            <ClientLayout>{children}</ClientLayout>
-            <NetworkStatusIndicator />
-          </div>
-        </AuthProvider>
+      <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+      >
+          <AuthProvider>
+            <div className="min-h-full safe-area-inset">
+              <ClientLayout>{children}</ClientLayout>
+              <NetworkStatusIndicator />
+            </div>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

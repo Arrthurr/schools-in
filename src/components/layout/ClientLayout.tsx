@@ -14,6 +14,7 @@ import { OfflineStatusBar } from "@/components/offline/OfflineStatusBar";
 import { OfflineStatusIndicator } from "@/components/offline/OfflineStatusIndicator";
 import { Toaster } from "@/components/ui/toaster";
 import { Logo } from "../ui/logo";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -75,8 +76,9 @@ function Header() {
                   className="hidden sm:flex"
                 />
                 <div className="hidden md:flex">
-                  <PWAStatus />
+                <PWAStatus />
                 </div>
+                <ThemeToggle />
                 <Link
                   href="/profile"
                   className="touch-target text-sm sm:text-base text-foreground/80 hover:text-foreground transition-colors focus-ring"

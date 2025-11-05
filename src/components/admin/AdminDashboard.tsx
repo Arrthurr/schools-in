@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { SkeletonCard, Skeleton } from "@/components/ui/skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/error-empty-states";
-import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
+// import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
 import { CsvExportButton } from "@/components/admin/CsvExportButton";
 import Link from "next/link";
 
@@ -54,13 +54,13 @@ export function AdminDashboard() {
   const [totalSchools, setTotalSchools] = useState<number | null>(null);
 
   // Accessibility hooks
-  const { announce } = useAnnouncement();
+  // const { announce } = useAnnouncement();
 
   useEffect(() => {
-    if (!loading && !error) {
-      announce("Dashboard data loaded successfully", "polite");
-    }
-  }, [loading, error, announce]);
+  if (!loading && !error) {
+  // announce("Dashboard data loaded successfully", "polite");
+  }
+  }, [loading, error]);
 
   // Load total schools
   useEffect(() => {

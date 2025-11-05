@@ -5,7 +5,7 @@ import { useId } from "react";
 import { signInWithMicrosoft } from "@/lib/firebase/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadingButton } from "@/components/ui/loading";
-import { useAnnouncement } from "@/lib/accessibility";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 
@@ -13,8 +13,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Accessibility hooks
-  const { announce } = useAnnouncement();
+  // Accessibility hooks - TODO: reimplement
   const errorId = useId();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,15 +50,15 @@ export function LoginForm() {
       } else {
         router.replace(redirectTo as Route);
       }
-      
-      announce("Successfully signed in with Microsoft", "polite");
-    } catch (error: any) {
+
+      // announce("Successfully signed in with Microsoft", "polite");
+      } catch (error: any) {
       const loginTime = performance.now() - startTime;
       const errorMessage = error.message;
 
       setError(errorMessage);
-      announce(`Microsoft sign in failed: ${errorMessage}`, "assertive");
-    } finally {
+      // announce(`Microsoft sign in failed: ${errorMessage}`, "assertive");
+      } finally {
       setLoading(false);
     }
   };
