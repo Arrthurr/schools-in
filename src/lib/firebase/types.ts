@@ -54,17 +54,7 @@ export interface Session {
   duration?: number; // legacy total minutes
 }
 
-// Assignment collection is deprecated - use Location.assignedProviders instead
-// Keeping interface for backward compatibility during migration
-export interface Assignment {
-  id: string; // `${userId}_${locationId}`
-  userId: string;
-  locationId: string;
-  active?: boolean;
-  role?: "provider";
-  assignedAt?: Timestamp;
-  updatedAt?: Timestamp;
-}
+
 
 // Additional utility types
 export interface UserFilters {
