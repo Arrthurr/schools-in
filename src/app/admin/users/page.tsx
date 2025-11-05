@@ -532,36 +532,10 @@ function UserManagementContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() =>
-                      handleUserStatusToggle(user.id, user.isActive)
-                    }
-                    className={
-                      user.isActive ? "text-red-600" : "text-green-600"
-                    }
-                  >
-                    {user.isActive ? (
-                      <UserX className="h-4 w-4 mr-1" />
-                    ) : (
-                      <UserCheck className="h-4 w-4 mr-1" />
-                    )}
-                    {user.isActive ? "Deactivate" : "Activate"}
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
                     onClick={() => handleEditUser(user)}
                   >
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
