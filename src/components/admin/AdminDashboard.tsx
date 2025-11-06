@@ -18,11 +18,9 @@ import {
   Clock,
   TrendingUp,
   Settings,
-  FileText,
   MapPin,
   Activity,
   Calendar,
-  AlertCircle,
 } from "lucide-react";
 import { SkeletonCard, Skeleton } from "@/components/ui/skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/error-empty-states";
@@ -291,54 +289,6 @@ export function AdminDashboard() {
                 </p>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions - Responsive Button Layout */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Quick Actions</CardTitle>
-            <CardDescription className="text-sm">
-              Frequently used administrative tasks
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Link href="/admin/schools" className="w-full">
-              <Button
-                variant="outline"
-                className="w-full justify-start touch-target"
-              >
-                <School className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="truncate">Manage Schools</span>
-              </Button>
-            </Link>
-            <Link href="/admin/reports" className="w-full">
-              <Button
-                variant="outline"
-                className="w-full justify-start touch-target"
-              >
-                <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="truncate">View Reports</span>
-              </Button>
-            </Link>
-            <CsvExportButton
-              variant="outline"
-              className="w-full justify-start"
-            />
-            <Button
-              variant="outline"
-              className="w-full justify-start touch-target"
-            >
-              <Users className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span className="truncate">Manage Users</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start touch-target"
-            >
-              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span className="truncate">System Health</span>
-            </Button>
           </CardContent>
         </Card>
       </div>
