@@ -72,9 +72,9 @@ export function useCachedAuth() {
             FIREBASE_CACHE_CONFIGS.AUTH.session,
           ]);
 
-          // If not in cache, fetch from Firestore
+          // If not in cache, fetch from Firestore with retry for auth state propagation
           if (!userData) {
-            userData = await getCachedDocument<{
+            userData = await getCachedDocumentWithRetry<{
               role: "provider" | "admin";
               profile?: any;
             }>(COLLECTIONS.USERS, firebaseUser.uid);
@@ -156,11 +156,11 @@ export function useCachedAuth() {
     try {
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
-      // Force refresh user data from Firestore
-      const userData = await getCachedDocument<{
+      // Force refresh user data from Firestore with retry for auth state propagation
+      const userData = await getCachedDocumentWithRetry<{
         role: "provider" | "admin";
         profile?: any;
-      }>(COLLECTIONS.USERS, state.user.uid, { forceRefresh: true });
+      }>(COLLECTIONS.USERS, state.user.uid);
 
       if (userData) {
         const authUser: AuthUser = {
@@ -367,6 +367,49 @@ async function loadUserPreferences(userId: string): Promise<any> {
     console.warn("Failed to load user preferences:", error);
     return {};
   }
+}
+
+// Retry logic for getCachedDocument with auth state propagation handling
+// Firestore security rules need time to recognize new auth state after onAuthStateChanged fires
+async function getCachedDocumentWithRetry<T>(
+  collectionName: string,
+  docId: string,
+  maxRetries: number = 5
+): Promise<T | null> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await getCachedDocument<T>(collectionName, docId, {
+        forceRefresh: attempt > 0, // Force refresh on retries to bypass stale cache
+      });
+      if (result) {
+        console.log(`✅ getCachedDocumentWithRetry succeeded on attempt ${attempt + 1}`);
+        return result;
+      }
+    } catch (error: any) {
+      // Check if this is a permission error (security rules rejection)
+      const isPermissionError = error?.code === 'permission-denied' || 
+                               error?.message?.includes('permission');
+      
+      if (!isPermissionError) {
+        // Not a permission error, propagate it
+        throw error;
+      }
+      
+      // Permission error - likely auth state propagation delay
+      console.warn(
+        `⏳ Permission denied on attempt ${attempt + 1}/${maxRetries}. ` +
+        `Auth state may still be propagating. Retrying in ${50 * Math.pow(2, attempt)}ms...`
+      );
+      
+      if (attempt < maxRetries - 1) {
+        const delayMs = 50 * Math.pow(2, attempt); // 50ms, 100ms, 200ms, 400ms, 800ms
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  
+  console.error(`❌ getCachedDocumentWithRetry failed after ${maxRetries} attempts`);
+  return null;
 }
 
 // Export the original hook as well for backward compatibility
