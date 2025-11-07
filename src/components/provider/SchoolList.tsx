@@ -73,6 +73,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
   // Accessibility hooks
   // const { announce } = useAnnouncement();
+  const announce = () => {}; // No-op function placeholder
   const searchInputId = useId();
 
   // Load assigned schools

@@ -66,6 +66,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [sessionDuration, setSessionDuration] = useState<number | null>(null);
   // const { announce } = useAnnouncement();
+  const announce = () => {}; // No-op function placeholder
 
   const handleCheckInClick = useCallback(async () => {
     if (!user) {
