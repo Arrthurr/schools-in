@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useRouter } from "next/navigation";
 
 interface ProtectedRouteProps {
@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading } = useCachedAuth();
   const router = useRouter();
 
   if (loading) {
@@ -18,11 +18,19 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
   }
 
   if (!user) {
+    console.log("⚠️ ProtectedRoute: User not authenticated, redirecting to /");
     router.push("/");
     return null;
   }
 
-  if (user.role && !roles.includes(user.role)) {
+  if (!user.role) {
+    console.warn("⚠️ ProtectedRoute: User missing role information:", user.uid);
+    // Instead of immediately redirecting, let useCachedAuth retry fetching the role
+    return <div>Loading user permissions...</div>;
+  }
+
+  if (!roles.includes(user.role)) {
+    console.log(`⚠️ ProtectedRoute: User role '${user.role}' not in allowed roles:`, roles);
     router.push("/dashboard"); // Or an unauthorized page
     return null;
   }
