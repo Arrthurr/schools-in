@@ -39,10 +39,16 @@ export function LoginForm() {
           throw new Error("Your account is not authorized.");
         }
         
+        // Wait for Firebase Auth state to propagate before redirecting
+        // This ensures onAuthStateChanged listeners fire on the destination page
+        await waitForAuthStatePropagation();
+        
         console.log("✅ Sign-in successful. User role:", userDoc.role);
         const defaultRoute = userDoc.role === "admin" ? "/admin" : "/dashboard";
         router.replace(defaultRoute as Route);
       } else {
+        // Also wait for auth propagation for redirect URLs
+        await waitForAuthStatePropagation();
         router.replace(redirectTo as Route);
       }
 
@@ -96,6 +102,25 @@ export function LoginForm() {
     
     console.error("❌ Failed to retrieve user document after", maxRetries, "attempts");
     return null;
+  }
+
+  /**
+   * Wait for Firebase Auth state to propagate before redirecting
+   * Ensures onAuthStateChanged listeners have fired on the destination page
+   */
+  async function waitForAuthStatePropagation(): Promise<void> {
+    const { auth } = await import("../../../firebase.config");
+    
+    // Wait for currentUser to be set (synchronous indicator of auth state)
+    for (let i = 0; i < 10; i++) {
+      if (auth.currentUser) {
+        console.log("✅ Auth state propagated, currentUser available");
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    console.warn("⚠️ Auth state not propagated after 500ms, proceeding anyway");
   }
 
   // Prefetch both dashboards for faster transition
