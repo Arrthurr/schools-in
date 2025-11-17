@@ -81,8 +81,15 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
   // Load assigned schools
   useEffect(() => {
+    let isCancelled = false;
+    
     const loadSchools = async () => {
-      if (!user?.uid) return;
+      if (!user?.uid || isCancelled) return;
+      
+      // Only load once when we have a user and no schools yet
+      if (schools.length > 0) {
+        return;
+      }
 
       const startTime = performance.now();
       setLoading(true);
@@ -92,6 +99,9 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         const assignedLocations = await getAssignedLocations(user.uid);
         const loadTime = performance.now() - startTime;
 
+        // Check if component is still mounted before updating state
+        if (isCancelled) return;
+        
         setSchools(assignedLocations);
         setFilteredSchools(assignedLocations);
 
@@ -102,15 +112,26 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         console.error("Error loading schools:", err);
         const errorMessage = "Failed to load schools. Please try again.";
 
+        // Check if component is still mounted before updating state
+        if (isCancelled) return;
+        
         setError(errorMessage);
         announce(`Error: ${errorMessage}`, "assertive");
       } finally {
-        setLoading(false);
+        // Check if component is still mounted before updating state
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadSchools();
-  }, [user?.uid, announce]);
+
+    // Cleanup function to mark component as cancelled
+    return () => {
+      isCancelled = true;
+    };
+  }, [user?.uid, announce, schools.length]);
 
   const displayedSchools = useMemo(() => {
     if (filteredSchools.length === 0) return [] as Array<School & { distance?: number }>;
