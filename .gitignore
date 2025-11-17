@@ -67,6 +67,7 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
+/tmp
 
 # Logs
 logs
