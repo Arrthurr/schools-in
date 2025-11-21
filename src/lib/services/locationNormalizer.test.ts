@@ -74,4 +74,54 @@ describe("locationNormalizer", () => {
     expect(updateData.geo).toMatchObject({ latitude: 43.2, longitude: -89.3 });
     expect(updateData.isActive).toBe(false);
   });
+
+  it("computes activeProviders from assignedProviders array length", () => {
+    const raw = {
+      name: "Provider Test School",
+      address: "100 Test Ave",
+      geo: baseGeo,
+      radiusMeters: 100,
+      assignedProviders: ["provider-1", "provider-2", "provider-3"],
+      createdAt: { toMillis: () => Timestamp.now().toMillis() },
+      updatedAt: { toMillis: () => Timestamp.now().toMillis() },
+    };
+
+    const normalized = normalizeLocationData("school-3", raw);
+
+    expect(normalized.assignedProviders).toEqual(["provider-1", "provider-2", "provider-3"]);
+    expect(normalized.activeProviders).toBe(3);
+  });
+
+  it("handles empty assignedProviders array", () => {
+    const raw = {
+      name: "No Provider School",
+      address: "200 Empty St",
+      geo: baseGeo,
+      radiusMeters: 100,
+      assignedProviders: [],
+      createdAt: { toMillis: () => Timestamp.now().toMillis() },
+      updatedAt: { toMillis: () => Timestamp.now().toMillis() },
+    };
+
+    const normalized = normalizeLocationData("school-4", raw);
+
+    expect(normalized.assignedProviders).toEqual([]);
+    expect(normalized.activeProviders).toBe(0);
+  });
+
+  it("handles missing assignedProviders field", () => {
+    const raw = {
+      name: "Missing Providers School",
+      address: "300 None St",
+      geo: baseGeo,
+      radiusMeters: 100,
+      createdAt: { toMillis: () => Timestamp.now().toMillis() },
+      updatedAt: { toMillis: () => Timestamp.now().toMillis() },
+    };
+
+    const normalized = normalizeLocationData("school-5", raw);
+
+    expect(normalized.assignedProviders).toEqual([]);
+    expect(normalized.activeProviders).toBe(0);
+  });
 });

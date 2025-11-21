@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Metadata } from "next";
-import { Plus, Search, MapPin, Edit, Trash2, Users } from "lucide-react";
+import { Plus, Search, MapPin, Edit, Trash2, Users, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -61,7 +61,7 @@ function mapSchool(raw: School): School {
     description:
       raw.description || (raw as any)?.metadata?.description || "",
     activeProviders:
-      raw.activeProviders ?? raw.assignedProviders?.length ?? 0,
+      raw.assignedProviders?.length ?? 0,
   };
 }
 
@@ -74,36 +74,40 @@ function SchoolManagementContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const loadSchools = async (forceRefresh = false) => {
+    setIsLoading(true);
+    try {
+      const data = await CachedSchoolService.getAllSchools(
+        {},
+        { 
+          orderBy: { field: "name", direction: "asc" }, 
+          limit: 200,
+          forceRefresh 
+        }
+      );
+
+      const normalized = (data as School[]).map(mapSchool);
+      setSchools(normalized);
+      setFilteredSchools(normalized);
+      setError(null);
+    } catch (err) {
+      console.error("Failed to load schools", err);
+      setError("Failed to load schools");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
-    const loadSchools = async () => {
-      setIsLoading(true);
-      try {
-        const data = await CachedSchoolService.getAllSchools(
-          {},
-          { orderBy: { field: "name", direction: "asc" }, limit: 200 }
-        );
-
-        if (!cancelled) {
-          const normalized = (data as School[]).map(mapSchool);
-          setSchools(normalized);
-          setFilteredSchools(normalized);
-          setError(null);
-        }
-      } catch (err) {
-        console.error("Failed to load schools", err);
-        if (!cancelled) {
-          setError("Failed to load schools");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+    const loadInitialData = async () => {
+      if (!cancelled) {
+        await loadSchools();
       }
     };
 
-    loadSchools();
+    loadInitialData();
 
     return () => {
       cancelled = true;
@@ -252,10 +256,20 @@ function SchoolManagementContent() {
             providers.
           </p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add School
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => loadSchools(true)}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add School
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}

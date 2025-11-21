@@ -120,7 +120,7 @@ export function normalizeLocationData(
     longitude,
     description: baseData.description,
     totalSessions: baseData.totalSessions,
-    activeProviders: baseData.activeProviders,
+    activeProviders: assignedProviders.length, // Compute from assignedProviders array
     geo: resolvedGeo,
     gpsCoordinates:
       baseData.gpsCoordinates instanceof GeoPoint
