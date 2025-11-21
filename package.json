@@ -76,7 +76,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
-    "@cypress/code-coverage": "^3.14.6",
+    "@cypress/code-coverage": "^3.10.0",
     "@firebase/rules-unit-testing": "^5.0.0",
     "@next/bundle-analyzer": "^15.5.2",
     "@next/eslint-plugin-next": "^15.5.2",
