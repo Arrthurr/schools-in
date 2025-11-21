@@ -630,7 +630,7 @@ export class BulkSchoolOperationsService {
       throw new Error("CSV must have at least a header and one data row");
     }
 
-    const headers = lines[0].split(",").map((h) => h.trim().replace(/"/g, ""));
+    const headers = this.parseCSVLine(lines[0]).map((h) => h.trim());
     const schools: SchoolImportData[] = [];
 
     for (let i = 1; i < lines.length; i++) {
@@ -641,7 +641,7 @@ export class BulkSchoolOperationsService {
       };
 
       headers.forEach((header, index) => {
-        const value = values[index]?.trim().replace(/"/g, "") || "";
+        const value = values[index]?.trim() || "";
 
         switch (header.toLowerCase()) {
           case "name":
@@ -688,9 +688,15 @@ export class BulkSchoolOperationsService {
 
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
+      const nextChar = line[i + 1];
 
       if (char === '"') {
-        inQuotes = !inQuotes;
+        if (inQuotes && nextChar === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
       } else if (char === "," && !inQuotes) {
         result.push(current);
         current = "";
