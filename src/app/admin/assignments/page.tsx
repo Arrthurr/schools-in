@@ -217,10 +217,10 @@ function AssignmentManagementContent() {
           {[...Array(5)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="pb-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-muted rounded w-3/4"></div>
               </CardHeader>
               <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-8 bg-muted rounded w-1/2"></div>
               </CardContent>
             </Card>
           ))}
@@ -254,35 +254,35 @@ function AssignmentManagementContent() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-gray-900">
+        <div className="bg-card p-4 rounded-lg border">
+          <div className="text-2xl font-bold text-foreground">
             {stats.totalSchools}
           </div>
-          <div className="text-sm text-gray-600">Total Schools</div>
+          <div className="text-sm text-muted-foreground">Total Schools</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-green-600">
+        <div className="bg-card p-4 rounded-lg border">
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
             {stats.schoolsWithProviders}
           </div>
-          <div className="text-sm text-gray-600">With Providers</div>
+          <div className="text-sm text-muted-foreground">With Providers</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-red-600">
+        <div className="bg-card p-4 rounded-lg border">
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
             {stats.schoolsWithoutProviders}
           </div>
-          <div className="text-sm text-gray-600">No Providers</div>
+          <div className="text-sm text-muted-foreground">No Providers</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-blue-600">
+        <div className="bg-card p-4 rounded-lg border">
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
             {stats.totalAssignments}
           </div>
-          <div className="text-sm text-gray-600">Total Assignments</div>
+          <div className="text-sm text-muted-foreground">Total Assignments</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-purple-600">
+        <div className="bg-card p-4 rounded-lg border">
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
             {stats.activeProviders}
           </div>
-          <div className="text-sm text-gray-600">Active Providers</div>
+          <div className="text-sm text-muted-foreground">Active Providers</div>
         </div>
       </div>
 
@@ -311,7 +311,7 @@ function AssignmentManagementContent() {
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="flex items-center space-x-4 flex-1">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search schools or providers..."
               value={searchTerm}
@@ -323,7 +323,7 @@ function AssignmentManagementContent() {
           <select
             value={assignmentFilter}
             onChange={(e) => setAssignmentFilter(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-input bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
           >
             <option value="all">All Schools</option>
             <option value="assigned">With Providers</option>
@@ -339,9 +339,9 @@ function AssignmentManagementContent() {
 
       {/* Bulk Actions */}
       {selectedSchools.size > 0 && (
-        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
           <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-blue-900">
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
               {selectedSchools.size} schools selected
             </span>
             <Button
@@ -366,8 +366,8 @@ function AssignmentManagementContent() {
       )}
 
       {/* Assignments List */}
-      <div className="bg-white rounded-lg border">
-        <div className="p-4 border-b border-gray-200">
+      <div className="bg-card rounded-lg border">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">
               School Assignments ({filteredAssignments.length})
@@ -388,9 +388,9 @@ function AssignmentManagementContent() {
           </div>
         </div>
 
-        <div className="divide-y divide-gray-200">
+        <div className="divide-y divide-border">
           {filteredAssignments.map((assignment) => (
-            <div key={assignment.schoolId} className="p-4 hover:bg-gray-50">
+            <div key={assignment.schoolId} className="p-4 hover:bg-accent/50">
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-4 flex-1">
                   <input
@@ -402,12 +402,12 @@ function AssignmentManagementContent() {
                         e.target.checked
                       )
                     }
-                    className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-1 rounded border-input text-primary focus:ring-ring"
                   />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-2">
-                      <h3 className="text-lg font-medium text-gray-900">
+                      <h3 className="text-lg font-medium text-foreground">
                         {assignment.schoolName}
                       </h3>
                       <Badge
@@ -426,7 +426,7 @@ function AssignmentManagementContent() {
                       </Badge>
                     </div>
 
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
+                    <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
                       <span className="flex items-center">
                         <MapPin className="h-3 w-3 mr-1" />
                         {assignment.schoolAddress}
@@ -443,16 +443,16 @@ function AssignmentManagementContent() {
                     {/* Assigned Providers */}
                     {assignment.assignedProviders.length > 0 ? (
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-700">
+                        <p className="text-sm font-medium text-muted-foreground">
                           Assigned Providers:
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {assignment.assignedProviders.map((provider) => (
                             <div
                               key={provider.userId}
-                              className="flex items-center space-x-1 bg-blue-50 px-2 py-1 rounded-lg"
+                              className="flex items-center space-x-1 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg"
                             >
-                              <span className="text-sm font-medium text-blue-900">
+                              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
                                 {provider.displayName}
                               </span>
                               <Badge
@@ -481,7 +481,7 @@ function AssignmentManagementContent() {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-500 italic">
+                      <div className="text-sm text-muted-foreground italic">
                         No providers assigned to this school
                       </div>
                     )}
@@ -504,8 +504,8 @@ function AssignmentManagementContent() {
 
           {filteredAssignments.length === 0 && (
             <div className="p-8 text-center">
-              <School className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">
+              <School className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
                 No schools found matching your criteria
               </p>
             </div>

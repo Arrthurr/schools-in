@@ -16,7 +16,7 @@ export function BrandedFooter({
 
   if (variant === "simple") {
     return (
-      <footer className={`py-6 px-4 border-t bg-gray-50/50 ${className}`}>
+      <footer className={`py-6 px-4 border-t bg-muted/20 ${className}`}>
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {showLogo && <Logo size="sm" />}
@@ -31,7 +31,7 @@ export function BrandedFooter({
 
   // detailed variant
   return (
-    <footer className={`py-12 px-4 border-t bg-gray-50 ${className}`}>
+    <footer className={`py-12 px-4 border-t bg-muted/30 ${className}`}>
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand Section */}
@@ -46,7 +46,7 @@ export function BrandedFooter({
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900">Quick Links</h3>
+            <h3 className="font-semibold text-foreground">Quick Links</h3>
             <div className="space-y-2 text-sm">
               <Link
                 href="/dashboard"
@@ -71,7 +71,7 @@ export function BrandedFooter({
 
           {/* Support */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900">Support</h3>
+            <h3 className="font-semibold text-foreground">Support</h3>
             <div className="space-y-2 text-sm">
               <p className="text-muted-foreground">
                 Need help? Contact your administrator or technical support.

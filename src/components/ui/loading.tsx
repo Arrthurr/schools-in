@@ -26,7 +26,7 @@ function LoadingSpinner({
   const variantClasses = {
     primary: "text-brand-primary",
     secondary: "text-muted-foreground",
-    muted: "text-gray-400",
+    muted: "text-muted-foreground/50",
   };
 
   const textSizeClasses = {
@@ -197,7 +197,7 @@ function PulseLoader({
   const variantClasses = {
     primary: "bg-brand-primary",
     secondary: "bg-muted-foreground",
-    muted: "bg-gray-400",
+    muted: "bg-muted",
   };
 
   return (
@@ -242,7 +242,7 @@ function RefreshSpinner({
   const variantClasses = {
     primary: "text-brand-primary",
     secondary: "text-muted-foreground",
-    muted: "text-gray-400",
+    muted: "text-muted-foreground/50",
   };
 
   return (

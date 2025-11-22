@@ -201,7 +201,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
       return (
         <Badge
           variant="secondary"
-          className="bg-green-100 text-green-700 border-green-200"
+          className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
         >
           <CheckCircle className="w-3 h-3 mr-1" />
           In Range
@@ -211,7 +211,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
       return (
         <Badge
           variant="secondary"
-          className="bg-yellow-100 text-yellow-700 border-yellow-200"
+          className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800"
         >
           <AlertCircle className="w-3 h-3 mr-1" />
           Out of Range
@@ -336,7 +336,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
             Search schools
           </label>
           <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -377,7 +377,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                 key={school.id}
                 className={`p-4 sm:p-5 border rounded-lg transition-colors ${
                   onSchoolSelect
-                    ? "cursor-pointer hover:bg-gray-50 hover:border-brand-primary active:bg-gray-100"
+                    ? "cursor-pointer hover:bg-accent/50 hover:border-brand-primary active:bg-accent"
                     : ""
                 }`}
                 onClick={() => handleSchoolClick(school)}
@@ -396,13 +396,13 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 lg:gap-8">
                   <div className="flex-1 min-w-0 md:pr-4 lg:pr-8">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-3 mb-2">
-                      <h4 className="font-medium text-gray-900 text-base sm:text-lg truncate md:whitespace-normal md:overflow-visible md:text-clip break-words">
+                      <h4 className="font-medium text-foreground text-base sm:text-lg truncate md:whitespace-normal md:overflow-visible md:text-clip break-words">
                         {school.name}
                       </h4>
                       {getSchoolStatusBadge(school)}
                     </div>
 
-                    <div className="flex items-start text-sm text-gray-600 mb-3">
+                    <div className="flex items-start text-sm text-muted-foreground mb-3">
                       <MapPin
                         className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0"
                         aria-hidden="true"
@@ -412,7 +412,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-500">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
                       {typeof school.distance === "number" && (
                         <div className="flex items-center">
                           <Navigation className="h-4 w-4 mr-1 flex-shrink-0" />
@@ -440,7 +440,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                     )}
                     {showCheckInButtons && (
                       (currentSession?.locationId === school.id || currentSessionLocationId === school.id) ? (
-                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                        <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800">
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Checked In
                         </Badge>
@@ -486,7 +486,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
         {displayedSchools.length > 0 && (
           <div className="mt-4 pt-4 border-t">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-gray-500">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-muted-foreground">
               <span>
                 Showing {filteredSchools.length} of {schools.length} school
                 {schools.length !== 1 ? "s" : ""}

@@ -248,10 +248,10 @@ function SchoolManagementContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-foreground">
             School Management
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-muted-foreground mt-1">
             Manage school locations and their check-in settings for Title I
             providers.
           </p>
@@ -275,7 +275,7 @@ function SchoolManagementContent() {
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Search schools by name, address, or description..."
             value={searchQuery}
@@ -298,13 +298,13 @@ function SchoolManagementContent() {
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div className="h-3 bg-gray-200 rounded"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                  <div className="h-3 bg-muted rounded"></div>
+                  <div className="h-3 bg-muted rounded w-2/3"></div>
                 </div>
               </CardContent>
             </Card>
@@ -313,11 +313,11 @@ function SchoolManagementContent() {
       ) : filteredSchools.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
-            <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               {searchQuery ? "No schools found" : "No schools configured"}
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-muted-foreground mb-4">
               {searchQuery
                 ? "Try adjusting your search criteria."
                 : "Add your first school location to get started."}
@@ -355,7 +355,7 @@ function SchoolManagementContent() {
               <CardContent>
                 <div className="space-y-3">
                   {/* Stats */}
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center">
                       <Users className="h-4 w-4 mr-1" />
                       <span>{providerCount} providers</span>
@@ -368,12 +368,12 @@ function SchoolManagementContent() {
                   {/* Details */}
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Check-in radius:</span>
+                        <span className="text-muted-foreground">Check-in radius:</span>
                       <Badge variant="outline">{radiusMeters}m</Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Coordinates:</span>
-                      <span className="text-gray-900 font-mono text-xs">
+                        <span className="text-muted-foreground">Coordinates:</span>
+                        <span className="text-muted-foreground font-mono text-xs">
                         {typeof school.latitude === "number"
                           ? school.latitude.toFixed(4)
                           : "--"}
@@ -387,7 +387,7 @@ function SchoolManagementContent() {
 
                   {/* Description */}
                   {school.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
                       {school.description}
                     </p>
                   )}
@@ -407,7 +407,7 @@ function SchoolManagementContent() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDeleteSchool(school.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

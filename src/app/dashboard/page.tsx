@@ -89,16 +89,16 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute roles={["provider", "admin"]}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 md:hidden"
+            className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         <div
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r shadow-lg transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -121,7 +121,7 @@ export default function DashboardPage() {
                   <User className="h-6 w-6 text-white" />
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-foreground">
                     {user?.displayName || user?.email || "Provider User"}
                   </p>
                   <Badge variant="secondary" className="text-xs mt-1">
@@ -143,14 +143,14 @@ export default function DashboardPage() {
                   className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     item.current
                       ? "bg-brand-primary text-white"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
                 >
                   <item.icon
                     className={`mr-3 h-5 w-5 ${
                       item.current
                         ? "text-white"
-                        : "text-gray-400 group-hover:text-gray-500"
+                        : "text-muted-foreground group-hover:text-foreground"
                     }`}
                   />
                   {item.name}
@@ -172,7 +172,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="md:ml-64">
-          <div className="sticky top-0 z-40 bg-white shadow-sm border-b">
+          <div className="sticky top-0 z-40 bg-card shadow-sm border-b">
             <div className="flex h-16 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6">
               <Button
                 variant="ghost"
@@ -185,7 +185,7 @@ export default function DashboardPage() {
 
               <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
                 <div className="flex flex-1 items-center">
-                  <h1 className="text-xl font-semibold text-gray-900">
+                  <h1 className="text-xl font-semibold text-foreground">
                     Provider Dashboard
                   </h1>
                 </div>
@@ -203,17 +203,17 @@ export default function DashboardPage() {
               <div className="mb-8">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">
+                    <h2 className="text-2xl font-bold text-foreground">
                       Welcome back,{" "}
                       {user?.displayName?.split(" ")[0] || "Provider"}!
                     </h2>
-                    <p className="mt-1 text-gray-600">
+                    <p className="mt-1 text-muted-foreground">
                       Here's what's happening with your schools today.
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-600">Today</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-sm text-muted-foreground">Today</p>
+                    <p className="text-lg font-semibold text-foreground">
                       {new Date().toLocaleDateString("en-US", {
                         weekday: "long",
                         month: "long",
@@ -316,8 +316,8 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-center py-8">
-                      <History className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <p className="text-gray-600">
+                      <History className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">
                         No recent activity. Your session history will appear
                         here once you start checking in.
                       </p>
