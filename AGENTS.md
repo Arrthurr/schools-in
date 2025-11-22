@@ -29,7 +29,7 @@
 
 - **Framework**: Next.js 14 with TypeScript, App Router, PWA support, Static Export
 - **Hosting**: Firebase Hosting with static site deployment
-- **Database**: Firebase Firestore with collections: users, sessions, locations
+- **Database**: Firebase Firestore with collections: users, system, sessions, locations
 - **Caching**: Multi-layer caching (Memory → Session → Local → IndexedDB) with SSR-safe initialization
 - **Images**: Next.js Image optimization with lazy loading and WebP/AVIF support
 - **UI**: Radix UI components with Tailwind CSS, shadcn/ui components
@@ -120,7 +120,7 @@
 - **UI Migration**: All provider components now use real Firestore data via `locationService` instead of mock `schoolService`
 - **Auth Fix**: Registration and Google sign-in now automatically create Firestore user documents with default `provider` role
 - **Security Rules**: Simplified to use only `Location.assignedProviders` for access control; removed assignments collection fallback
-- **School Import**: 31 schools imported to Firestore with proper GeoPoint fields and metadata
+- **School Import**: 22 schools imported to Firestore with proper GeoPoint fields and metadata
 - **Google Maps Integration**: Added comprehensive Google Maps support with `@vis.gl/react-google-maps` for geolocation, navigation, and interactive location selection
 - **Enhanced Testing Infrastructure**: Expanded test suite with Cypress E2E testing, Lighthouse CI performance auditing, and comprehensive accessibility testing with axe-core
 - **PWA Features**: Complete Progressive Web App implementation with service worker, offline support, install prompts, and update notifications
