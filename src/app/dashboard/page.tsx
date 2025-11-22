@@ -32,6 +32,9 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../../firebase.config";
 import { getAssignedLocations } from "@/lib/services/locationService";
 import { Logo } from "../../components/ui/logo";
+import { CachedSessionService } from "@/lib/services/cachedSessionService";
+import { Session } from "@/lib/firebase/types";
+import { SkeletonList } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
   const { user } = useCachedAuth();
@@ -39,20 +42,67 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
 
+  // New state for recent activity
+  const [recentSessions, setRecentSessions] = useState<Session[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(true);
+  const [locationsMap, setLocationsMap] = useState<Record<string, string>>({});
+
   useEffect(() => {
-    const loadSchoolsCount = async () => {
+    const loadSchools = async () => {
       if (!user?.uid) return;
 
       try {
         const locations = await getAssignedLocations(user.uid);
         setAssignedSchoolsCount(locations.length);
+
+        // Create a map of location IDs to names
+        const map: Record<string, string> = {};
+        locations.forEach(loc => {
+            map[loc.id] = loc.name;
+        });
+        setLocationsMap(map);
       } catch (error) {
-        console.error("Error loading schools count:", error);
+        console.error("Error loading schools:", error);
       }
     };
 
-    loadSchoolsCount();
+    loadSchools();
   }, [user?.uid]);
+
+  // Fetch recent sessions
+  useEffect(() => {
+      const fetchRecentActivity = async () => {
+          if (!user?.uid) return;
+
+          setLoadingRecent(true);
+          try {
+              const sessions = await CachedSessionService.getUserSessions(user.uid, {}, { limit: 7 });
+              setRecentSessions(sessions);
+          } catch (error) {
+              console.error("Error fetching recent activity:", error);
+          } finally {
+              setLoadingRecent(false);
+          }
+      };
+
+      fetchRecentActivity();
+  }, [user?.uid]);
+
+  // Helper for relative time
+  const getRelativeTime = (dateString: any) => {
+      if (!dateString) return "";
+      const date = new Date(typeof dateString.toDate === 'function' ? dateString.toDate() : dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMin = Math.floor(diffMs / 60000);
+      const diffHour = Math.floor(diffMin / 60);
+      const diffDay = Math.floor(diffHour / 24);
+
+      if (diffDay > 0) return `${diffDay}d ago`;
+      if (diffHour > 0) return `${diffHour}h ago`;
+      if (diffMin > 0) return `${diffMin}m ago`;
+      return "Just now";
+  };
 
   const handleEndSession = async (_sessionId: string) => {
     try {
@@ -86,6 +136,19 @@ export default function DashboardPage() {
       current: false,
     },
   ];
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
+      case "completed":
+        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
+      case "paused":
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">Paused</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   return (
     <ProtectedRoute roles={["provider", "admin"]}>
@@ -315,13 +378,43 @@ export default function DashboardPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center py-8">
-                      <History className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">
-                        No recent activity. Your session history will appear
-                        here once you start checking in.
-                      </p>
-                    </div>
+                    {loadingRecent ? (
+                      <SkeletonList items={3} />
+                    ) : recentSessions.length > 0 ? (
+                      <div className="space-y-4">
+                        {recentSessions.map((session) => (
+                          <div
+                            key={session.id}
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className="mt-1 p-2 bg-secondary rounded-full">
+                                <History className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">
+                                  {locationsMap[session.locationId] || "Unknown Location"}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {getRelativeTime(session.startTime)}
+                                </p>
+                              </div>
+                            </div>
+                            <div>
+                              {getStatusBadge(session.status)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <History className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">
+                          No recent activity. Your session history will appear
+                          here once you start checking in.
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
