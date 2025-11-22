@@ -93,10 +93,10 @@ export function ErrorState({
         <div className="flex flex-col items-center space-y-4">
           <Icon className={`h-12 w-12 ${config.iconColor}`} />
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-foreground">
               {title || config.defaultTitle}
             </h3>
-            <p className="text-sm text-gray-600 max-w-sm">
+            <p className="text-sm text-muted-foreground max-w-sm">
               {message || config.defaultMessage}
             </p>
           </div>
@@ -215,10 +215,10 @@ export function EmptyState({
         <div className="flex flex-col items-center space-y-4">
           <Icon className={`h-12 w-12 ${config.iconColor}`} />
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-foreground">
               {title || config.defaultTitle}
             </h3>
-            <p className="text-sm text-gray-600 max-w-sm">
+            <p className="text-sm text-muted-foreground max-w-sm">
               {message || config.defaultMessage}
             </p>
           </div>
@@ -273,7 +273,7 @@ export function CompactEmptyState({
   className?: string;
 }) {
   return (
-    <div className={`text-center py-8 text-gray-500 ${className}`}>
+    <div className={`text-center py-8 text-muted-foreground ${className}`}>
       <p className="text-sm">{message}</p>
     </div>
   );

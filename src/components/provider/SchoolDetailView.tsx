@@ -90,7 +90,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
   const getLocationStatusBadge = () => {
     if (!location || isWithinRadius === null) {
       return (
-        <Badge variant="secondary" className="bg-gray-100 text-gray-700">
+        <Badge variant="secondary" className="bg-muted text-muted-foreground">
           <MapPin className="w-3 h-3 mr-1" />
           Location Unknown
         </Badge>
@@ -101,7 +101,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
       return (
         <Badge
           variant="secondary"
-          className="bg-green-100 text-green-700 border-green-200"
+          className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
         >
           <CheckCircle className="w-3 h-3 mr-1" />
           In Check-in Range
@@ -111,7 +111,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
       return (
         <Badge
           variant="secondary"
-          className="bg-yellow-100 text-yellow-700 border-yellow-200"
+          className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800"
         >
           <AlertCircle className="w-3 h-3 mr-1" />
           Outside Check-in Range
@@ -128,21 +128,21 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
   };
 
   return (
-    <div className={`bg-white ${className}`}>
+    <div className={`bg-background ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b bg-gray-50">
+      <div className="flex items-center justify-between p-6 border-b bg-muted/20">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={onBack}
-            className="hover:bg-gray-200"
+            className="hover:bg-accent"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
           </Button>
-          <div className="h-6 w-px bg-gray-300" />
-          <h1 className="text-xl font-semibold text-gray-900">{school.name}</h1>
+          <div className="h-6 w-px bg-border" />
+          <h1 className="text-xl font-semibold text-foreground">{school.name}</h1>
         </div>
         {onClose && (
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -205,10 +205,10 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
           <CardContent className="space-y-4">
             {/* Address */}
             <div className="flex items-start gap-3">
-              <MapPin className="h-4 w-4 text-gray-500 mt-1" />
+              <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
               <div>
-                <p className="font-medium text-gray-900">Address</p>
-                <p className="text-gray-600">
+                <p className="font-medium text-foreground">Address</p>
+                <p className="text-muted-foreground">
                   {school.address || "Address not available"}
                 </p>
               </div>
@@ -216,10 +216,10 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
 
             {/* Coordinates */}
             <div className="flex items-start gap-3">
-              <Target className="h-4 w-4 text-gray-500 mt-1" />
+              <Target className="h-4 w-4 text-muted-foreground mt-1" />
               <div>
-                <p className="font-medium text-gray-900">GPS Coordinates</p>
-                <p className="text-gray-600 font-mono text-sm">
+                <p className="font-medium text-foreground">GPS Coordinates</p>
+                <p className="text-muted-foreground font-mono text-sm">
                   {school.latitude.toFixed(6)}, {school.longitude.toFixed(6)}
                 </p>
               </div>
@@ -229,10 +229,10 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
             {distance !== null && (
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <Navigation className="h-4 w-4 text-gray-500 mt-1" />
+                  <Navigation className="h-4 w-4 text-muted-foreground mt-1" />
                   <div>
-                    <p className="font-medium text-gray-900">Distance from You</p>
-                    <p className="text-gray-600">{formatDistance(distance)}</p>
+                    <p className="font-medium text-foreground">Distance from You</p>
+                    <p className="text-muted-foreground">{formatDistance(distance)}</p>
                   </div>
                 </div>
                 
@@ -249,11 +249,11 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
 
             {/* Check-in Radius */}
             <div className="flex items-start gap-3">
-              <Ruler className="h-4 w-4 text-gray-500 mt-1" />
+              <Ruler className="h-4 w-4 text-muted-foreground mt-1" />
               <div>
-                <p className="font-medium text-gray-900">Check-in Radius</p>
-                <p className="text-gray-600">{school.radius || 100} meters</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="font-medium text-foreground">Check-in Radius</p>
+                <p className="text-muted-foreground">{school.radius || 100} meters</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   You must be within this range to check in
                 </p>
               </div>
@@ -272,28 +272,28 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
           <CardContent className="space-y-4">
             {/* Phone */}
             <div className="flex items-start gap-3">
-              <Phone className="h-4 w-4 text-gray-500 mt-1" />
+              <Phone className="h-4 w-4 text-muted-foreground mt-1" />
               <div>
-                <p className="font-medium text-gray-900">Phone</p>
-                <p className="text-gray-600">Not available</p>
+                <p className="font-medium text-foreground">Phone</p>
+                <p className="text-muted-foreground">Not available</p>
               </div>
             </div>
 
             {/* Email */}
             <div className="flex items-start gap-3">
-              <Mail className="h-4 w-4 text-gray-500 mt-1" />
+              <Mail className="h-4 w-4 text-muted-foreground mt-1" />
               <div>
-                <p className="font-medium text-gray-900">Email</p>
-                <p className="text-gray-600">Not available</p>
+                <p className="font-medium text-foreground">Email</p>
+                <p className="text-muted-foreground">Not available</p>
               </div>
             </div>
 
             {/* Website */}
             <div className="flex items-start gap-3">
-              <Globe className="h-4 w-4 text-gray-500 mt-1" />
+              <Globe className="h-4 w-4 text-muted-foreground mt-1" />
               <div>
-                <p className="font-medium text-gray-900">Website</p>
-                <p className="text-gray-600">Not available</p>
+                <p className="font-medium text-foreground">Website</p>
+                <p className="text-muted-foreground">Not available</p>
               </div>
             </div>
           </CardContent>
@@ -309,21 +309,21 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium text-gray-900 mb-1">Current Status</p>
-                <p className="text-gray-600">Not checked in</p>
+              <div className="p-3 bg-muted/20 rounded-lg">
+                <p className="font-medium text-foreground mb-1">Current Status</p>
+                <p className="text-muted-foreground">Not checked in</p>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium text-gray-900 mb-1">Last Visit</p>
-                <p className="text-gray-600">Never</p>
+              <div className="p-3 bg-muted/20 rounded-lg">
+                <p className="font-medium text-foreground mb-1">Last Visit</p>
+                <p className="text-muted-foreground">Never</p>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium text-gray-900 mb-1">Total Sessions</p>
-                <p className="text-gray-600">0</p>
+              <div className="p-3 bg-muted/20 rounded-lg">
+                <p className="font-medium text-foreground mb-1">Total Sessions</p>
+                <p className="text-muted-foreground">0</p>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium text-gray-900 mb-1">Total Hours</p>
-                <p className="text-gray-600">0.0 hours</p>
+              <div className="p-3 bg-muted/20 rounded-lg">
+                <p className="font-medium text-foreground mb-1">Total Hours</p>
+                <p className="text-muted-foreground">0.0 hours</p>
               </div>
             </div>
           </CardContent>
@@ -331,15 +331,15 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
 
         {/* Location Help */}
         {!location && (
-          <Card className="border-amber-200 bg-amber-50">
+          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div>
-                  <p className="font-medium text-amber-900 mb-1">
+                  <p className="font-medium text-amber-900 dark:text-amber-100 mb-1">
                     Location Services Required
                   </p>
-                  <p className="text-amber-800 text-sm mb-3">
+                  <p className="text-amber-800 dark:text-amber-200 text-sm mb-3">
                     Enable location services to see your distance from this
                     school and enable check-in functionality.
                   </p>
@@ -348,10 +348,10 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
                     disabled={locationLoading}
                     size="sm"
                     variant="outline"
-                    className="border-amber-300 text-amber-900 hover:bg-amber-100"
+                    className="border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/50"
                   >
                     {locationLoading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 mr-2" />
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 dark:border-amber-400 mr-2" />
                     ) : (
                       <Navigation className="h-4 w-4 mr-2" />
                     )}

@@ -52,14 +52,14 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
         {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+          <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg text-popover-foreground">
             <div className="max-h-60 overflow-auto">
               {options.map((option) => (
                 <div
                   key={option.value}
                   className={cn(
-                    "flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100",
-                    value === option.value && "bg-gray-50"
+                    "flex items-center px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground",
+                    value === option.value && "bg-accent text-accent-foreground"
                   )}
                   onClick={() => handleSelect(option.value)}
                 >

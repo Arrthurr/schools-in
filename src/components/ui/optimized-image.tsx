@@ -63,7 +63,7 @@ export function OptimizedImage({
     return (
       <div
         className={cn(
-          "flex items-center justify-center bg-gray-100 text-gray-400",
+          "flex items-center justify-center bg-muted text-muted-foreground",
           className
         )}
         style={{ width: fill ? '100%' : width, height: fill ? '100%' : height }}
@@ -142,7 +142,7 @@ export function OptimizedAvatar({
   const defaultFallback = (
     <div
       className={cn(
-        "rounded-full bg-gray-300 flex items-center justify-center text-gray-600",
+        "rounded-full bg-muted flex items-center justify-center text-muted-foreground",
         className
       )}
       style={{ width: size, height: size }}

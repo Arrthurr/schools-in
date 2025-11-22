@@ -45,7 +45,7 @@ export default function SchoolsPage() {
 
   return (
     <ProtectedRoute roles={["provider", "admin"]}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
@@ -54,20 +54,20 @@ export default function SchoolsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => (window.location.href = "/dashboard")}
-                className="hover:bg-gray-200"
+                className="hover:bg-accent"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Dashboard
               </Button>
-              <div className="h-6 w-px bg-gray-300" />
+              <div className="h-6 w-px bg-border" />
               <SchoolIcon className="h-6 w-6 text-brand-primary" />
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-foreground">
                 {viewMode === "detail" && selectedSchool
                   ? selectedSchool.name
                   : "My Schools"}
               </h1>
             </div>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               {viewMode === "detail" && selectedSchool
                 ? "Detailed information and check-in options"
                 : "View and manage your assigned school locations"}
@@ -76,7 +76,7 @@ export default function SchoolsPage() {
 
           {/* View Mode Toggle */}
           <div className="mb-6">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="h-4 w-4" />
               <span>
                 {viewMode === "list"
@@ -109,7 +109,7 @@ export default function SchoolsPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ul className="space-y-2 text-sm text-gray-600">
+                      <ul className="space-y-2 text-sm text-muted-foreground">
                         <li className="flex items-start gap-2">
                           <div className="w-1.5 h-1.5 bg-brand-primary rounded-full mt-2 flex-shrink-0" />
                           Click "View Details" to see comprehensive school
@@ -165,7 +165,7 @@ export default function SchoolsPage() {
                       <CardTitle className="text-lg">Need Help?</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-600 mb-3">
+                      <p className="text-sm text-muted-foreground mb-3">
                         Having trouble with school locations or check-in?
                       </p>
                       <Button size="sm" variant="outline" className="w-full">
@@ -183,7 +183,7 @@ export default function SchoolsPage() {
                   onBack={handleBackToList}
                   onCheckIn={handleCheckInFromDetail}
                   showCheckInButton={true}
-                  className="bg-white rounded-lg shadow-sm border"
+                  className="bg-card rounded-lg shadow-sm border"
                 />
               )
             )}

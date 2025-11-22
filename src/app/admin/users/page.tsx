@@ -314,35 +314,35 @@ function UserManagementContent() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-gray-900">
+        <div className="bg-card p-4 rounded-lg border">
+          <div className="text-2xl font-bold text-foreground">
             {stats.totalUsers}
           </div>
-          <div className="text-sm text-gray-600">Total Users</div>
+          <div className="text-sm text-muted-foreground">Total Users</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
+        <div className="bg-card p-4 rounded-lg border">
           <div className="text-2xl font-bold text-brand-primary">
             {stats.totalProviders}
           </div>
-          <div className="text-sm text-gray-600">Providers</div>
+          <div className="text-sm text-muted-foreground">Providers</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-purple-600">
+        <div className="bg-card p-4 rounded-lg border">
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
             {stats.totalAdmins}
           </div>
-          <div className="text-sm text-gray-600">Admins</div>
+          <div className="text-sm text-muted-foreground">Admins</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-green-600">
+        <div className="bg-card p-4 rounded-lg border">
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
             {stats.activeUsers}
           </div>
-          <div className="text-sm text-gray-600">Active</div>
+          <div className="text-sm text-muted-foreground">Active</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-red-600">
+        <div className="bg-card p-4 rounded-lg border">
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
             {stats.inactiveUsers}
           </div>
-          <div className="text-sm text-gray-600">Inactive</div>
+          <div className="text-sm text-muted-foreground">Inactive</div>
         </div>
       </div>
 
@@ -350,7 +350,7 @@ function UserManagementContent() {
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="flex items-center space-x-4 flex-1">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search users by name or email..."
               value={searchTerm}
@@ -362,7 +362,7 @@ function UserManagementContent() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-input bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -372,7 +372,7 @@ function UserManagementContent() {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-input bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
           >
             <option value="all">All Roles</option>
             <option value="provider">Providers</option>
@@ -388,7 +388,7 @@ function UserManagementContent() {
 
       {/* Bulk Actions */}
       {selectedUsers.size > 0 && (
-        <div className="flex items-center justify-between p-4 status-brand border rounded-lg">
+        <div className="flex items-center justify-between p-4 status-brand border rounded-lg bg-brand-primary/5 dark:bg-brand-primary/10">
           <div className="flex items-center space-x-4">
             <span className="text-sm font-medium text-brand-primary">
               {selectedUsers.size} users selected
@@ -416,7 +416,7 @@ function UserManagementContent() {
               size="sm"
               onClick={handleBulkDelete}
               disabled={isLoading}
-              className="text-red-600 hover:text-red-700"
+              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -433,8 +433,8 @@ function UserManagementContent() {
       )}
 
       {/* Users List */}
-      <div className="bg-white rounded-lg border">
-        <div className="p-4 border-b border-gray-200">
+      <div className="bg-card rounded-lg border">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">
               Users ({filteredUsers.length})
@@ -455,9 +455,9 @@ function UserManagementContent() {
           </div>
         </div>
 
-        <div className="divide-y divide-gray-200">
+        <div className="divide-y divide-border">
           {filteredUsers.map((user) => (
-            <div key={user.id} className="p-4 hover:bg-gray-50">
+            <div key={user.id} className="p-4 hover:bg-accent/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <input
@@ -466,27 +466,27 @@ function UserManagementContent() {
                     onChange={(e) =>
                       handleUserSelection(user.id, e.target.checked)
                     }
-                    className="rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
+                    className="rounded border-input text-brand-primary focus:ring-brand-primary"
                   />
 
                   <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
                       {user.photoURL ? (
                         <OptimizedAvatar
                           src={user.photoURL}
                           alt={user.displayName || "User"}
                           size={40}
-                          fallback={<Users className="h-5 w-5 text-gray-600" />}
+                          fallback={<Users className="h-5 w-5 text-muted-foreground" />}
                         />
                       ) : (
-                        <Users className="h-5 w-5 text-gray-600" />
+                        <Users className="h-5 w-5 text-muted-foreground" />
                       )}
                     </div>
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {user.displayName || "No name"}
                       </p>
                       <Badge variant={getRoleBadgeVariant(user.role)}>
@@ -497,17 +497,17 @@ function UserManagementContent() {
                       </Badge>
                     </div>
                     <div className="flex items-center space-x-4 mt-1">
-                      <p className="text-sm text-gray-500 flex items-center">
+                      <p className="text-sm text-muted-foreground flex items-center">
                         <Mail className="h-3 w-3 mr-1" />
                         {user.email}
                       </p>
                       {user.assignedSchools &&
                         user.assignedSchools.length > 0 && (
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             {user.assignedSchools.length} schools assigned
                           </p>
                         )}
-                      <p className="text-sm text-gray-500 flex items-center">
+                      <p className="text-sm text-muted-foreground flex items-center">
                         <Calendar className="h-3 w-3 mr-1" />
                         Joined{" "}
                         {user.createdAt?.toDate?.()?.toLocaleDateString() ||
@@ -523,7 +523,7 @@ function UserManagementContent() {
                     onChange={(e) =>
                       handleUserRoleChange(user.id, e.target.value as any)
                     }
-                    className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="text-sm border border-input bg-background rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                   >
                     <option value="provider">Provider</option>
                     <option value="admin">Admin</option>
@@ -544,8 +544,8 @@ function UserManagementContent() {
 
           {filteredUsers.length === 0 && (
             <div className="p-8 text-center">
-              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">
+              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
                 No users found matching your criteria
               </p>
             </div>
