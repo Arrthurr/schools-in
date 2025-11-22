@@ -93,7 +93,7 @@ function StepProgress({
         );
       case "current":
         return (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-primary bg-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-primary bg-card">
             <div className="h-4 w-4 rounded-full bg-brand-primary animate-pulse" />
           </div>
         );
@@ -111,7 +111,7 @@ function StepProgress({
         );
       default:
         return (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-gray-300 bg-white text-gray-500">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-border bg-card text-muted-foreground">
             {index + 1}
           </div>
         );
@@ -121,8 +121,8 @@ function StepProgress({
   const getStepLineColor = (currentStatus: string, nextStatus: string) => {
     if (currentStatus === "completed") return "bg-brand-primary";
     if (currentStatus === "current" && nextStatus === "pending")
-      return "bg-gray-300";
-    return "bg-gray-300";
+      return "bg-muted";
+    return "bg-muted";
   };
 
   if (orientation === "vertical") {
@@ -223,10 +223,10 @@ function CircularProgress({
   const offset = circumference - (percentage / 100) * circumference;
 
   const variantColors = {
-    primary: "#154690",
-    success: "#10b981",
-    warning: "#f59e0b",
-    error: "#ef4444",
+    primary: "hsl(var(--brand-primary))",
+    success: "hsl(var(--success))",
+    warning: "hsl(var(--warning))",
+    error: "hsl(var(--error))",
   };
 
   return (

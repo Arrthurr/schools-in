@@ -262,10 +262,10 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
 
         {/* Filtering Controls */}
         {showFilters && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+          <div className="mt-4 p-4 bg-muted/20 rounded-lg border">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   School
                 </label>
                 <Select
@@ -276,7 +276,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Start Date
                 </label>
                 <DatePicker
@@ -286,7 +286,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   End Date
                 </label>
                 <DatePicker
@@ -298,7 +298,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             </div>
             {(selectedSchoolId || startDate || endDate) && (
               <div className="mt-4 flex items-center justify-between">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   Filters applied: {selectedSchoolId && "School, "}
                   {startDate && "Start Date, "}
                   {endDate && "End Date"}

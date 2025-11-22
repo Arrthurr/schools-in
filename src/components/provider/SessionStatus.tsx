@@ -158,9 +158,9 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({ currentSession, on
         </CardHeader>
         <CardContent>
           <div className="text-center py-6">
-            <Clock className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-            <p className="text-gray-600 mb-4">You're not currently checked in at any school</p>
-            <p className="text-sm text-gray-500">Check in at a school to start tracking your session</p>
+            <Clock className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+            <p className="text-muted-foreground mb-4">You're not currently checked in at any school</p>
+            <p className="text-sm text-muted-foreground">Check in at a school to start tracking your session</p>
           </div>
         </CardContent>
       </Card>
@@ -184,13 +184,13 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({ currentSession, on
 
       <CardContent className="space-y-6">
         {/* School Information */}
-        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg">
           <SchoolIcon className="h-5 w-5 text-brand-primary" />
           <div>
-            <p className="font-medium text-gray-900">
+            <p className="font-medium text-foreground">
               {locationInfo?.name || (currentSession as any).schoolName || (currentSession as any).locationId}
             </p>
-            <div className="flex items-center text-sm text-gray-600 mt-1">
+            <div className="flex items-center text-sm text-muted-foreground mt-1">
               <MapPin className="h-3 w-3 mr-1" />
               <span>
                 {typeof locationInfo?.latitude === "number" && typeof locationInfo?.longitude === "number"
@@ -209,18 +209,18 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({ currentSession, on
               <div className="text-xs opacity-80">{isRunning ? "ACTIVE" : String(status || "").toUpperCase()}</div>
             </div>
           </div>
-          <p className="text-sm text-gray-600">Session duration</p>
+          <p className="text-sm text-muted-foreground">Session duration</p>
         </div>
 
         {/* Session Stats */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-lg font-semibold text-gray-900">{startDate ? formatTime(startDate) : "—"}</div>
-            <div className="text-sm text-gray-600">Start Time</div>
+          <div className="text-center p-3 bg-muted/20 rounded-lg">
+            <div className="text-lg font-semibold text-foreground">{startDate ? formatTime(startDate) : "—"}</div>
+            <div className="text-sm text-muted-foreground">Start Time</div>
           </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-lg font-semibold text-gray-900">{status === "completed" ? "Ended" : "Ongoing"}</div>
-            <div className="text-sm text-gray-600">Status</div>
+          <div className="text-center p-3 bg-muted/20 rounded-lg">
+            <div className="text-lg font-semibold text-foreground">{status === "completed" ? "Ended" : "Ongoing"}</div>
+            <div className="text-sm text-muted-foreground">Status</div>
           </div>
         </div>
 

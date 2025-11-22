@@ -448,6 +448,18 @@
 
   .dark {
     /* Dark mode with brand color consistency */
+    --brand-primary: 218 77% 32%;
+    --brand-primary-light: 218 77% 45%;
+    --brand-primary-dark: 218 77% 25%;
+    --brand-secondary: 200 20% 95%;
+    --brand-accent: 45 96% 89%;
+
+    /* Status Colors */
+    --success: 142 70% 50%;
+    --warning: 38 90% 60%;
+    --error: 0 84% 60%;
+    --info: 221 80% 60%;
+
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
@@ -492,15 +504,15 @@
 
   /* Brand-specific utility classes */
   .bg-brand-primary {
-    background-color: #154690;
+    background-color: hsl(var(--brand-primary));
   }
 
   .text-brand-primary {
-    color: #154690;
+    color: hsl(var(--brand-primary));
   }
 
   .border-brand-primary {
-    border-color: #154690;
+    border-color: hsl(var(--brand-primary));
   }
 
   .bg-brand-primary-light {
@@ -512,7 +524,7 @@
   }
 
   .hover-brand-primary:hover {
-    background-color: #0f3a7a;
+    background-color: hsl(var(--brand-primary-dark));
   }
 
   /* Status indicator colors aligned with brand */
