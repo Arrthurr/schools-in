@@ -1,5 +1,6 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
 
@@ -431,4 +432,37 @@ exports.trackUserActivity = onCall(async (request) => {
     logger.error("Error occurred:", error);
     throw error;
   }
+});
+
+// Notify on new feedback
+exports.notifyOnFeedback = onDocumentCreated("feedback/{feedbackId}", async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) {
+      return;
+  }
+  const feedback = snapshot.data();
+  const feedbackId = event.params.feedbackId;
+
+  logger.info(`New feedback received: ${feedbackId}`, feedback);
+
+  // TODO: Configure email provider (e.g., SendGrid, Mailgun, Nodemailer)
+  // const adminEmail = process.env.ADMIN_EMAIL;
+  // const sendGridApiKey = process.env.SENDGRID_API_KEY;
+  
+  // For now, we log the email payload that would be sent
+  const emailPayload = {
+      to: "admin@schoolsin.com", // Placeholder or env var
+      subject: `New Feedback: ${feedback.category} - ${feedback.severity}`,
+      text: `
+New feedback received from ${feedback.providerName || "Unknown"} (${feedback.providerEmail || "No email"}).
+
+Category: ${feedback.category}
+Severity: ${feedback.severity}
+Description: ${feedback.description}
+
+View in Admin Console: https://schools-in-check.web.app/admin/feedback/${feedbackId}
+      `
+  };
+
+  logger.info("Email notification payload:", emailPayload);
 });

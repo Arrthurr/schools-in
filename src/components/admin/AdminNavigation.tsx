@@ -24,6 +24,7 @@ import {
   Bell,
   ChevronDown,
   Activity,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { logOut } from "@/lib/firebase/auth";
@@ -78,6 +79,12 @@ const navigationItems: NavItem[] = [
     label: "Settings",
     icon: Settings,
     description: "System configuration",
+  },
+  {
+    href: "/admin/feedback",
+    label: "Feedback",
+    icon: MessageSquare,
+    description: "User feedback and issues",
   },
 ];
 
