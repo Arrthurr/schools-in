@@ -259,7 +259,11 @@ export function AdminDashboard() {
           <CardContent>
             <div className="space-y-3 sm:space-y-4">
               {recent.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
+                <div 
+                  key={activity.id} 
+                  className="flex items-start space-x-3"
+                  data-testid={`activity-item-${activity.id}`}
+                >
                   <div className="flex-shrink-0 mt-1">
                     {getActivityIcon(activity.type as any)}
                   </div>
@@ -271,11 +275,13 @@ export function AdminDashboard() {
                           } checked in at ${
                             activity.locationName || activity.locationId
                           }`
-                        : `${
+                        : activity.type === "check-out"
+                        ? `${
                             activity.providerName || activity.userId
                           } checked out from ${
                             activity.locationName || activity.locationId
-                          }`}
+                          }`
+                        : activity.message}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatRelativeTime(activity.timestamp as any)}

@@ -128,27 +128,32 @@
 ## Key Dependencies
 
 ### Core Framework
+
 - **Next.js**: ^14.2.0 (App Router, TypeScript, Static Export)
 - **React**: ^18.3.0 with React DOM
 - **TypeScript**: ^5.5.0 with comprehensive type checking
 - **Tailwind CSS**: ^3.4.17 with Tailwind Animate
 
 ### Firebase & Backend
+
 - **Firebase**: ^12.2.1 (Auth, Firestore, Storage, Hosting)
 - **Firebase Admin**: ^13.5.0 (Server-side operations)
 - **Firebase Rules Testing**: ^5.0.0 (Security rules validation)
 
 ### UI Components
+
 - **Radix UI**: Complete component library (Dialog, Dropdown, Select, etc.)
 - **Lucide React**: ^0.542.0 (Icon library)
 - **Class Variance Authority**: ^0.7.1 (Component variants)
 - **React Hook Form**: ^7.62.0 with Zod validation
 
 ### Maps & Geolocation
+
 - **@vis.gl/react-google-maps**: ^1.5.5 (Google Maps integration)
 - **@types/google.maps**: ^3.58.1 (TypeScript definitions)
 
 ### Testing Infrastructure
+
 - **Jest**: ^30.1.3 with React Testing Library
 - **Cypress**: ^15.1.0 (E2E testing)
 - **Lighthouse CI**: ^1.10.0 (Performance auditing)
@@ -156,6 +161,7 @@
 - **Coverage**: Jest with 70% threshold requirements
 
 ### Performance & PWA
+
 - **next-pwa**: ^5.6.0 (Progressive Web App)
 - **Bundle Analyzer**: ^15.5.2 (Bundle size analysis)
 - **Web Vitals**: ^5.1.0 (Performance monitoring)
@@ -164,6 +170,7 @@
 ## Testing Strategy
 
 ### Test Coverage Requirements
+
 - **Unit Tests**: 70% minimum coverage (branches, functions, lines, statements)
 - **E2E Tests**: Critical user flows and cross-browser compatibility
 - **Performance Tests**: Core Web Vitals monitoring (LCP ≤ 2.5s, FID ≤ 100ms, CLS ≤ 0.1)
@@ -171,6 +178,7 @@
 - **Security Tests**: Firebase rules validation and vulnerability scanning
 
 ### Test Execution
+
 - **Local Development**: `npm test` (Jest), `npm run test:e2e` (Cypress)
 - **CI/CD Pipeline**: Automated testing on PR and main branch
 - **Performance Monitoring**: Lighthouse CI with performance budgets

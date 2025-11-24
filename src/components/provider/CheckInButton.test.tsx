@@ -34,11 +34,14 @@ describe("CheckInButton", () => {
     id: "school-1",
     name: "Test Elementary School",
     address: "123 Test St, Test City, TC 12345",
-    gpsCoordinates: {
+    geo: {
       latitude: 40.7128,
       longitude: -74.006,
-    },
-    radius: 100, // 100 meters
+    } as any,
+    radiusMeters: 100, // 100 meters
+    assignedProviders: [],
+    createdAt: { seconds: 1672531200, nanoseconds: 0 } as any,
+    updatedAt: { seconds: 1672531200, nanoseconds: 0 } as any,
   };
 
   // Mock user with all required Firebase User properties

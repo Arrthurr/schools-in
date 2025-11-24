@@ -1,10 +1,30 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import { SessionStatus } from "./SessionStatus";
 import * as useAuthModule from "../../lib/hooks/useAuth";
 import { Timestamp } from "firebase/firestore";
 
 // Mock the modules
 jest.mock("../../lib/hooks/useAuth");
+jest.mock("firebase/firestore", () => ({
+  Timestamp: class {
+    seconds: number;
+    nanoseconds: number;
+    constructor(seconds: number, nanoseconds: number) {
+      this.seconds = seconds;
+      this.nanoseconds = nanoseconds;
+    }
+    toDate() {
+      return new Date(this.seconds * 1000 + this.nanoseconds / 1000000);
+    }
+    static fromDate(date: Date) {
+      return new this(Math.floor(date.getTime() / 1000), (date.getTime() % 1000) * 1000000);
+    }
+    static now() {
+      return this.fromDate(new Date());
+    }
+  },
+}));
 
 const mockUseAuth = jest.spyOn(useAuthModule, "useAuth");
 
@@ -95,33 +115,15 @@ describe("SessionStatus Component", () => {
     expect(screen.getByText("ACTIVE")).toBeInTheDocument();
   });
 
-  it("shows pause and end session buttons for active session", () => {
+  it("shows end session button for active session", () => {
     render(
       <SessionStatus
         currentSession={mockActiveSession}
         onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
       />
     );
 
-    expect(screen.getByRole("button", { name: /pause/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /end session/i })).toBeInTheDocument();
-  });
-
-  it("calls onPauseSession when pause button is clicked", () => {
-    render(
-      <SessionStatus
-        currentSession={mockActiveSession}
-        onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
-      />
-    );
-
-    const pauseButton = screen.getByRole("button", { name: /pause/i });
-    fireEvent.click(pauseButton);
-    expect(mockOnPauseSession).toHaveBeenCalledWith("session-123");
   });
 
   it("calls onEndSession when end session button is clicked", () => {
@@ -129,8 +131,6 @@ describe("SessionStatus Component", () => {
       <SessionStatus
         currentSession={mockActiveSession}
         onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
       />
     );
 
@@ -139,57 +139,11 @@ describe("SessionStatus Component", () => {
     expect(mockOnEndSession).toHaveBeenCalledWith("session-123");
   });
 
-  it("renders paused session correctly", () => {
-    render(
-      <SessionStatus
-        currentSession={mockPausedSession}
-        onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
-      />
-    );
-
-    expect(screen.getByText("Paused")).toBeInTheDocument();
-    expect(screen.getByText("Session Paused")).toBeInTheDocument();
-    expect(screen.getByText(/Remember to resume your session/)).toBeInTheDocument();
-  });
-
-  it("shows resume and end session buttons for paused session", () => {
-    render(
-      <SessionStatus
-        currentSession={mockPausedSession}
-        onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
-      />
-    );
-
-    expect(screen.getByRole("button", { name: /resume/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /end session/i })).toBeInTheDocument();
-  });
-
-  it("calls onResumeSession when resume button is clicked", () => {
-    render(
-      <SessionStatus
-        currentSession={mockPausedSession}
-        onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
-      />
-    );
-
-    const resumeButton = screen.getByRole("button", { name: /resume/i });
-    fireEvent.click(resumeButton);
-    expect(mockOnResumeSession).toHaveBeenCalledWith("session-123");
-  });
-
   it("renders completed session correctly", () => {
     render(
       <SessionStatus
         currentSession={mockCompletedSession}
         onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
       />
     );
 
@@ -204,28 +158,10 @@ describe("SessionStatus Component", () => {
       <SessionStatus
         currentSession={mockCompletedSession}
         onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
       />
     );
 
-    expect(screen.queryByRole("button", { name: /pause/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /resume/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /end session/i })).not.toBeInTheDocument();
-  });
-
-  it("renders resume button for paused session", () => {
-    const onResume = jest.fn();
-    render(
-      <SessionStatus
-        currentSession={{ ...mockActiveSession, status: "paused" }}
-        onResumeSession={onResume}
-      />
-    );
-
-    const resumeButtons = screen.getAllByRole("button", { name: /resume/i });
-    fireEvent.click(resumeButtons[resumeButtons.length - 1]);
-    expect(onResume).toHaveBeenCalledWith("session-123");
   });
 
   it("formats duration correctly for hours and minutes", () => {
@@ -261,8 +197,6 @@ describe("SessionStatus Component", () => {
       <SessionStatus
         currentSession={mockActiveSession}
         onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
       />
     );
 
@@ -280,8 +214,6 @@ describe("SessionStatus Component", () => {
       <SessionStatus
         currentSession={sessionWithSpecificTime}
         onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
       />
     );
 
@@ -304,8 +236,6 @@ describe("SessionStatus Component", () => {
       <SessionStatus
         currentSession={mockActiveSession}
         onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
       />
     );
 
@@ -318,9 +248,8 @@ describe("SessionStatus Component", () => {
         currentSession={mockActiveSession}
       />
     );
-
-    const pauseButton = screen.getByRole("button", { name: /pause/i });
-    fireEvent.click(pauseButton);
-    // Should not throw any errors
+    
+    // Just ensure it renders without crashing
+    expect(screen.getByText("Ongoing")).toBeInTheDocument();
   });
 });

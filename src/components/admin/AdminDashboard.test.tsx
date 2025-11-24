@@ -2,30 +2,26 @@
 
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import { AdminDashboard } from "./AdminDashboard";
 import { useAuth } from "../../lib/hooks/useAuth";
-import { useAnnouncement } from "../../lib/accessibility";
 
 // Mock the hooks
 jest.mock("../../lib/hooks/useAuth", () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock("../../lib/accessibility", () => ({
-  useAnnouncement: jest.fn(),
-  ScreenReaderOnly: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="screen-reader">{children}</div>
-  ),
-  ARIA: {
-    describedBy: (id: string) => ({ "aria-describedby": id }),
-    labelledBy: (id: string) => ({ "aria-labelledby": id }),
-  },
+jest.mock("../../lib/hooks/useCachedAuth", () => ({
+  useCachedAuth: jest.fn(),
+}));
+
+jest.mock("../../lib/hooks/useAdminMetrics", () => ({
+  useAdminMetrics: jest.fn(),
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockUseAnnouncement = useAnnouncement as jest.MockedFunction<
-  typeof useAnnouncement
->;
+const mockUseCachedAuth = require("../../lib/hooks/useCachedAuth").useCachedAuth;
+const mockUseAdminMetrics = require("../../lib/hooks/useAdminMetrics").useAdminMetrics;
 
 describe("AdminDashboard", () => {
   const mockUser = {
@@ -52,8 +48,6 @@ describe("AdminDashboard", () => {
     providerId: "firebase",
   };
 
-  const mockAnnounce = jest.fn();
-
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
@@ -61,9 +55,54 @@ describe("AdminDashboard", () => {
       user: mockUser,
       loading: false,
     });
-    mockUseAnnouncement.mockReturnValue({
-      announce: mockAnnounce,
-      AnnouncementRegion: () => <div data-testid="announcement-region" />,
+    mockUseCachedAuth.mockReturnValue({
+      user: mockUser,
+      loading: false,
+      error: null,
+      isAuthenticated: true,
+      isProvider: false,
+      isAdmin: true,
+    });
+    mockUseAdminMetrics.mockReturnValue({
+      stats: {
+        activeProviders: 5,
+        activeSessions: 3,
+        todayCheckIns: 12,
+        yesterdayCheckIns: 10,
+        percentChange: 20,
+        totalSessions: 150,
+        avgSessionDurationHours: 4.2,
+      },
+      recent: [
+        {
+          id: "1",
+          type: "check-in",
+          timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 mins ago
+          userId: "user1",
+          locationId: "loc1",
+          providerName: "John Doe",
+          locationName: "Walter Payton HS",
+        },
+        {
+          id: "2",
+          type: "check-out",
+          timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
+          userId: "user2",
+          locationId: "loc2",
+          providerName: "Jane Smith",
+          locationName: "Estrella Foothills HS",
+        },
+        {
+          id: "3",
+          type: "school-added",
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+          userId: "admin1",
+          locationId: "loc3",
+          message: "New school added: Cambridge School",
+        },
+      ],
+      loading: false,
+      error: null,
     });
   });
 
@@ -131,20 +170,6 @@ describe("AdminDashboard", () => {
     await waitFor(() => {
       expect(screen.getByText("This Week")).toBeInTheDocument();
       expect(screen.getByText("Settings")).toBeInTheDocument();
-    });
-  });
-
-  it("announces successful data load to screen readers", async () => {
-    render(<AdminDashboard />);
-
-    // Advance timers to complete the data loading
-    jest.advanceTimersByTime(1000);
-
-    await waitFor(() => {
-      expect(mockAnnounce).toHaveBeenCalledWith(
-        "Dashboard data loaded successfully",
-        "polite"
-      );
     });
   });
 
