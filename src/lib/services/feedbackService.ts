@@ -11,7 +11,7 @@ import {
   Timestamp,
   limit
 } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
+import { db } from "../../../firebase.config";
 import { Feedback } from "@/lib/firebase/types";
 
 export type FeedbackInput = Omit<Feedback, "id" | "status" | "createdAt" | "updatedAt">;
