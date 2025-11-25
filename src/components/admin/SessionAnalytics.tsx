@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { SimpleSelect } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   BarChart,
@@ -545,7 +545,7 @@ export function SessionAnalytics() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="dateRange">Date Range</Label>
-              <Select
+              <SimpleSelect
                 options={[
                   { value: "week", label: "Last 7 Days" },
                   { value: "month", label: "Last 30 Days" },
@@ -561,7 +561,7 @@ export function SessionAnalytics() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="chartType">Chart Type</Label>
-              <Select
+              <SimpleSelect
                 options={[
                   { value: "volume", label: "Session Volume" },
                   { value: "duration", label: "Duration Trends" },

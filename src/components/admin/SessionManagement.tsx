@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { SimpleSelect } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -663,7 +663,7 @@ export function SessionManagement() {
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label htmlFor="status">Session Status</Label>
-                <Select
+                <SimpleSelect
                   options={[
                     { value: "active", label: "Active" },
                     { value: "completed", label: "Completed" },
