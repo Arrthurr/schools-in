@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { Button } from "../ui/button";
-import { Select, SelectOption } from "../ui/select";
+import { SimpleSelect as Select, SelectOption } from "../ui/simple-select";
 import { DatePicker } from "../ui/date-picker";
 import { SessionDetailModal } from "./SessionDetailModal";
 import {

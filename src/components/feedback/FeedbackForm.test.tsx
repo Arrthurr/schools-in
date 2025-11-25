@@ -33,7 +33,9 @@ describe("FeedbackForm", () => {
   it("renders the form correctly", () => {
     render(<FeedbackForm />);
     
-    expect(screen.getByText("Submit Feedback")).toBeInTheDocument();
+    // Check for the form title (rendered as div in CardTitle) and button
+    expect(screen.getAllByText("Submit Feedback").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: "Submit Feedback" })).toBeInTheDocument();
     expect(screen.getByLabelText(/Category/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Description/i)).toBeInTheDocument();
   });

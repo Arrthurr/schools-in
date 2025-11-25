@@ -4,8 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SimpleSelect as Select } from "@/components/ui/simple-select";
 import {
   BarChart,
   Bar,

@@ -14,7 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectOption } from "@/components/ui/select";
+import { SimpleSelect as Select, SelectOption } from "@/components/ui/simple-select";
 import {
   Settings,
   Database,
