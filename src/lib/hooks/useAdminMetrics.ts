@@ -21,12 +21,13 @@ export interface AdminStats {
 
 export interface AdminActivityItem {
   id: string;
-  type: ActivityType;
+  type: ActivityType | "school-added" | "provider-assigned";
   timestamp: Date;
   userId: string;
   locationId: string;
   providerName?: string;
   locationName?: string;
+  message?: string;
 }
 
 export function useAdminMetrics() {

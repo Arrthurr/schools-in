@@ -14,7 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectOption } from "@/components/ui/select";
+import { SimpleSelect } from "@/components/ui/select";
 import {
   Settings,
   Database,
@@ -280,7 +280,7 @@ export function CacheSettings() {
 
           <div className="space-y-2">
             <Label htmlFor="offline-mode">Offline Mode</Label>
-            <Select
+            <SimpleSelect
               value={settings.offlineMode}
               onValueChange={(value: string) =>
                 updateSetting(

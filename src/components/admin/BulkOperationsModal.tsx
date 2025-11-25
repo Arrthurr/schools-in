@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Select } from "@/components/ui/select";
+import { SimpleSelect } from "@/components/ui/select";
 import {
   Upload,
   Download,

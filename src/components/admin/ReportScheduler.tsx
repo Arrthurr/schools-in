@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { SimpleSelect } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -377,7 +377,7 @@ export function ReportScheduler() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="reportType">Report Type</Label>
-                    <Select
+                    <SimpleSelect
                       options={[
                         { value: "sessions", label: "Session Reports" },
                         { value: "attendance", label: "Attendance Summary" },
@@ -414,7 +414,7 @@ export function ReportScheduler() {
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="frequency">Frequency</Label>
-                    <Select
+                    <SimpleSelect
                       options={[
                         { value: "daily", label: "Daily" },
                         { value: "weekly", label: "Weekly" },
@@ -446,7 +446,7 @@ export function ReportScheduler() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="format">Format</Label>
-                    <Select
+                    <SimpleSelect
                       options={[
                         { value: "pdf", label: "PDF Document" },
                         { value: "csv", label: "CSV File" },

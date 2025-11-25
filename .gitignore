@@ -59,6 +59,7 @@ serviceAccountKey.json
 !.vscode/settings.json
 !.vscode/extensions.json
 .idea/
+.clinerules/
 
 # OS
 Thumbs.db

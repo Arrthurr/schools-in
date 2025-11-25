@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { SimpleSelect } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -372,7 +372,7 @@ export function SessionReports() {
             {/* Date Range */}
             <div className="space-y-2">
               <Label htmlFor="dateRange">Date Range</Label>
-              <Select
+              <SimpleSelect
                 options={[
                   { value: "today", label: "Today" },
                   { value: "week", label: "This Week" },
@@ -390,7 +390,7 @@ export function SessionReports() {
             {/* Provider Filter */}
             <div className="space-y-2">
               <Label htmlFor="provider">Provider</Label>
-              <Select
+              <SimpleSelect
                 options={[
                   { value: "", label: "All Providers" },
                   ...providers.map((provider) => ({
@@ -409,7 +409,7 @@ export function SessionReports() {
             {/* School Filter */}
             <div className="space-y-2">
               <Label htmlFor="school">School</Label>
-              <Select
+              <SimpleSelect
                 options={[
                   { value: "", label: "All Schools" },
                   ...schools.map((school) => ({
@@ -428,7 +428,7 @@ export function SessionReports() {
             {/* Status Filter */}
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select
+              <SimpleSelect
                 options={[
                   { value: "", label: "All Statuses" },
                   { value: "active", label: "Active" },

@@ -54,7 +54,20 @@ export interface Session {
   duration?: number; // legacy total minutes
 }
 
-
+export interface Feedback {
+  id: string;
+  providerId: string;
+  providerEmail?: string;
+  providerName?: string;
+  category: "bug" | "feature_request" | "general" | "other";
+  severity: "low" | "medium" | "high" | "critical";
+  description: string;
+  url?: string;
+  userAgent?: string;
+  status: "open" | "in_progress" | "resolved" | "closed";
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
 
 // Additional utility types
 export interface UserFilters {

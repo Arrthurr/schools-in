@@ -1,4 +1,4 @@
-  rules_version = '2';
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -127,6 +127,20 @@ service cloud.firestore {
       // Explicitly allow real-time queries for active/paused/completed sessions by userId
       allow list: if isAdmin() || 
                      (isProvider() && isActiveUser());
+    }
+
+    // Feedback collection rules
+    match /feedback/{feedbackId} {
+      // Authenticated users (providers/admins) can create feedback
+      allow create: if isAuthenticated() &&
+                       request.resource.data.providerId == request.auth.uid &&
+                       request.resource.data.description is string &&
+                       request.resource.data.category in ['bug', 'feature_request', 'general', 'other'] &&
+                       request.resource.data.status == 'open' &&
+                       hasValidTimestamp(request.resource.data);
+
+      // Admins can read/update/delete all feedback
+      allow read, update, delete: if isAdmin();
     }
 
     // Assignments collection - DEPRECATED
