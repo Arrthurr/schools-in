@@ -2,20 +2,21 @@ import { feedbackService } from "./feedbackService";
 import { collection, addDoc, getDocs, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 
 // Mock Firebase
-jest.mock("@/lib/firebase/client", () => ({
+jest.mock("../../../firebase.config", () => ({
   db: {},
 }));
 
 jest.mock("firebase/firestore", () => ({
-  collection: jest.fn(),
+  collection: jest.fn(() => "collection-ref"),
   addDoc: jest.fn(),
   getDocs: jest.fn(),
   getDoc: jest.fn(),
-  doc: jest.fn(),
+  doc: jest.fn(() => "doc-ref"),
   updateDoc: jest.fn(),
   query: jest.fn(),
   orderBy: jest.fn(),
   limit: jest.fn(),
+  where: jest.fn(),
   Timestamp: {
     now: jest.fn(() => ({ toDate: () => new Date() })),
   },
@@ -43,6 +44,8 @@ describe("feedbackService", () => {
       expect(addDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
         ...input,
         status: "open",
+        createdAt: expect.anything(),
+        updatedAt: expect.anything(),
       }));
       expect(result).toBe("new-feedback-id");
     });
@@ -71,6 +74,7 @@ describe("feedbackService", () => {
         expect.anything(),
         expect.objectContaining({
           status: "resolved",
+          updatedAt: expect.anything(),
         })
       );
     });

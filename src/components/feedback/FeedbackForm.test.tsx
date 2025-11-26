@@ -33,7 +33,7 @@ describe("FeedbackForm", () => {
   it("renders the form correctly", () => {
     render(<FeedbackForm />);
     
-    expect(screen.getByText("Submit Feedback")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /submit feedback/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/Category/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Description/i)).toBeInTheDocument();
   });
