@@ -438,31 +438,165 @@ exports.trackUserActivity = onCall(async (request) => {
 exports.notifyOnFeedback = onDocumentCreated("feedback/{feedbackId}", async (event) => {
   const snapshot = event.data;
   if (!snapshot) {
-      return;
+    logger.warn("Feedback snapshot is null, skipping notification");
+    return;
   }
+  
   const feedback = snapshot.data();
   const feedbackId = event.params.feedbackId;
 
   logger.info(`New feedback received: ${feedbackId}`, feedback);
 
-  // TODO: Configure email provider (e.g., SendGrid, Mailgun, Nodemailer)
-  // const adminEmail = process.env.ADMIN_EMAIL;
-  // const sendGridApiKey = process.env.SENDGRID_API_KEY;
+  // Get configuration from environment variables
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@schools-in-check.web.app";
+  const baseUrl = process.env.BASE_URL || "https://schools-in-check.web.app";
   
-  // For now, we log the email payload that would be sent
-  const emailPayload = {
-      to: "admin@schoolsin.com", // Placeholder or env var
-      subject: `New Feedback: ${feedback.category} - ${feedback.severity}`,
-      text: `
+  // Email configuration - supports multiple providers
+  const emailConfig = {
+    // Option 1: SendGrid (recommended for production)
+    sendGridApiKey: process.env.SENDGRID_API_KEY,
+    
+    // Option 2: SMTP (Gmail, custom SMTP server)
+    smtpHost: process.env.SMTP_HOST,
+    smtpPort: parseInt(process.env.SMTP_PORT || "587"),
+    smtpUser: process.env.SMTP_USER,
+    smtpPassword: process.env.SMTP_PASSWORD,
+    smtpFrom: process.env.SMTP_FROM || adminEmail,
+  };
+
+  const emailSubject = `New Feedback: ${feedback.category} - ${feedback.severity}`;
+  const feedbackUrl = `${baseUrl}/admin/feedback/${feedbackId}`;
+  
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #4F46E5; color: white; padding: 20px; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
+        .footer { background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 5px 5px; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+        .info-row { margin: 10px 0; }
+        .label { font-weight: bold; color: #374151; }
+        .description { background-color: white; padding: 15px; border-left: 4px solid #4F46E5; margin: 15px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>New Feedback Received</h2>
+        </div>
+        <div class="content">
+          <div class="info-row">
+            <span class="label">From:</span> ${feedback.providerName || "Unknown"} (${feedback.providerEmail || "No email"})
+          </div>
+          <div class="info-row">
+            <span class="label">Category:</span> ${feedback.category}
+          </div>
+          <div class="info-row">
+            <span class="label">Severity:</span> ${feedback.severity}
+          </div>
+          ${feedback.url ? `<div class="info-row"><span class="label">URL:</span> ${feedback.url}</div>` : ""}
+          <div class="description">
+            <strong>Description:</strong><br>
+            ${feedback.description.replace(/\n/g, "<br>")}
+          </div>
+          <a href="${feedbackUrl}" class="button">View in Admin Console</a>
+        </div>
+        <div class="footer">
+          <p>This is an automated notification from Schools-In Feedback System</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const emailText = `
 New feedback received from ${feedback.providerName || "Unknown"} (${feedback.providerEmail || "No email"}).
 
 Category: ${feedback.category}
 Severity: ${feedback.severity}
-Description: ${feedback.description}
+${feedback.url ? `URL: ${feedback.url}\n` : ""}
+Description:
+${feedback.description}
 
-View in Admin Console: https://schools-in-check.web.app/admin/feedback/${feedbackId}
-      `
-  };
+View in Admin Console: ${feedbackUrl}
+  `.trim();
 
-  logger.info("Email notification payload:", emailPayload);
+  try {
+    // Use SendGrid SMTP if API key is configured (SendGrid SMTP relay)
+    if (emailConfig.sendGridApiKey) {
+      const nodemailer = require("nodemailer");
+      
+      const transporter = nodemailer.createTransport({
+        host: "smtp.sendgrid.net",
+        port: 587,
+        secure: false,
+        auth: {
+          user: "apikey",
+          pass: emailConfig.sendGridApiKey,
+        },
+      });
+      
+      await transporter.sendMail({
+        from: emailConfig.smtpFrom,
+        to: adminEmail,
+        subject: emailSubject,
+        text: emailText,
+        html: emailHtml,
+      });
+      
+      logger.info(`Email sent via SendGrid SMTP to ${adminEmail} for feedback ${feedbackId}`);
+      return;
+    }
+    
+    // Fallback to custom SMTP if configured
+    if (emailConfig.smtpHost && emailConfig.smtpUser && emailConfig.smtpPassword) {
+      const nodemailer = require("nodemailer");
+      
+      const transporter = nodemailer.createTransport({
+        host: emailConfig.smtpHost,
+        port: emailConfig.smtpPort,
+        secure: emailConfig.smtpPort === 465,
+        auth: {
+          user: emailConfig.smtpUser,
+          pass: emailConfig.smtpPassword,
+        },
+      });
+      
+      await transporter.sendMail({
+        from: emailConfig.smtpFrom,
+        to: adminEmail,
+        subject: emailSubject,
+        text: emailText,
+        html: emailHtml,
+      });
+      
+      logger.info(`Email sent via SMTP to ${adminEmail} for feedback ${feedbackId}`);
+      return;
+    }
+    
+    // If no email provider is configured, log the email payload
+    logger.warn("No email provider configured. Email notification not sent.", {
+      to: adminEmail,
+      subject: emailSubject,
+      feedbackId,
+    });
+    
+    // Log the email payload for manual sending or debugging
+    logger.info("Email notification payload (not sent):", {
+      to: adminEmail,
+      subject: emailSubject,
+      text: emailText,
+      html: emailHtml,
+    });
+    
+  } catch (error) {
+    logger.error("Error sending feedback notification email:", error);
+    // Don't throw - we don't want to fail the feedback creation if email fails
+    // The feedback is already saved, email is just a notification
+  }
 });

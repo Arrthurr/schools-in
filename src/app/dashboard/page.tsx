@@ -26,8 +26,10 @@ import {
   Home,
   History,
   Settings,
+  MessageSquare,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "../../../firebase.config";
 import { getAssignedLocations } from "@/lib/services/locationService";
@@ -39,6 +41,8 @@ import { SkeletonList } from "@/components/ui/skeleton";
 export default function DashboardPage() {
   const { user } = useCachedAuth();
   const metrics = useProviderMetrics();
+  const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
 
@@ -121,21 +125,27 @@ export default function DashboardPage() {
   };
 
   const navigationItems = [
-    { name: "Dashboard", href: "/dashboard", icon: Home, current: true },
+    { name: "Dashboard", href: "/dashboard", icon: Home },
     {
       name: "Session History",
       href: "/dashboard/history",
       icon: History,
-      current: false,
     },
-    { name: "Profile", href: "/profile", icon: User, current: false },
+    { name: "Profile", href: "/profile", icon: User },
     {
       name: "Settings",
       href: "/dashboard/settings",
       icon: Settings,
-      current: false,
     },
-  ];
+    {
+      name: "Feedback",
+      href: "/provider/feedback",
+      icon: MessageSquare,
+    },
+  ].map(item => ({
+    ...item,
+    current: pathname === item.href,
+  }));
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -196,14 +206,10 @@ export default function DashboardPage() {
 
             <nav className="flex-1 space-y-1 px-2 py-4">
               {navigationItems.map((item) => (
-                <a
+                <button
                   key={item.name}
-                  href={item.href}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    console.log(`Navigating to ${item.href}`);
-                  }}
-                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                  onClick={() => router.push(item.href)}
+                  className={`group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     item.current
                       ? "bg-brand-primary text-white"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -217,7 +223,7 @@ export default function DashboardPage() {
                     }`}
                   />
                   {item.name}
-                </a>
+                </button>
               ))}
             </nav>
 
