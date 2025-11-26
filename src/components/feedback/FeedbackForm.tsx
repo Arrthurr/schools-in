@@ -95,7 +95,7 @@ export function FeedbackForm() {
 
       form.reset();
       // Optional: Redirect back to dashboard after short delay or let them stay
-      setTimeout(() => router.push("/provider/dashboard"), 2000);
+      setTimeout(() => router.push("/dashboard"), 2000);
     } catch (error) {
       console.error("Error submitting feedback:", error);
       toast({
