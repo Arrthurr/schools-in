@@ -2,6 +2,13 @@
 // Automatically handles online/offline scenarios for check-in/out operations
 
 import { queueManager } from "@/lib/offline/queueManager";
+import {
+  createDocument,
+  updateDocument,
+  COLLECTIONS,
+} from "@/lib/firebase/firestore";
+import { Timestamp } from "firebase/firestore";
+import { getDayKey } from "@/lib/utils/time";
 
 export interface CheckInResult {
   success: boolean;
@@ -113,86 +120,84 @@ class ServiceManager {
     }
   }
 
-  // Direct check-in API call (no offline support)
+  // Direct check-in using Firebase SDK (no offline support)
   private async directCheckIn(
     schoolId: string,
     userId: string,
     location: { latitude: number; longitude: number; accuracy?: number }
   ): Promise<CheckInResult> {
     try {
-      const response = await fetch("/api/sessions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          schoolId,
-          userId,
-          location: {
-            ...location,
-            timestamp: Date.now(),
-          },
-          action: "check_in",
-          timestamp: Date.now(),
-        }),
-      });
+      const now = Timestamp.now();
+      const dayKey = getDayKey(now);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.error || `HTTP ${response.status}: ${response.statusText}`
-        );
-      }
+      const sessionData = {
+        userId,
+        locationId: schoolId,
+        startTime: now,
+        checkInTime: now, // Legacy field
+        status: "active" as const,
+        checkInMethod: "geo" as const,
+        distanceFromCenterAtCheckIn: location.accuracy ?? 0,
+        dayKey,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-      const result = await response.json();
+      const sessionId = await createDocument(COLLECTIONS.SESSIONS, sessionData);
 
       return {
         success: true,
-        sessionId: result.sessionId,
+        sessionId,
         offline: false,
         message: "Check-in completed successfully",
       };
     } catch (error) {
       throw new Error(
-        `Check-in API call failed: ${
+        `Check-in failed: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
     }
   }
 
-  // Direct check-out API call (no offline support)
+  // Direct check-out using Firebase SDK (no offline support)
   private async directCheckOut(
     sessionId: string,
-    userId: string,
-    location: { latitude: number; longitude: number; accuracy?: number }
+    _userId: string,
+    _location: { latitude: number; longitude: number; accuracy?: number }
   ): Promise<CheckOutResult> {
     try {
-      const response = await fetch("/api/sessions", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sessionId,
-          userId,
-          location: {
-            ...location,
-            timestamp: Date.now(),
-          },
-          action: "check_out",
-          timestamp: Date.now(),
-        }),
-      });
+      const now = Timestamp.now();
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.error || `HTTP ${response.status}: ${response.statusText}`
-        );
+      // Get the session to calculate duration
+      const { getDocument } = await import("@/lib/firebase/firestore");
+      const session = await getDocument(COLLECTIONS.SESSIONS, sessionId);
+
+      if (!session) {
+        throw new Error("Session not found");
       }
 
-      await response.json();
+      const sessionData = session as any;
+      const startTime = sessionData.startTime || sessionData.checkInTime;
+      
+      if (!startTime) {
+        throw new Error("Session missing start time");
+      }
+
+      // Calculate duration in minutes
+      const startMs = startTime.toMillis ? startTime.toMillis() : startTime.seconds * 1000;
+      const endMs = now.toMillis();
+      const durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
+
+      const updateData = {
+        endTime: now,
+        checkOutTime: now, // Legacy field
+        status: "completed" as const,
+        durationMinutes,
+        updatedAt: now,
+      };
+
+      await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
 
       return {
         success: true,
@@ -201,7 +206,7 @@ class ServiceManager {
       };
     } catch (error) {
       throw new Error(
-        `Check-out API call failed: ${
+        `Check-out failed: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );

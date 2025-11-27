@@ -198,18 +198,22 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
     });
   }, [calculateConnectivityScore]);
 
-  // Manual connectivity check via ping
+  // Manual connectivity check via Firebase (since we don't have API routes)
   const checkConnectivity = useCallback(async (): Promise<boolean> => {
     try {
       const start = Date.now();
-      const response = await fetch("/api/health", {
-        method: "HEAD",
-        cache: "no-cache",
-        signal: AbortSignal.timeout(5000),
-      });
+      // Check Firebase connectivity by attempting to read a minimal document
+      // This is a lightweight check that works with static export
+      const { db } = await import("../../../firebase.config");
+      const { collection, getDocs, limit, query } = await import("firebase/firestore");
+      
+      // Try to read a single document to verify connectivity
+      const testQuery = query(collection(db, "system"), limit(1));
+      await getDocs(testQuery);
+      
       const end = Date.now();
 
-      const isConnected = response.ok;
+      const isConnected = true;
       const rtt = end - start;
 
       // Update status with real connectivity check
@@ -236,15 +240,17 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
     }
   }, [calculateConnectivityScore]);
 
-  // Ping test for latency measurement
+  // Ping test for latency measurement using Firebase
   const ping = useCallback(async (): Promise<number> => {
     try {
       const start = performance.now();
-      await fetch("/api/health", {
-        method: "HEAD",
-        cache: "no-cache",
-        signal: AbortSignal.timeout(3000),
-      });
+      // Use Firebase Firestore as a connectivity test
+      const { db } = await import("../../../firebase.config");
+      const { collection, getDocs, limit, query } = await import("firebase/firestore");
+      
+      const testQuery = query(collection(db, "system"), limit(1));
+      await getDocs(testQuery);
+      
       const end = performance.now();
       return Math.round(end - start);
     } catch (error) {
