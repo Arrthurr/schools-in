@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { GET, POST, PUT, DELETE } from "../route";
 import * as firestore from "@/lib/firebase/firestore";
 import { Timestamp } from "firebase/firestore";

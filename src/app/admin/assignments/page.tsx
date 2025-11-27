@@ -30,7 +30,6 @@ import {
   getAssignmentStats,
   getAvailableProviders,
   getUnassignedProviders,
-  assignProviderToSchool,
   removeProviderFromSchool,
   SchoolAssignment,
   AssignmentStats,
@@ -151,15 +150,6 @@ function AssignmentManagementContent() {
     }
   };
 
-  const handleAssignProvider = async (schoolId: string, providerId: string) => {
-    try {
-      await assignProviderToSchool(providerId, schoolId);
-      await loadAssignments(); // Reload data
-    } catch (error) {
-      console.error("Error assigning provider:", error);
-      setError("Failed to assign provider");
-    }
-  };
 
   const handleRemoveProvider = async (schoolId: string, providerId: string) => {
     try {
