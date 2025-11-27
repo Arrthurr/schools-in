@@ -1,86 +1,9 @@
 /** @type {import('next').NextConfig} */
-const withPWA = require("next-pwa")({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-  runtimeCaching: [
-    {
-      urlPattern: /^https:\/\/fonts\.googleapis\.com/,
-      handler: "CacheFirst",
-      options: {
-        cacheName: "google-fonts-stylesheets",
-      },
-    },
-    {
-      urlPattern: /^https:\/\/fonts\.gstatic\.com/,
-      handler: "CacheFirst",
-      options: {
-        cacheName: "google-fonts-webfonts",
-        expiration: {
-          maxEntries: 60,
-          maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-        },
-      },
-    },
-    {
-      urlPattern: /^https:\/\/firebaseapp\.com/,
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "firebase-api",
-        expiration: {
-          maxEntries: 50,
-          maxAgeSeconds: 60 * 60 * 24, // 1 day
-        },
-      },
-    },
-    {
-      urlPattern: /\/api\//,
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "api-cache",
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 60 * 60, // 1 hour
-        },
-      },
-    },
-    // Image caching
-    {
-      urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif|ico)$/i,
-      handler: "CacheFirst",
-      options: {
-        cacheName: "images",
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-        },
-      },
-    },
-    // Avatar and profile images
-    {
-      urlPattern: /^https:\/\/.*\.googleusercontent\.com/,
-      handler: "CacheFirst",
-      options: {
-        cacheName: "google-profile-images",
-        expiration: {
-          maxEntries: 50,
-          maxAgeSeconds: 60 * 60 * 24 * 7, // 1 week
-        },
-      },
-    },
-    // Firebase Storage images
-    {
-      urlPattern: /^https:\/\/firebasestorage\.googleapis\.com/,
-      handler: "CacheFirst",
-      options: {
-        cacheName: "firebase-images",
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-        },
-      },
-    },
-  ],
+const withSerwist = require("@serwist/next").default({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  cacheOnNavigation: true,
+  reloadOnOnline: true,
   disable: process.env.NODE_ENV === "development",
 });
 
@@ -138,4 +61,4 @@ const nextConfig = {
   swcMinify: true,
 };
 
-module.exports = withBundleAnalyzer(withPWA(nextConfig));
+module.exports = withBundleAnalyzer(withSerwist(nextConfig));
