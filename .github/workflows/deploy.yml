@@ -55,7 +55,19 @@ jobs:
           # Deploy hosting first (doesn't require rules permissions)
           firebase deploy --only hosting
 
-          # Deploy Firestore rules separately (requires Firebase Rules Admin role)
-          firebase deploy --only firestore:rules || echo "Firestore rules deployment failed - check service account permissions"
+          # Deploy Firestore rules separately
+          # Note: If you see "Permission denied to get service [firestore.googleapis.com]",
+          # the Firestore API needs to be enabled manually in Google Cloud Console:
+          # https://console.cloud.google.com/apis/library/firestore.googleapis.com?project=schools-in-check
+          # Or grant the service account "Service Usage Admin" role in IAM.
+          firebase deploy --only firestore:rules --non-interactive || {
+            echo "⚠️  Firestore rules deployment failed"
+            echo "This may be due to:"
+            echo "  1. Firestore API not enabled - enable it in GCP Console"
+            echo "  2. Service account missing 'Service Usage Admin' role"
+            echo "  3. Service account missing 'Firebase Rules Admin' role"
+            echo "Deployment will continue, but Firestore rules were not updated."
+            exit 0  # Don't fail the build
+          }
         env:
           GOOGLE_APPLICATION_CREDENTIALS: serviceAccountKey.json
