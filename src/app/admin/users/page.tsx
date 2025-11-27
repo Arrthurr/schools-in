@@ -5,29 +5,22 @@ import { OptimizedAvatar } from "@/components/ui/optimized-image";
 import {
   Users,
   Search,
-  Filter,
-  UserPlus,
   Edit,
   Trash2,
-  Shield,
   UserCheck,
   UserX,
-  MoreVertical,
   Download,
   CheckSquare,
   Square,
   Mail,
   Calendar,
-  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";

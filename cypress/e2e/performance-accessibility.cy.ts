@@ -59,9 +59,6 @@ describe("Performance and Accessibility Testing", () => {
     it("should meet performance benchmarks for provider dashboard", () => {
       cy.login("provider@test.com", "password", { role: "provider" });
 
-      // Measure dashboard load time
-      const startTime = performance.now();
-
       cy.visit("/dashboard");
       cy.wait(["@getSchools", "@getSessions"]);
 

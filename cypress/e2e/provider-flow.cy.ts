@@ -169,7 +169,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
       // Mock permission denied
       cy.window().then((win) => {
         cy.stub(win.navigator.geolocation, "getCurrentPosition").callsFake(
-          (success, error) => {
+          (_success, error) => {
             if (error) {
               error({ code: 1, message: "User denied Geolocation" });
             }
@@ -190,7 +190,7 @@ describe("Provider Check-In/Check-Out Flow", () => {
       // Mock GPS timeout
       cy.window().then((win) => {
         cy.stub(win.navigator.geolocation, "getCurrentPosition").callsFake(
-          (success, error) => {
+          (_success, error) => {
             setTimeout(() => {
               if (error) {
                 error({ code: 3, message: "Timeout expired" });

@@ -3,7 +3,6 @@
 "use client";
 
 import { useState } from "react";
-import { Metadata } from "next";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminNavigation } from "@/components/admin/AdminNavigation";
 import { SessionReports } from "@/components/admin/SessionReports";

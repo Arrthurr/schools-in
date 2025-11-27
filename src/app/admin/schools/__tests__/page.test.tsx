@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import SchoolManagementPage from "../page";
 
 // Mock the auth and navigation components
