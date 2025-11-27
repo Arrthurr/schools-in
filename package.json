@@ -58,6 +58,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.15",
+    "@serwist/next": "^9.2.3",
     "@swc/core": "^1.13.5",
     "@vis.gl/react-google-maps": "^1.5.5",
     "class-variance-authority": "^0.7.1",
@@ -72,6 +73,7 @@
     "react-dom": "^18.3.0",
     "react-hook-form": "^7.62.0",
     "recharts": "^3.2.0",
+    "serwist": "^9.2.3",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^4.1.5"
@@ -106,7 +108,6 @@
     "jest-junit": "^16.0.0",
     "lighthouse": "^12.8.2",
     "lighthouse-ci": "^1.10.0",
-    "next-pwa": "^5.6.0",
     "postcss": "^8.5.6",
     "start-server-and-test": "^2.1.0",
     "tailwindcss": "^3.4.17",
