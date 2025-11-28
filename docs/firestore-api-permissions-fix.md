@@ -53,10 +53,20 @@ After applying one of the solutions above, verify the API is enabled:
 
 ## Current Workflow Behavior
 
-The deployment workflow has been updated to:
-- Continue deployment even if Firestore rules fail
-- Provide clear error messages about what needs to be fixed
-- Not fail the entire build if only Firestore rules deployment fails
+The deployment workflow has been updated with a **dual deployment strategy**:
 
-The hosting deployment will always succeed, and Firestore rules will deploy once the API is enabled.
+1. **Primary Method**: Uses Firebase CLI to deploy Firestore rules
+2. **Fallback Method**: If the CLI fails due to API permission checks, the workflow automatically:
+   - Uses `gcloud` CLI (via `google-github-actions/setup-gcloud`) for authentication
+   - Deploys rules directly via Firebase REST API, bypassing the API enablement check
+   - This works even if the service account can't verify API status
+
+### Benefits
+
+- ✅ **Automatic fallback**: If Firebase CLI fails, REST API deployment is attempted automatically
+- ✅ **No build failures**: Deployment continues even if Firestore rules fail (hosting still deploys)
+- ✅ **Better authentication**: Uses `gcloud` setup action which handles service account authentication more reliably
+- ✅ **Clear error messages**: Provides detailed information about what failed and why
+
+The hosting deployment will always succeed, and Firestore rules will deploy using either method.
 
