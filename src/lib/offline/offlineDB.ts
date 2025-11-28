@@ -170,28 +170,81 @@ export async function syncPendingActions(): Promise<void> {
   const db = await initDB();
   const actions = await db.getAll(STORES.PENDING_ACTIONS);
 
+  const {
+    createDocument,
+    updateDocument,
+    getDocument,
+    COLLECTIONS,
+  } = await import("@/lib/firebase/firestore");
+  const { Timestamp } = await import("firebase/firestore");
+  const { getDayKey } = await import("@/lib/utils/time");
+
   for (const action of actions) {
     try {
-      // Attempt to sync the action based on type
-      let response: Response;
+      let success = false;
 
       if (action.type === "check-in") {
-        response = await fetch("/api/sessions/check-in", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(action.data),
-        });
+        // Sync check-in using Firebase SDK
+        const payload = action.data;
+        const now = Timestamp.now();
+        const dayKey = getDayKey(now);
+
+        const sessionData = {
+          userId: payload.userId,
+          locationId: payload.schoolId || payload.locationId,
+          startTime: now,
+          checkInTime: now, // Legacy field
+          status: "active" as const,
+          checkInMethod: "offline-sync" as const,
+          distanceFromCenterAtCheckIn: payload.location?.accuracy ?? payload.distanceFromCenterAtCheckIn ?? 0,
+          dayKey,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await createDocument(COLLECTIONS.SESSIONS, sessionData);
+        success = true;
       } else if (action.type === "check-out") {
-        response = await fetch("/api/sessions/check-out", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(action.data),
-        });
+        // Sync check-out using Firebase SDK
+        const sessionId = action.data.sessionId;
+        
+        if (!sessionId) {
+          throw new Error("Session ID is required for check-out");
+        }
+
+        const session = await getDocument(COLLECTIONS.SESSIONS, sessionId);
+
+        if (!session) {
+          throw new Error("Session not found");
+        }
+
+        const sessionData = session as any;
+        const startTime = sessionData.startTime || sessionData.checkInTime;
+        
+        if (!startTime) {
+          throw new Error("Session missing start time");
+        }
+
+        const now = Timestamp.now();
+        const startMs = startTime.toMillis ? startTime.toMillis() : startTime.seconds * 1000;
+        const endMs = now.toMillis();
+        const durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
+
+        const updateData = {
+          endTime: now,
+          checkOutTime: now, // Legacy field
+          status: "completed" as const,
+          durationMinutes,
+          updatedAt: now,
+        };
+
+        await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
+        success = true;
       } else {
         continue; // Skip unknown action types
       }
 
-      if (response.ok) {
+      if (success) {
         // Remove from queue on success
         await db.delete(STORES.PENDING_ACTIONS, action.id);
       } else {

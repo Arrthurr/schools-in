@@ -12,6 +12,13 @@ import {
   getCachedUserData,
   clearOfflineData,
 } from "./offlineDB";
+import {
+  createDocument,
+  updateDocument,
+  COLLECTIONS,
+} from "@/lib/firebase/firestore";
+import { Timestamp } from "firebase/firestore";
+import { getDayKey } from "@/lib/utils/time";
 
 export class ServiceManager {
   private static instance: ServiceManager;
@@ -152,20 +159,29 @@ export class ServiceManager {
   }) {
     try {
       if (this.isOnline) {
-        // Online - perform immediate check-in
-        const response = await fetch("/api/sessions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(checkInData),
-        });
+        // Online - perform immediate check-in using Firebase SDK
+        const now = Timestamp.now();
+        const dayKey = getDayKey(now);
 
-        if (!response.ok) {
-          throw new Error("Check-in failed");
-        }
+        const sessionData = {
+          userId: checkInData.userId,
+          locationId: checkInData.schoolId,
+          startTime: now,
+          checkInTime: now, // Legacy field
+          status: "active" as const,
+          checkInMethod: "geo" as const,
+          distanceFromCenterAtCheckIn: checkInData.coordinates.lat ? 0 : 0, // Use accuracy if available
+          dayKey,
+          createdAt: now,
+          updatedAt: now,
+        };
 
-        return await response.json();
+        const sessionId = await createDocument(COLLECTIONS.SESSIONS, sessionData);
+
+        return {
+          id: sessionId,
+          ...sessionData,
+        };
       } else {
         // Offline - queue the action
         await queueOfflineAction({
@@ -201,27 +217,41 @@ export class ServiceManager {
   }) {
     try {
       if (this.isOnline) {
-        // Online - perform immediate check-out
-        const response = await fetch(
-          `/api/sessions/${checkOutData.sessionId}`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              endTime: new Date(checkOutData.timestamp).toISOString(),
-              endCoordinates: checkOutData.coordinates,
-              status: "completed",
-            }),
-          }
-        );
+        // Online - perform immediate check-out using Firebase SDK
+        const { getDocument } = await import("@/lib/firebase/firestore");
+        const session = await getDocument(COLLECTIONS.SESSIONS, checkOutData.sessionId);
 
-        if (!response.ok) {
-          throw new Error("Check-out failed");
+        if (!session) {
+          throw new Error("Session not found");
         }
 
-        return await response.json();
+        const sessionData = session as any;
+        const startTime = sessionData.startTime || sessionData.checkInTime;
+        
+        if (!startTime) {
+          throw new Error("Session missing start time");
+        }
+
+        const now = Timestamp.now();
+        const startMs = startTime.toMillis ? startTime.toMillis() : startTime.seconds * 1000;
+        const endMs = now.toMillis();
+        const durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
+
+        const updateData = {
+          endTime: now,
+          checkOutTime: now, // Legacy field
+          status: "completed" as const,
+          durationMinutes,
+          updatedAt: now,
+        };
+
+        await updateDocument(COLLECTIONS.SESSIONS, checkOutData.sessionId, updateData);
+
+        return {
+          id: checkOutData.sessionId,
+          ...sessionData,
+          ...updateData,
+        };
       } else {
         // Offline - queue the action
         await queueOfflineAction({

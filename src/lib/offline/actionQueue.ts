@@ -2,6 +2,14 @@
 // Handles storing, managing, and syncing actions when offline
 
 import { initCacheDB, CACHE_STORES, CACHE_CONFIG } from "./cacheStrategy";
+import {
+  createDocument,
+  updateDocument,
+  getDocument,
+  COLLECTIONS,
+} from "@/lib/firebase/firestore";
+import { Timestamp } from "firebase/firestore";
+import { getDayKey } from "@/lib/utils/time";
 
 // Action types for the offline queue
 export const QUEUE_ACTIONS = {
@@ -381,27 +389,31 @@ async function processAction(action: QueuedAction): Promise<boolean> {
   }
 }
 
-// Sync check-in action with server
+// Sync check-in action with Firebase
 async function syncCheckIn(action: QueuedAction): Promise<boolean> {
   try {
-    const response = await fetch("/api/sessions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...action.payload,
-        queuedActionId: action.id,
-        originalTimestamp: action.timestamp,
-      }),
-    });
+    const payload = action.payload;
+    const now = Timestamp.now();
+    const dayKey = getDayKey(now);
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    const sessionData = {
+      userId: payload.userId || action.userId,
+      locationId: payload.schoolId || action.schoolId || payload.locationId,
+      startTime: now,
+      checkInTime: now, // Legacy field
+      status: "active" as const,
+      checkInMethod: "offline-sync" as const,
+      distanceFromCenterAtCheckIn: payload.location?.accuracy ?? payload.distanceFromCenterAtCheckIn ?? 0,
+      dayKey,
+      createdAt: now,
+      updatedAt: now,
+      // Store metadata about the queued action
+      queuedActionId: action.id,
+      originalTimestamp: Timestamp.fromMillis(action.timestamp),
+    };
 
-    const result = await response.json();
-    console.log("Check-in synced successfully:", result);
+    const sessionId = await createDocument(COLLECTIONS.SESSIONS, sessionData);
+    console.log("Check-in synced successfully:", { sessionId, actionId: action.id });
     return true;
   } catch (error) {
     console.error("Failed to sync check-in:", error);
@@ -409,27 +421,46 @@ async function syncCheckIn(action: QueuedAction): Promise<boolean> {
   }
 }
 
-// Sync check-out action with server
+// Sync check-out action with Firebase
 async function syncCheckOut(action: QueuedAction): Promise<boolean> {
   try {
-    const response = await fetch("/api/sessions", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...action.payload,
-        queuedActionId: action.id,
-        originalTimestamp: action.timestamp,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const sessionId = action.sessionId || action.payload.sessionId;
+    
+    if (!sessionId) {
+      throw new Error("Session ID is required for check-out");
     }
 
-    const result = await response.json();
-    console.log("Check-out synced successfully:", result);
+    const session = await getDocument(COLLECTIONS.SESSIONS, sessionId);
+
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    const sessionData = session as any;
+    const startTime = sessionData.startTime || sessionData.checkInTime;
+    
+    if (!startTime) {
+      throw new Error("Session missing start time");
+    }
+
+    const now = Timestamp.now();
+    const startMs = startTime.toMillis ? startTime.toMillis() : startTime.seconds * 1000;
+    const endMs = now.toMillis();
+    const durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
+
+    const updateData = {
+      endTime: now,
+      checkOutTime: now, // Legacy field
+      status: "completed" as const,
+      durationMinutes,
+      updatedAt: now,
+      // Store metadata about the queued action
+      queuedActionId: action.id,
+      originalTimestamp: Timestamp.fromMillis(action.timestamp),
+    };
+
+    await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
+    console.log("Check-out synced successfully:", { sessionId, actionId: action.id });
     return true;
   } catch (error) {
     console.error("Failed to sync check-out:", error);
@@ -437,27 +468,25 @@ async function syncCheckOut(action: QueuedAction): Promise<boolean> {
   }
 }
 
-// Sync session update action with server
+// Sync session update action with Firebase
 async function syncSessionUpdate(action: QueuedAction): Promise<boolean> {
   try {
-    const response = await fetch(`/api/sessions/${action.sessionId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...action.payload,
-        queuedActionId: action.id,
-        originalTimestamp: action.timestamp,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const sessionId = action.sessionId || action.payload.sessionId;
+    
+    if (!sessionId) {
+      throw new Error("Session ID is required for session update");
     }
 
-    const result = await response.json();
-    console.log("Session update synced successfully:", result);
+    const updateData = {
+      ...action.payload,
+      updatedAt: Timestamp.now(),
+      // Store metadata about the queued action
+      queuedActionId: action.id,
+      originalTimestamp: Timestamp.fromMillis(action.timestamp),
+    };
+
+    await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
+    console.log("Session update synced successfully:", { sessionId, actionId: action.id });
     return true;
   } catch (error) {
     console.error("Failed to sync session update:", error);
@@ -465,28 +494,27 @@ async function syncSessionUpdate(action: QueuedAction): Promise<boolean> {
   }
 }
 
-// Sync location update action with server
+// Sync location update action with Firebase
 async function syncLocationUpdate(action: QueuedAction): Promise<boolean> {
   try {
-    // This could be used for tracking location updates during sessions
-    const response = await fetch("/api/locations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...action.payload,
-        queuedActionId: action.id,
-        originalTimestamp: action.timestamp,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    // Location updates are typically handled as session updates
+    // If this is for updating a location document, use updateDocument
+    const locationId = action.payload.locationId || action.schoolId;
+    
+    if (!locationId) {
+      throw new Error("Location ID is required for location update");
     }
 
-    const result = await response.json();
-    console.log("Location update synced successfully:", result);
+    const updateData = {
+      ...action.payload,
+      updatedAt: Timestamp.now(),
+      // Store metadata about the queued action
+      queuedActionId: action.id,
+      originalTimestamp: Timestamp.fromMillis(action.timestamp),
+    };
+
+    await updateDocument(COLLECTIONS.LOCATIONS, locationId, updateData);
+    console.log("Location update synced successfully:", { locationId, actionId: action.id });
     return true;
   } catch (error) {
     console.error("Failed to sync location update:", error);

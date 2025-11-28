@@ -22,6 +22,14 @@ import {
   type ConnectivityRestorationConfig,
 } from "../hooks/useConnectivityRestoration";
 import { useEffect, useCallback } from "react";
+import {
+  createDocument,
+  updateDocument,
+  getDocument,
+  COLLECTIONS,
+} from "@/lib/firebase/firestore";
+import { Timestamp } from "firebase/firestore";
+import { getDayKey } from "@/lib/utils/time";
 
 export interface QueueManagerConfig {
   enableAutoSync: boolean;
@@ -108,38 +116,38 @@ class QueueManager {
 
     try {
       if (navigator.onLine) {
-        // Try direct API call first when online
-        const response = await fetch("/api/sessions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            schoolId,
-            userId,
-            location: {
-              ...location,
-              timestamp: Date.now(),
-            },
-            action: "check_in",
-            timestamp: Date.now(),
-          }),
-        });
+        // Try direct Firebase SDK call first when online
+        try {
+          const now = Timestamp.now();
+          const dayKey = getDayKey(now);
 
-        if (response.ok) {
-          const result = await response.json();
+          const sessionData = {
+            userId,
+            locationId: schoolId,
+            startTime: now,
+            checkInTime: now, // Legacy field
+            status: "active" as const,
+            checkInMethod: "geo" as const,
+            distanceFromCenterAtCheckIn: location.accuracy ?? 0,
+            dayKey,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          const sessionId = await createDocument(COLLECTIONS.SESSIONS, sessionData);
+
           if (this.config.debugMode) {
-            console.log("Check-in completed online:", result);
+            console.log("Check-in completed online:", { sessionId });
           }
           return {
             success: true,
-            sessionId: result.sessionId,
+            sessionId,
             offline: false,
           };
-        } else {
-          // API failed, fall back to offline queue
+        } catch (error) {
+          // Firebase call failed, fall back to offline queue
           if (this.config.debugMode) {
-            console.log("API call failed, falling back to offline queue");
+            console.log("Firebase call failed, falling back to offline queue:", error);
           }
         }
       }
@@ -177,37 +185,47 @@ class QueueManager {
 
     try {
       if (navigator.onLine) {
-        // Try direct API call first when online
-        const response = await fetch("/api/sessions", {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            sessionId,
-            userId,
-            location: {
-              ...location,
-              timestamp: Date.now(),
-            },
-            action: "check_out",
-            timestamp: Date.now(),
-          }),
-        });
+        // Try direct Firebase SDK call first when online
+        try {
+          const session = await getDocument(COLLECTIONS.SESSIONS, sessionId);
 
-        if (response.ok) {
-          const result = await response.json();
+          if (!session) {
+            throw new Error("Session not found");
+          }
+
+          const sessionData = session as any;
+          const startTime = sessionData.startTime || sessionData.checkInTime;
+          
+          if (!startTime) {
+            throw new Error("Session missing start time");
+          }
+
+          const now = Timestamp.now();
+          const startMs = startTime.toMillis ? startTime.toMillis() : startTime.seconds * 1000;
+          const endMs = now.toMillis();
+          const durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
+
+          const updateData = {
+            endTime: now,
+            checkOutTime: now, // Legacy field
+            status: "completed" as const,
+            durationMinutes,
+            updatedAt: now,
+          };
+
+          await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
+
           if (this.config.debugMode) {
-            console.log("Check-out completed online:", result);
+            console.log("Check-out completed online:", { sessionId });
           }
           return {
             success: true,
             offline: false,
           };
-        } else {
-          // API failed, fall back to offline queue
+        } catch (error) {
+          // Firebase call failed, fall back to offline queue
           if (this.config.debugMode) {
-            console.log("API call failed, falling back to offline queue");
+            console.log("Firebase call failed, falling back to offline queue:", error);
           }
         }
       }
