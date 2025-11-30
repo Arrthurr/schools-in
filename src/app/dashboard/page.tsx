@@ -61,8 +61,8 @@ export default function DashboardPage() {
 
         // Create a map of location IDs to names
         const map: Record<string, string> = {};
-        locations.forEach(loc => {
-            map[loc.id] = loc.name;
+        locations.forEach((loc) => {
+          map[loc.id] = loc.name;
         });
         setLocationsMap(map);
       } catch (error) {
@@ -75,37 +75,43 @@ export default function DashboardPage() {
 
   // Fetch recent sessions
   useEffect(() => {
-      const fetchRecentActivity = async () => {
-          if (!user?.uid) return;
+    const fetchRecentActivity = async () => {
+      if (!user?.uid) return;
 
-          setLoadingRecent(true);
-          try {
-              const sessions = await CachedSessionService.getUserSessions(user.uid, {}, { limit: 7 });
-              setRecentSessions(sessions);
-          } catch (error) {
-              console.error("Error fetching recent activity:", error);
-          } finally {
-              setLoadingRecent(false);
-          }
-      };
+      setLoadingRecent(true);
+      try {
+        const sessions = await CachedSessionService.getUserSessions(
+          user.uid,
+          {},
+          { limit: 7 }
+        );
+        setRecentSessions(sessions);
+      } catch (error) {
+        console.error("Error fetching recent activity:", error);
+      } finally {
+        setLoadingRecent(false);
+      }
+    };
 
-      fetchRecentActivity();
+    fetchRecentActivity();
   }, [user?.uid]);
 
   // Helper for relative time
   const getRelativeTime = (dateString: any) => {
-      if (!dateString) return "";
-      const date = new Date(typeof dateString.toDate === 'function' ? dateString.toDate() : dateString);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffMin = Math.floor(diffMs / 60000);
-      const diffHour = Math.floor(diffMin / 60);
-      const diffDay = Math.floor(diffHour / 24);
+    if (!dateString) return "";
+    const date = new Date(
+      typeof dateString.toDate === "function" ? dateString.toDate() : dateString
+    );
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
 
-      if (diffDay > 0) return `${diffDay}d ago`;
-      if (diffHour > 0) return `${diffHour}h ago`;
-      if (diffMin > 0) return `${diffMin}m ago`;
-      return "Just now";
+    if (diffDay > 0) return `${diffDay}d ago`;
+    if (diffHour > 0) return `${diffHour}h ago`;
+    if (diffMin > 0) return `${diffMin}m ago`;
+    return "Just now";
   };
 
   const handleEndSession = async (_sessionId: string) => {
@@ -142,7 +148,7 @@ export default function DashboardPage() {
       href: "/provider/feedback",
       icon: MessageSquare,
     },
-  ].map(item => ({
+  ].map((item) => ({
     ...item,
     current: pathname === item.href,
   }));
@@ -150,11 +156,29 @@ export default function DashboardPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200">
+            Active
+          </Badge>
+        );
       case "completed":
-        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">Completed</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gray-100 text-gray-800 border-gray-200"
+          >
+            Completed
+          </Badge>
+        );
       case "paused":
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">Paused</Badge>;
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-yellow-100 text-yellow-800 border-yellow-200"
+          >
+            Paused
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -208,7 +232,7 @@ export default function DashboardPage() {
               {navigationItems.map((item) => (
                 <button
                   key={item.name}
-                  onClick={() => router.push(item.href)}
+                  onClick={() => router.push(item.href as any)}
                   className={`group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     item.current
                       ? "bg-brand-primary text-white"
@@ -367,11 +391,13 @@ export default function DashboardPage() {
 
               <div className="grid gap-6 lg:grid-cols-2">
                 <SessionStatus
-                  currentSession={metrics.currentSession || metrics.lastCompletedSession}
+                  currentSession={
+                    metrics.currentSession || metrics.lastCompletedSession
+                  }
                   onEndSession={handleEndSession}
                 />
 
-                <SchoolList 
+                <SchoolList
                   showCheckInButtons={true}
                   currentSessionLocationId={metrics.currentSession?.locationId}
                 />
@@ -399,16 +425,15 @@ export default function DashboardPage() {
                               </div>
                               <div>
                                 <p className="font-medium text-foreground">
-                                  {locationsMap[session.locationId] || "Unknown Location"}
+                                  {locationsMap[session.locationId] ||
+                                    "Unknown Location"}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
                                   {getRelativeTime(session.startTime)}
                                 </p>
                               </div>
                             </div>
-                            <div>
-                              {getStatusBadge(session.status)}
-                            </div>
+                            <div>{getStatusBadge(session.status)}</div>
                           </div>
                         ))}
                       </div>
