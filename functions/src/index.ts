@@ -8,7 +8,7 @@ admin.initializeApp();
 
 // Production configuration
 const _PRODUCTION_CONFIG = {
-  sessionTimeoutHours: 12,
+  sessionTimeoutHours: 2,
   cleanupIntervalHours: 1,
   maxBatchSize: 500,
   performanceThresholds: {
@@ -17,7 +17,7 @@ const _PRODUCTION_CONFIG = {
   },
 };
 
-const twelveHoursInMs = 12 * 60 * 60 * 1000;
+const sessionLimitInMs = _PRODUCTION_CONFIG.sessionTimeoutHours * 60 * 60 * 1000;
 
 // Callable function to start a session with atomic checks
 exports.startSession = onCall(async (request: any) => {
@@ -190,7 +190,7 @@ exports.cleanupStaleSessions = onSchedule(
 
       const now = admin.firestore.Timestamp.now();
       const cutoff = admin.firestore.Timestamp.fromMillis(
-        now.toMillis() - twelveHoursInMs,
+        now.toMillis() - sessionLimitInMs,
       );
 
       const staleSessionsQuery = sessionsRef
