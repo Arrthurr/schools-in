@@ -33,7 +33,7 @@
 - **Caching**: Multi-layer caching (Memory → Session → Local → IndexedDB) with SSR-safe initialization
 - **Images**: Next.js Image optimization with lazy loading and WebP/AVIF support
 - **UI**: Radix UI components with Tailwind CSS, shadcn/ui components
-- **Auth**: Firebase Auth with cached user data and role-based access
+- **Auth**: Microsoft Authentication only with cached user data and role-based access
 - **Maps**: Google Maps integration with @vis.gl/react-google-maps for geolocation and navigation
 - **Testing**: Jest + React Testing Library (unit), Cypress (e2e), Lighthouse CI (performance)
 - **State**: React hooks, cached Firebase data, offline-capable storage
@@ -162,7 +162,7 @@
 
 ### Performance & PWA
 
-- **next-pwa**: ^5.6.0 (Progressive Web App)
+- **serwist**: ^1.2.0 (Progressive Web App)
 - **Bundle Analyzer**: ^15.5.2 (Bundle size analysis)
 - **Web Vitals**: ^5.1.0 (Performance monitoring)
 - **IDB**: ^8.0.3 (IndexedDB for offline storage)
