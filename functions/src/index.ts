@@ -20,7 +20,7 @@ const _PRODUCTION_CONFIG = {
 const twelveHoursInMs = 12 * 60 * 60 * 1000;
 
 // Callable function to start a session with atomic checks
-exports.startSession = onCall(async (request) => {
+exports.startSession = onCall(async (request: any) => {
   try {
     const { data, auth } = request;
 
@@ -39,7 +39,7 @@ exports.startSession = onCall(async (request) => {
       !data.dayKey
     ) {
       throw new Error(
-        "Missing required session data: locationId, startTime, checkInMethod, distanceFromCenterAtCheckIn, dayKey"
+        "Missing required session data: locationId, startTime, checkInMethod, distanceFromCenterAtCheckIn, dayKey",
       );
     }
 
@@ -47,7 +47,7 @@ exports.startSession = onCall(async (request) => {
     const userId = auth.uid;
 
     // Use a transaction to atomically check for existing active sessions and create new one
-    const result = await db.runTransaction(async (transaction) => {
+    const result = await db.runTransaction(async (transaction: any) => {
       // Check if user exists and is active
       const userRef = db.collection("users").doc(userId);
       const userDoc = await transaction.get(userRef);
@@ -72,7 +72,7 @@ exports.startSession = onCall(async (request) => {
         .where("status", "in", ["active", "paused"]);
 
       const existingSessionsSnapshot = await transaction.get(
-        existingSessionsQuery
+        existingSessionsQuery,
       );
 
       if (!existingSessionsSnapshot.empty) {
@@ -80,7 +80,7 @@ exports.startSession = onCall(async (request) => {
         throw new Error(
           `Provider already has an ${existingSession.data().status} session: ${
             existingSession.id
-          }`
+          }`,
         );
       }
 
@@ -106,12 +106,14 @@ exports.startSession = onCall(async (request) => {
       }
 
       // Create the new session document
-      const sessionData = {
+      const sessionData: { [key: string]: any } = {
         id: null, // Will be set after creation
         userId: userId,
         locationId: data.locationId,
         startTime: admin.firestore.Timestamp.fromDate(new Date(data.startTime)),
-        checkInTime: admin.firestore.Timestamp.fromDate(new Date(data.startTime)),
+        checkInTime: admin.firestore.Timestamp.fromDate(
+          new Date(data.startTime),
+        ),
         endTime: null,
         status: "active",
         active: true,
@@ -145,7 +147,7 @@ exports.startSession = onCall(async (request) => {
     });
 
     logger.info(
-      `Session started successfully for user ${userId}: ${result.sessionId}`
+      `Session started successfully for user ${userId}: ${result.sessionId}`,
     );
 
     return {
@@ -157,246 +159,285 @@ exports.startSession = onCall(async (request) => {
     logger.error("Error starting session:", error);
 
     // Return user-friendly error messages
-    if (error.message.includes("already has an")) {
-      throw new Error(
-        "You already have an active session. Please end your current session before starting a new one."
-      );
-    } else if (error.message.includes("not assigned")) {
-      throw new Error("You are not authorized to check in at this location.");
-    } else if (error.message.includes("not active")) {
-      throw new Error("This location is currently unavailable for check-in.");
-    } else if (error.message.includes("User not found")) {
-      throw new Error("User account not found. Please contact support.");
-    } else if (error.message.includes("Only providers")) {
-      throw new Error("Only provider accounts can start sessions.");
-    } else if (error.message.includes("Missing required")) {
-      throw new Error("Invalid session data provided.");
+    if (error instanceof Error) {
+      if (error.message.includes("already has an")) {
+        throw new Error(
+          "You already have an active session. Please end your current session before starting a new one.",
+        );
+      } else if (error.message.includes("not assigned")) {
+        throw new Error("You are not authorized to check in at this location.");
+      } else if (error.message.includes("not active")) {
+        throw new Error("This location is currently unavailable for check-in.");
+      } else if (error.message.includes("User not found")) {
+        throw new Error("User account not found. Please contact support.");
+      } else if (error.message.includes("Only providers")) {
+        throw new Error("Only provider accounts can start sessions.");
+      } else if (error.message.includes("Missing required")) {
+        throw new Error("Invalid session data provided.");
+      }
     }
 
     throw new Error("Failed to start session. Please try again.");
   }
 });
 
-exports.cleanupStaleSessions = onSchedule("every 1 hours", async (_event) => {
-  try {
-    const db = admin.firestore();
-    const sessionsRef = db.collection("sessions");
+exports.cleanupStaleSessions = onSchedule(
+  "every 1 hours",
+  async (_event: any) => {
+    try {
+      const db = admin.firestore();
+      const sessionsRef = db.collection("sessions");
 
-    const now = admin.firestore.Timestamp.now();
-    const cutoff = admin.firestore.Timestamp.fromMillis(
-      now.toMillis() - twelveHoursInMs
-    );
+      const now = admin.firestore.Timestamp.now();
+      const cutoff = admin.firestore.Timestamp.fromMillis(
+        now.toMillis() - twelveHoursInMs,
+      );
 
-    const staleSessionsQuery = sessionsRef
-      .where("status", "==", "active")
-      .where("checkInTime", "<", cutoff);
+      const staleSessionsQuery = sessionsRef
+        .where("status", "==", "active")
+        .where("checkInTime", "<", cutoff);
 
-    const staleSessionsSnapshot = await staleSessionsQuery.get();
+      const staleSessionsSnapshot = await staleSessionsQuery.get();
 
-    if (staleSessionsSnapshot.empty) {
-      logger.info("No stale sessions found.");
-      return;
-    }
+      if (staleSessionsSnapshot.empty) {
+        logger.info("No stale sessions found.");
+        return;
+      }
 
-    const batch = db.batch();
-    staleSessionsSnapshot.forEach((doc) => {
-      logger.info(`Found stale session: ${doc.id}`);
-      const sessionRef = sessionsRef.doc(doc.id);
-      batch.update(sessionRef, {
-        status: "error",
-        notes: "Session automatically closed due to timeout.",
-        checkOutTime: doc.data().checkInTime, // Or use a fixed time
+      const batch = db.batch();
+      staleSessionsSnapshot.forEach((doc: any) => {
+        logger.info(`Found stale session: ${doc.id}`);
+        const sessionRef = sessionsRef.doc(doc.id);
+        batch.update(sessionRef, {
+          status: "error",
+          notes: "Session automatically closed due to timeout.",
+          checkOutTime: doc.data().checkInTime, // Or use a fixed time
+        });
       });
-    });
 
-    await batch.commit();
-    logger.info(`Cleaned up ${staleSessionsSnapshot.size} stale sessions.`);
+      await batch.commit();
+      logger.info(`Cleaned up ${staleSessionsSnapshot.size} stale sessions.`);
 
-    // Track cleanup metrics
-    const metrics = {
-      cleanedSessions: staleSessionsSnapshot.size,
-      timestamp: admin.firestore.Timestamp.now(),
-      type: "session_cleanup",
-    };
+      // Track cleanup metrics
+      const metrics = {
+        cleanedSessions: staleSessionsSnapshot.size,
+        timestamp: admin.firestore.Timestamp.now(),
+        type: "session_cleanup",
+      };
 
-    await db
-      .collection("system")
-      .doc("cleanup_metrics")
-      .set(metrics, { merge: true });
-  } catch (error) {
-    logger.error("Error cleaning up stale sessions:", error);
-    logger.error("Error occurred:", error);
-    throw error; // Re-throw for proper error tracking
-  }
-});
+      await db
+        .collection("system")
+        .doc("cleanup_metrics")
+        .set(metrics, { merge: true });
+    } catch (error) {
+      logger.error("Error cleaning up stale sessions:", error);
+      logger.error("Error occurred:", error);
+      throw error; // Re-throw for proper error tracking
+    }
+  },
+);
 
 // Daily statistics aggregation
-exports.generateDailyStats = onSchedule("every day 02:00", async (_event) => {
-  try {
-    const db = admin.firestore();
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+exports.generateDailyStats = onSchedule(
+  "every day 02:00",
+  async (_event: any) => {
+    try {
+      const db = admin.firestore();
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
 
-    const startOfDay = admin.firestore.Timestamp.fromDate(
-      new Date(yesterday.setHours(0, 0, 0, 0))
-    );
-    const endOfDay = admin.firestore.Timestamp.fromDate(
-      new Date(yesterday.setHours(23, 59, 59, 999))
-    );
+      const startOfDay = admin.firestore.Timestamp.fromDate(
+        new Date(yesterday.setHours(0, 0, 0, 0)),
+      );
+      const endOfDay = admin.firestore.Timestamp.fromDate(
+        new Date(yesterday.setHours(23, 59, 59, 999)),
+      );
 
-    // Aggregate session statistics
-    const sessionsQuery = db
-      .collection("sessions")
-      .where("startTime", ">=", startOfDay)
-      .where("startTime", "<=", endOfDay);
+      // Aggregate session statistics
+      const sessionsQuery = db
+        .collection("sessions")
+        .where("startTime", ">=", startOfDay)
+        .where("startTime", "<=", endOfDay);
 
-    const sessionsSnapshot = await sessionsQuery.get();
+      const sessionsSnapshot = await sessionsQuery.get();
 
-    const sessionStats = {
-      date: admin.firestore.Timestamp.fromDate(yesterday),
-      totalSessions: sessionsSnapshot.size,
-      completedSessions: 0,
-      averageDuration: 0,
-      byLocation: {},
-      byProvider: {},
-    };
+      const sessionStats: { [key: string]: any } = {
+        date: admin.firestore.Timestamp.fromDate(yesterday),
+        totalSessions: sessionsSnapshot.size,
+        completedSessions: 0,
+        averageDuration: 0,
+        byLocation: {},
+        byProvider: {},
+      };
 
-    let totalDuration = 0;
+      let totalDuration = 0;
 
-    sessionsSnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.status === "completed") {
-        sessionStats.completedSessions++;
-        if (data.startTime && data.endTime) {
-          const duration = data.endTime.toMillis() - data.startTime.toMillis();
-          totalDuration += duration;
+      sessionsSnapshot.forEach((doc: any) => {
+        const data = doc.data();
+        if (data.status === "completed") {
+          sessionStats.completedSessions++;
+          if (data.startTime && data.endTime) {
+            const duration =
+              data.endTime.toMillis() - data.startTime.toMillis();
+            totalDuration += duration;
+          }
         }
+
+        // Track by location
+        if (data.locationId) {
+          sessionStats.byLocation[data.locationId] =
+            (sessionStats.byLocation[data.locationId] || 0) + 1;
+        }
+
+        // Track by provider
+        if (data.userId) {
+          sessionStats.byProvider[data.userId] =
+            (sessionStats.byProvider[data.userId] || 0) + 1;
+        }
+      });
+
+      if (sessionStats.completedSessions > 0) {
+        sessionStats.averageDuration =
+          totalDuration / sessionStats.completedSessions;
       }
 
-      // Track by location
-      if (data.locationId) {
-        sessionStats.byLocation[data.locationId] =
-          (sessionStats.byLocation[data.locationId] || 0) + 1;
-      }
+      // Store daily statistics
+      await db
+        .collection("system")
+        .doc(`daily_stats_${yesterday.toISOString().split("T")[0]}`)
+        .set(sessionStats);
 
-      // Track by provider
-      if (data.userId) {
-        sessionStats.byProvider[data.userId] =
-          (sessionStats.byProvider[data.userId] || 0) + 1;
-      }
-    });
-
-    if (sessionStats.completedSessions > 0) {
-      sessionStats.averageDuration =
-        totalDuration / sessionStats.completedSessions;
+      logger.info("Daily statistics generated:", sessionStats);
+    } catch (error) {
+      logger.error("Error generating daily statistics:", error);
+      logger.error("Error occurred:", error);
+      throw error;
     }
-
-    // Store daily statistics
-    await db
-      .collection("system")
-      .doc(`daily_stats_${yesterday.toISOString().split("T")[0]}`)
-      .set(sessionStats);
-
-    logger.info("Daily statistics generated:", sessionStats);
-  } catch (error) {
-    logger.error("Error generating daily statistics:", error);
-    logger.error("Error occurred:", error);
-    throw error;
-  }
-});
+  },
+);
 
 // Cache performance monitoring
-exports.trackCachePerformance = onCall(async (request) => {
+
+exports.trackCachePerformance = onCall(async (request: any) => {
   try {
     const { data } = request;
+
     const db = admin.firestore();
 
     // Validate request data
+
     if (!data || typeof data !== "object") {
       throw new Error("Invalid cache performance data");
     }
 
     const cacheMetrics = {
       ...data,
+
       timestamp: admin.firestore.Timestamp.now(),
+
       source: "client",
     };
 
     // Store cache performance metrics
+
     await db.collection("cache_stats").add(cacheMetrics);
 
     return { success: true, timestamp: cacheMetrics.timestamp };
   } catch (error) {
     logger.error("Error tracking cache performance:", error);
+
     logger.error("Error occurred:", error);
+
     throw error;
   }
 });
 
 // Health check endpoint
-exports.healthCheck = onCall(async (_request) => {
+
+exports.healthCheck = onCall(async (_request: any) => {
   try {
     const db = admin.firestore();
 
     // Perform basic connectivity tests
+
     const checks = {
       firestore: false,
+
       auth: false,
+
       storage: false,
+
       timestamp: admin.firestore.Timestamp.now(),
     };
 
     // Test Firestore connectivity
+
     try {
       await db.collection("system").doc("health_check").set({
         test: true,
+
         timestamp: admin.firestore.Timestamp.now(),
       });
+
       checks.firestore = true;
     } catch (error) {
       logger.warn("Firestore health check failed:", error);
     }
 
     // Test Auth connectivity
+
     try {
       await admin.auth().listUsers(1);
+
       checks.auth = true;
     } catch (error) {
       logger.warn("Auth health check failed:", error);
     }
 
     // Test Storage connectivity
+
     try {
       const bucket = admin.storage().bucket();
+
       await bucket.exists();
+
       checks.storage = true;
     } catch (error) {
       logger.warn("Storage health check failed:", error);
     }
 
     const allHealthy = Object.values(checks)
+
       .filter((v) => typeof v === "boolean")
+
       .every(Boolean);
 
     return {
       status: allHealthy ? "healthy" : "degraded",
+
       checks,
+
       version: "1.0.0",
     };
   } catch (error) {
     logger.error("Health check failed:", error);
+
     logger.error("Error occurred:", error);
+
     return {
       status: "error",
-      error: error.message,
+
+      error: (error as Error).message,
+
       timestamp: admin.firestore.Timestamp.now(),
     };
   }
 });
 
 // User activity tracking
-exports.trackUserActivity = onCall(async (request) => {
+
+exports.trackUserActivity = onCall(async (request: any) => {
   try {
     const { data, auth } = request;
 
@@ -407,67 +448,85 @@ exports.trackUserActivity = onCall(async (request) => {
     const db = admin.firestore();
 
     // Update user's last activity
+
     await db
+
       .collection("users")
+
       .doc(auth.uid)
+
       .update({
         lastActiveAt: admin.firestore.Timestamp.now(),
+
         lastActivityType: data.activityType || "unknown",
       });
 
     // Track activity in system collection for analytics
+
     await db
+
       .collection("system")
+
       .collection("user_activity")
+
       .add({
         userId: auth.uid,
+
         activityType: data.activityType,
+
         metadata: data.metadata || {},
+
         timestamp: admin.firestore.Timestamp.now(),
       });
 
     return { success: true };
   } catch (error) {
     logger.error("Error tracking user activity:", error);
+
     logger.error("Error occurred:", error);
+
     throw error;
   }
 });
 
 // Notify on new feedback
-exports.notifyOnFeedback = onDocumentCreated("feedback/{feedbackId}", async (event) => {
-  const snapshot = event.data;
-  if (!snapshot) {
-    logger.warn("Feedback snapshot is null, skipping notification");
-    return;
-  }
-  
-  const feedback = snapshot.data();
-  const feedbackId = event.params.feedbackId;
 
-  logger.info(`New feedback received: ${feedbackId}`, feedback);
+exports.notifyOnFeedback = onDocumentCreated(
+  "feedback/{feedbackId}",
+  async (event: any) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+      logger.warn("Feedback snapshot is null, skipping notification");
+      return;
+    }
 
-  // Get configuration from environment variables
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@schools-in-check.web.app";
-  const baseUrl = process.env.BASE_URL || "https://schools-in-check.web.app";
-  
-  // Email configuration - supports multiple providers
-  const emailConfig = {
-    // Option 1: SendGrid (recommended for production)
-    sendGridApiKey: process.env.SENDGRID_API_KEY,
-    
-    // Option 2: SMTP (Gmail, custom SMTP server)
-    smtpHost: process.env.SMTP_HOST,
-    smtpPort: parseInt(process.env.SMTP_PORT || "587"),
-    smtpUser: process.env.SMTP_USER,
-    smtpPassword: process.env.SMTP_PASSWORD,
-    smtpFrom: process.env.SMTP_FROM || adminEmail,
-  };
+    const feedback = snapshot.data();
+    const feedbackId = event.params.feedbackId;
 
-  const emailSubject = `New Feedback: ${feedback.category} - ${feedback.severity}`;
-  const feedbackUrl = `${baseUrl}/admin/feedback/${feedbackId}`;
-  
-  const emailHtml = `
+    logger.info(`New feedback received: ${feedbackId}`, feedback);
+
+    // Get configuration from environment variables
+    const adminEmail =
+      process.env.ADMIN_EMAIL || "admin@schools-in-check.web.app";
+    const baseUrl = process.env.BASE_URL || "https://schools-in-check.web.app";
+
+    // Email configuration - supports multiple providers
+    const emailConfig = {
+      // Option 1: SendGrid (recommended for production)
+      sendGridApiKey: process.env.SENDGRID_API_KEY,
+
+      // Option 2: SMTP (Gmail, custom SMTP server)
+      smtpHost: process.env.SMTP_HOST,
+      smtpPort: parseInt(process.env.SMTP_PORT || "587"),
+      smtpUser: process.env.SMTP_USER,
+      smtpPassword: process.env.SMTP_PASSWORD,
+      smtpFrom: process.env.SMTP_FROM || adminEmail,
+    };
+
+    const emailSubject = `New Feedback: ${feedback.category} - ${feedback.severity}`;
+    const feedbackUrl = `${baseUrl}/admin/feedback/${feedbackId}`;
+
+    const emailHtml = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -514,7 +573,7 @@ exports.notifyOnFeedback = onDocumentCreated("feedback/{feedbackId}", async (eve
     </html>
   `;
 
-  const emailText = `
+    const emailText = `
 New feedback received from ${feedback.providerName || "Unknown"} (${feedback.providerEmail || "No email"}).
 
 Category: ${feedback.category}
@@ -526,77 +585,88 @@ ${feedback.description}
 View in Admin Console: ${feedbackUrl}
   `.trim();
 
-  try {
-    // Use SendGrid SMTP if API key is configured (SendGrid SMTP relay)
-    if (emailConfig.sendGridApiKey) {
-      const nodemailer = require("nodemailer");
-      
-      const transporter = nodemailer.createTransport({
-        host: "smtp.sendgrid.net",
-        port: 587,
-        secure: false,
-        auth: {
-          user: "apikey",
-          pass: emailConfig.sendGridApiKey,
+    try {
+      // Use SendGrid SMTP if API key is configured (SendGrid SMTP relay)
+      if (emailConfig.sendGridApiKey) {
+        const nodemailer = require("nodemailer");
+
+        const transporter = nodemailer.createTransport({
+          host: "smtp.sendgrid.net",
+          port: 587,
+          secure: false,
+          auth: {
+            user: "apikey",
+            pass: emailConfig.sendGridApiKey,
+          },
+        });
+
+        await transporter.sendMail({
+          from: emailConfig.smtpFrom,
+          to: adminEmail,
+          subject: emailSubject,
+          text: emailText,
+          html: emailHtml,
+        });
+
+        logger.info(
+          `Email sent via SendGrid SMTP to ${adminEmail} for feedback ${feedbackId}`,
+        );
+        return;
+      }
+
+      // Fallback to custom SMTP if configured
+      if (
+        emailConfig.smtpHost &&
+        emailConfig.smtpUser &&
+        emailConfig.smtpPassword
+      ) {
+        const nodemailer = require("nodemailer");
+
+        const transporter = nodemailer.createTransport({
+          host: emailConfig.smtpHost,
+          port: emailConfig.smtpPort,
+          secure: emailConfig.smtpPort === 465,
+          auth: {
+            user: emailConfig.smtpUser,
+            pass: emailConfig.smtpPassword,
+          },
+        });
+
+        await transporter.sendMail({
+          from: emailConfig.smtpFrom,
+          to: adminEmail,
+          subject: emailSubject,
+          text: emailText,
+          html: emailHtml,
+        });
+
+        logger.info(
+          `Email sent via SMTP to ${adminEmail} for feedback ${feedbackId}`,
+        );
+        return;
+      }
+
+      // If no email provider is configured, log the email payload
+      logger.warn(
+        "No email provider configured. Email notification not sent.",
+        {
+          to: adminEmail,
+          subject: emailSubject,
+          feedbackId,
         },
-      });
-      
-      await transporter.sendMail({
-        from: emailConfig.smtpFrom,
+      );
+
+      // Log the email payload for manual sending or debugging
+      logger.info("Email notification payload (not sent):", {
         to: adminEmail,
         subject: emailSubject,
         text: emailText,
         html: emailHtml,
       });
-      
-      logger.info(`Email sent via SendGrid SMTP to ${adminEmail} for feedback ${feedbackId}`);
-      return;
+    } catch (error) {
+      logger.error("Error sending feedback notification email:", error);
+      // Don't throw - we don't want to fail the feedback creation if email fails
+      // The feedback is already saved, email is just a notification
     }
-    
-    // Fallback to custom SMTP if configured
-    if (emailConfig.smtpHost && emailConfig.smtpUser && emailConfig.smtpPassword) {
-      const nodemailer = require("nodemailer");
-      
-      const transporter = nodemailer.createTransport({
-        host: emailConfig.smtpHost,
-        port: emailConfig.smtpPort,
-        secure: emailConfig.smtpPort === 465,
-        auth: {
-          user: emailConfig.smtpUser,
-          pass: emailConfig.smtpPassword,
-        },
-      });
-      
-      await transporter.sendMail({
-        from: emailConfig.smtpFrom,
-        to: adminEmail,
-        subject: emailSubject,
-        text: emailText,
-        html: emailHtml,
-      });
-      
-      logger.info(`Email sent via SMTP to ${adminEmail} for feedback ${feedbackId}`);
-      return;
-    }
-    
-    // If no email provider is configured, log the email payload
-    logger.warn("No email provider configured. Email notification not sent.", {
-      to: adminEmail,
-      subject: emailSubject,
-      feedbackId,
-    });
-    
-    // Log the email payload for manual sending or debugging
-    logger.info("Email notification payload (not sent):", {
-      to: adminEmail,
-      subject: emailSubject,
-      text: emailText,
-      html: emailHtml,
-    });
-    
-  } catch (error) {
-    logger.error("Error sending feedback notification email:", error);
-    // Don't throw - we don't want to fail the feedback creation if email fails
-    // The feedback is already saved, email is just a notification
-  }
-});
+  },
+);
