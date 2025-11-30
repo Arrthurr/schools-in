@@ -194,7 +194,7 @@ exports.cleanupStaleSessions = onSchedule(
       );
 
       const staleSessionsQuery = sessionsRef
-        .where("status", "==", "active")
+        .where("status", "in", ["active", "paused"])
         .where("checkInTime", "<", cutoff);
 
       const staleSessionsSnapshot = await staleSessionsQuery.get();
@@ -211,7 +211,7 @@ exports.cleanupStaleSessions = onSchedule(
         batch.update(sessionRef, {
           status: "error",
           notes: "Session automatically closed due to timeout.",
-          checkOutTime: doc.data().checkInTime, // Or use a fixed time
+          checkOutTime: cutoff, // Set checkout time to the timeout limit (12 hours after check-in)
         });
       });
 
