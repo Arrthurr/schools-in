@@ -117,8 +117,8 @@ service cloud.firestore {
                             (resource.data.status == 'active' && request.resource.data.status in ['paused', 'completed']) ||
                             (resource.data.status == 'paused' && request.resource.data.status in ['active', 'completed'])
                           )) ||
-                         // Admins have full control over all sessions and transitions
-                         (isAdmin() && request.resource.data.status in ['active', 'paused', 'completed', 'cancelled'])
+                        // Admins have full control over all sessions and transitions
+                        (isAdmin() && request.resource.data.status in ['active', 'paused', 'completed', 'cancelled', 'error'])
                        );
       
       allow delete: if isAdmin();
