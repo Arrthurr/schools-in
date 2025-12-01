@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 // Production configuration
 const _PRODUCTION_CONFIG = {
-    sessionTimeoutHours: 12,
+    sessionTimeoutHours: 2,
     cleanupIntervalHours: 1,
     maxBatchSize: 500,
     performanceThresholds: {
@@ -15,7 +15,7 @@ const _PRODUCTION_CONFIG = {
         batchTimeMs: 5000,
     },
 };
-const twelveHoursInMs = 12 * 60 * 60 * 1000;
+const sessionLimitInMs = _PRODUCTION_CONFIG.sessionTimeoutHours * 60 * 60 * 1000;
 // Callable function to start a session with atomic checks
 exports.startSession = onCall(async (request) => {
     try {
@@ -141,15 +141,16 @@ exports.startSession = onCall(async (request) => {
         throw new Error("Failed to start session. Please try again.");
     }
 });
-exports.cleanupStaleSessions = onSchedule("every 1 hours", async (_event) => {
+exports.cleanupStaleSessions = onSchedule("every 15 minutes", async (_event) => {
     try {
         const db = admin.firestore();
         const sessionsRef = db.collection("sessions");
         const now = admin.firestore.Timestamp.now();
-        const cutoff = admin.firestore.Timestamp.fromMillis(now.toMillis() - twelveHoursInMs);
+        const cutoff = admin.firestore.Timestamp.fromMillis(now.toMillis() - sessionLimitInMs);
         const staleSessionsQuery = sessionsRef
-            .where("status", "==", "active")
-            .where("checkInTime", "<", cutoff);
+            .where("status", "in", ["active", "paused"])
+            .where("checkInTime", "<", cutoff)
+            .limit(_PRODUCTION_CONFIG.maxBatchSize);
         const staleSessionsSnapshot = await staleSessionsQuery.get();
         if (staleSessionsSnapshot.empty) {
             logger.info("No stale sessions found.");
@@ -162,7 +163,7 @@ exports.cleanupStaleSessions = onSchedule("every 1 hours", async (_event) => {
             batch.update(sessionRef, {
                 status: "error",
                 notes: "Session automatically closed due to timeout.",
-                checkOutTime: doc.data().checkInTime, // Or use a fixed time
+                checkOutTime: cutoff, // Set checkout time to the timeout limit (12 hours after check-in)
             });
         });
         await batch.commit();
