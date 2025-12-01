@@ -15,6 +15,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { SkeletonCard, Skeleton } from "@/components/ui/skeleton";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-empty-states";
 import {
   PageHeader,
