@@ -19,7 +19,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Calendar,
   Users,
-  Clock,
   TrendingUp,
   School,
   AlertCircle,
@@ -29,12 +28,10 @@ import {
 } from "lucide-react";
 import {
   formatDuration,
-  getSessionStatusConfig,
   calculateSessionDuration,
 } from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
 import { getCollection, COLLECTIONS } from "@/lib/firebase/firestore";
-import { Timestamp } from "firebase/firestore";
 
 interface School {
   id: string;
@@ -94,7 +91,7 @@ interface AttendanceSummaryData {
 }
 
 export function AttendanceSummary() {
-  const [sessions, setSessions] = useState<SessionData[]>([]);
+  const [_sessions, setSessions] = useState<SessionData[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [providers, setProviders] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
