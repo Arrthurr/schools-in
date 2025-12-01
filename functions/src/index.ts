@@ -182,7 +182,7 @@ exports.startSession = onCall(async (request: any) => {
 });
 
 exports.cleanupStaleSessions = onSchedule(
-  "every 1 hours",
+  "every 15 minutes",
   async (_event: any) => {
     try {
       const db = admin.firestore();
@@ -195,7 +195,8 @@ exports.cleanupStaleSessions = onSchedule(
 
       const staleSessionsQuery = sessionsRef
         .where("status", "in", ["active", "paused"])
-        .where("checkInTime", "<", cutoff);
+        .where("checkInTime", "<", cutoff)
+        .limit(_PRODUCTION_CONFIG.maxBatchSize);
 
       const staleSessionsSnapshot = await staleSessionsQuery.get();
 
