@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Timestamp, onSnapshot, collection, query, where, orderBy, limit } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import {
-  createDocument,
   updateDocument,
   getSessionsByUser,
   COLLECTIONS,
@@ -11,7 +11,7 @@ import {
 import { SessionData, calculateSessionDuration } from "../utils/session";
 import { Coordinates } from "../utils/location";
 import { useAuth } from "./useAuth";
-import { db } from "../../../firebase.config";
+import { db, functions } from "../../../firebase.config";
 
 interface UseSessionReturn {
   currentSession: SessionData | null;
@@ -62,7 +62,6 @@ export const useSession = (): UseSessionReturn => {
       setError(null);
 
       try {
-        const now = Timestamp.now();
         const startDate = new Date();
         const chicagoOffset = -6;
         const chicagoDate = new Date(
@@ -70,32 +69,42 @@ export const useSession = (): UseSessionReturn => {
         );
         const dayKey = chicagoDate.toISOString().split("T")[0];
 
-        const sessionPersistData = {
-          userId: user.uid,
+        const startSessionFn = httpsCallable(functions, 'startSession');
+        
+        const payload = {
           locationId: schoolId,
-          schoolId,
-          startTime: now,
-          checkInTime: now,
-          checkInLocation: location,
-          status: "active" as const,
-          checkInMethod: "geo" as const,
+          startTime: startDate.toISOString(),
+          checkInMethod: "geo",
           distanceFromCenterAtCheckIn: location.accuracy ?? 0,
           dayKey,
-          createdAt: now,
-          updatedAt: now,
         };
 
-        const sessionId = await createDocument(
-          COLLECTIONS.SESSIONS,
-          sessionPersistData
-        );
+        const result = await startSessionFn(payload);
+        const data = result.data as any;
+
+        if (!data.success) {
+           throw new Error("Failed to start session");
+        }
+
+        // The cloud function returns the session data, but fields like Timestamps 
+        // might need conversion if we were to use them directly.
+        // However, since we have a real-time listener (onSnapshot) below, 
+        // the UI will update automatically when the document is created in Firestore.
+        // We can optimistically set the current session or just wait for the listener.
+        // To be safe and responsive, let's set the state with the data returned, 
+        // converting dates if necessary.
+        
+        // Re-constructing SessionData from the response if needed, 
+        // but relying on the listener is often cleaner for Firestore apps.
+        // Given the existing code updated local state, we will do so here too 
+        // to maintain immediate feedback.
 
         const newSession: SessionData = {
-          id: sessionId,
+          id: data.sessionId,
           userId: user.uid,
           locationId: schoolId,
-          schoolId,
-          checkInTime: now,
+          schoolId, // Keeping for backward compatibility if used
+          checkInTime: Timestamp.fromDate(startDate),
           checkInLocation: location,
           status: "active",
           checkInMethod: "geo",
@@ -106,6 +115,7 @@ export const useSession = (): UseSessionReturn => {
         setCurrentSession(newSession);
         setSessions((prev) => [newSession, ...prev]);
       } catch (err) {
+        console.error("Check-in error:", err);
         setError(err instanceof Error ? err.message : "Failed to check in");
       } finally {
         setLoading(false);
