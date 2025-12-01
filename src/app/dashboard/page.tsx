@@ -5,15 +5,14 @@ import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useProviderMetrics } from "@/lib/hooks/useProviderMetrics";
 import { SchoolList } from "../../components/provider/SchoolList";
 import { SessionStatus } from "../../components/provider/SessionStatus";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  PageHeader,
+  StatCard,
+  SectionCard,
+  ActivityList,
+} from "@/components/dashboard";
 import {
   MapPin,
   Clock,
@@ -293,17 +292,11 @@ export default function DashboardPage() {
 
           <main className="py-6">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="mb-8">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-foreground">
-                      Welcome back,{" "}
-                      {user?.displayName?.split(" ")[0] || "Provider"}!
-                    </h2>
-                    <p className="mt-1 text-muted-foreground">
-                      Here's what's happening with your schools today.
-                    </p>
-                  </div>
+              {/* Mobile-first: Header with date */}
+              <PageHeader
+                title={`Welcome back, ${user?.displayName?.split(" ")[0] || "Provider"}!`}
+                description="Here's what's happening with your schools today."
+                actions={
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Today</p>
                     <p className="text-lg font-semibold text-foreground">
@@ -314,82 +307,12 @@ export default function DashboardPage() {
                       })}
                     </p>
                   </div>
-                </div>
-              </div>
+                }
+              />
 
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Current Status
-                    </CardTitle>
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {metrics.isSessionActive ? "Active" : "Not Active"}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {metrics.isSessionActive
-                        ? `At ${metrics.currentSession?.locationId ?? ""}`
-                        : "No current session"}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Assigned Schools
-                    </CardTitle>
-                    <School className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {assignedSchoolsCount}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Active assignments
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      This Week
-                    </CardTitle>
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {metrics.weeklyMetrics?.weeklySessionsCount || 0}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Sessions completed
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Total Hours
-                    </CardTitle>
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {(metrics.weeklyMetrics?.weeklyTotalHours || 0).toFixed(
-                        1
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">This week</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-2">
+              {/* Mobile-first: Priority order - Current Session & Assigned Schools first */}
+              <div className="space-y-6 mb-8">
+                {/* Current Session Card - Top priority on mobile */}
                 <SessionStatus
                   currentSession={
                     metrics.currentSession || metrics.lastCompletedSession
@@ -397,58 +320,68 @@ export default function DashboardPage() {
                   onEndSession={handleEndSession}
                 />
 
+                {/* Assigned Schools - Second priority on mobile */}
                 <SchoolList
                   showCheckInButtons={true}
                   currentSessionLocationId={metrics.currentSession?.locationId}
                 />
-
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                    <CardDescription>
-                      Your recent check-ins and sessions
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {loadingRecent ? (
-                      <SkeletonList items={3} />
-                    ) : recentSessions.length > 0 ? (
-                      <div className="space-y-4">
-                        {recentSessions.map((session) => (
-                          <div
-                            key={session.id}
-                            className="flex items-center justify-between p-4 border rounded-lg"
-                          >
-                            <div className="flex items-start gap-4">
-                              <div className="mt-1 p-2 bg-secondary rounded-full">
-                                <History className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-foreground">
-                                  {locationsMap[session.locationId] ||
-                                    "Unknown Location"}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {getRelativeTime(session.startTime)}
-                                </p>
-                              </div>
-                            </div>
-                            <div>{getStatusBadge(session.status)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <History className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <p className="text-muted-foreground">
-                          No recent activity. Your session history will appear
-                          here once you start checking in.
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
               </div>
+
+              {/* Metrics Row - Scrollable on mobile, grid on larger screens */}
+              <div className="mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto sm:overflow-visible">
+                  <StatCard
+                    title="Current Status"
+                    value={metrics.isSessionActive ? "Active" : "Not Active"}
+                    description={
+                      metrics.isSessionActive
+                        ? `At ${metrics.currentSession?.locationId ?? ""}`
+                        : "No current session"
+                    }
+                    icon={Clock}
+                  />
+                  <StatCard
+                    title="Assigned Schools"
+                    value={assignedSchoolsCount}
+                    description="Active assignments"
+                    icon={School}
+                  />
+                  <StatCard
+                    title="This Week"
+                    value={metrics.weeklyMetrics?.weeklySessionsCount || 0}
+                    description="Sessions completed"
+                    icon={MapPin}
+                  />
+                  <StatCard
+                    title="Total Hours"
+                    value={`${(metrics.weeklyMetrics?.weeklyTotalHours || 0).toFixed(1)}`}
+                    description="This week"
+                    icon={Clock}
+                  />
+                </div>
+              </div>
+
+              {/* Recent Activity - Bottom of page */}
+              <SectionCard
+                title="Recent Activity"
+                description="Your recent check-ins and sessions"
+              >
+                {loadingRecent ? (
+                  <SkeletonList items={3} />
+                ) : (
+                  <ActivityList
+                    items={recentSessions.map((session) => ({
+                      id: session.id,
+                      icon: History,
+                      title:
+                        locationsMap[session.locationId] || "Unknown Location",
+                      timestamp: getRelativeTime(session.startTime),
+                      metadata: getStatusBadge(session.status),
+                    }))}
+                    emptyMessage="No recent activity. Your session history will appear here once you start checking in."
+                  />
+                )}
+              </SectionCard>
             </div>
           </main>
         </div>

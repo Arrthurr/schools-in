@@ -199,7 +199,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
       {/* Main Content */}
       <div className="lg:pl-64">
         {/* Top Header */}
-        <header className="bg-card border-b px-4 py-3 lg:px-6">
+        <header className="sticky top-0 z-40 bg-card border-b shadow-sm px-4 py-3 lg:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
