@@ -392,15 +392,15 @@ export function SessionReports() {
               <Label htmlFor="provider">Provider</Label>
               <SimpleSelect
                 options={[
-                  { value: "", label: "All Providers" },
+                  { value: "__all__", label: "All Providers" },
                   ...providers.map((provider) => ({
                     value: provider.id,
                     label: provider.displayName || provider.email,
                   })),
                 ]}
-                value={filters.providerId || ""}
+                value={filters.providerId || "__all__"}
                 onValueChange={(value) =>
-                  handleFilterChange("providerId", value || undefined)
+                  handleFilterChange("providerId", value === "__all__" ? undefined : value)
                 }
                 placeholder="All Providers"
               />
@@ -411,15 +411,15 @@ export function SessionReports() {
               <Label htmlFor="school">School</Label>
               <SimpleSelect
                 options={[
-                  { value: "", label: "All Schools" },
+                  { value: "__all__", label: "All Schools" },
                   ...schools.map((school) => ({
                     value: school.id,
                     label: school.name,
                   })),
                 ]}
-                value={filters.schoolId || ""}
+                value={filters.schoolId || "__all__"}
                 onValueChange={(value) =>
-                  handleFilterChange("schoolId", value || undefined)
+                  handleFilterChange("schoolId", value === "__all__" ? undefined : value)
                 }
                 placeholder="All Schools"
               />
@@ -430,16 +430,16 @@ export function SessionReports() {
               <Label htmlFor="status">Status</Label>
               <SimpleSelect
                 options={[
-                  { value: "", label: "All Statuses" },
+                  { value: "__all__", label: "All Statuses" },
                   { value: "active", label: "Active" },
                   { value: "completed", label: "Completed" },
                   { value: "paused", label: "Paused" },
                   { value: "error", label: "Error" },
                   { value: "cancelled", label: "Cancelled" },
                 ]}
-                value={filters.status || ""}
+                value={filters.status || "__all__"}
                 onValueChange={(value) =>
-                  handleFilterChange("status", value || undefined)
+                  handleFilterChange("status", value === "__all__" ? undefined : value)
                 }
                 placeholder="All Statuses"
               />
