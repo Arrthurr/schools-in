@@ -3,15 +3,7 @@
 import { useState, useEffect } from "react";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useAdminMetrics } from "@/lib/hooks/useAdminMetrics";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Users,
   School,
@@ -23,10 +15,14 @@ import {
   Calendar,
 } from "lucide-react";
 import { SkeletonCard, Skeleton } from "@/components/ui/skeleton";
-import { ErrorState, EmptyState } from "@/components/ui/error-empty-states";
-// import { useAnnouncement, ScreenReaderOnly, ARIA } from "@/lib/accessibility";
-import { CsvExportButton } from "@/components/admin/CsvExportButton";
-import Link from "next/link";
+import { ErrorState } from "@/components/ui/error-empty-states";
+import {
+  PageHeader,
+  StatCard,
+  SectionCard,
+  ActivityList,
+  AlertCallout,
+} from "@/components/dashboard";
 
 interface DashboardStats {
   totalSchools: number;
@@ -99,15 +95,15 @@ export function AdminDashboard() {
   const getActivityIcon = (type: RecentActivity["type"]) => {
     switch (type) {
       case "check-in":
-        return <MapPin className="h-4 w-4 text-green-600" />;
+        return MapPin;
       case "check-out":
-        return <Clock className="h-4 w-4 text-brand-primary" />;
+        return Clock;
       case "school-added":
-        return <School className="h-4 w-4 text-purple-600" />;
+        return School;
       case "provider-assigned":
-        return <Users className="h-4 w-4 text-orange-600" />;
+        return Users;
       default:
-        return <Activity className="h-4 w-4 text-gray-600" />;
+        return Activity;
     }
   };
 
@@ -150,181 +146,123 @@ export function AdminDashboard() {
     );
   }
 
+  // Transform recent activities for ActivityList component
+  const activityItems = recent.map((activity) => {
+    const message =
+      activity.type === "check-in"
+        ? `${
+            activity.providerName || activity.userId
+          } checked in at ${
+            activity.locationName || activity.locationId
+          }`
+        : activity.type === "check-out"
+        ? `${
+            activity.providerName || activity.userId
+          } checked out from ${
+            activity.locationName || activity.locationId
+          }`
+        : activity.message;
+
+    return {
+      id: activity.id,
+      icon: getActivityIcon(activity.type),
+      title: message,
+      timestamp: formatRelativeTime(activity.timestamp as any),
+    };
+  });
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
-            Admin Dashboard
-          </h1>
-          <p className="text-muted-foreground text-sm sm:text-base mt-1">
-            Welcome back, {user?.displayName || user?.email}
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:space-x-2">
-          <Button variant="outline" size="sm" className="touch-target">
-            <Calendar className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">This Week</span>
-            <span className="sm:hidden">Week</span>
-          </Button>
-          <Button variant="outline" size="sm" className="touch-target">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Admin Dashboard"
+        description={`Welcome back, ${user?.displayName || user?.email}`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" className="touch-target">
+              <Calendar className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">This Week</span>
+              <span className="sm:hidden">Week</span>
+            </Button>
+            <Button variant="outline" size="sm" className="touch-target">
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+          </>
+        }
+      />
 
       {/* Stats Cards - Responsive Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="touch-target">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Schools</CardTitle>
-            <School className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalSchools ?? "—"}</div>
-            <p className="text-xs text-muted-foreground">+2 from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card className="touch-target">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Providers
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.activeProviders ?? 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.activeSessions ?? 0} currently checked in
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="touch-target">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Today's Check-ins
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.todayCheckIns ?? 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats
-                ? `${stats.percentChange >= 0 ? "+" : ""}${
-                    stats.percentChange
-                  }% from yesterday`
-                : "—"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="touch-target">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Avg Session Duration
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.avgSessionDurationHours ?? 0}h
-            </div>
-            <p className="text-xs text-muted-foreground">
-              From {stats?.totalSessions ?? 0} total sessions
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Total Schools"
+          value={totalSchools ?? "—"}
+          description="+2 from last month"
+          icon={School}
+        />
+        <StatCard
+          title="Active Providers"
+          value={stats?.activeProviders ?? 0}
+          description={`${stats?.activeSessions ?? 0} currently checked in`}
+          icon={Users}
+        />
+        <StatCard
+          title="Today's Check-ins"
+          value={stats?.todayCheckIns ?? 0}
+          description={
+            stats
+              ? `${stats.percentChange >= 0 ? "+" : ""}${stats.percentChange}% from yesterday`
+              : "—"
+          }
+          icon={TrendingUp}
+          trend={
+            stats && stats.percentChange !== undefined
+              ? {
+                  value: `${stats.percentChange >= 0 ? "+" : ""}${stats.percentChange}%`,
+                  isPositive: stats.percentChange >= 0,
+                }
+              : undefined
+          }
+        />
+        <StatCard
+          title="Avg Session Duration"
+          value={`${stats?.avgSessionDurationHours ?? 0}h`}
+          description={`From ${stats?.totalSessions ?? 0} total sessions`}
+          icon={Clock}
+        />
       </div>
 
       {/* Main Content Grid - Responsive Layout */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Recent Activity - Takes more space on larger screens */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">
-              Recent Activity
-            </CardTitle>
-            <CardDescription className="text-sm">
-              Latest check-ins, check-outs, and system updates
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 sm:space-y-4">
-              {recent.map((activity) => (
-                <div 
-                  key={activity.id} 
-                  className="flex items-start space-x-3"
-                  data-testid={`activity-item-${activity.id}`}
-                >
-                  <div className="flex-shrink-0 mt-1">
-                    {getActivityIcon(activity.type as any)}
-                  </div>
-                  <div className="flex-1 space-y-1 min-w-0">
-                    <p className="text-sm font-medium leading-none break-words">
-                      {activity.type === "check-in"
-                        ? `${
-                            activity.providerName || activity.userId
-                          } checked in at ${
-                            activity.locationName || activity.locationId
-                          }`
-                        : activity.type === "check-out"
-                        ? `${
-                            activity.providerName || activity.userId
-                          } checked out from ${
-                            activity.locationName || activity.locationId
-                          }`
-                        : activity.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatRelativeTime(activity.timestamp as any)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {recent.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No recent activity to show
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <SectionCard
+          title="Recent Activity"
+          description="Latest check-ins, check-outs, and system updates"
+          className="lg:col-span-2"
+        >
+          <ActivityList
+            items={activityItems}
+            emptyMessage="No recent activity to show"
+          />
+        </SectionCard>
       </div>
 
       {/* Active Sessions Alert - Responsive Design */}
       {stats.activeSessions > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader>
-            <CardTitle className="text-orange-800 text-lg">
-              Active Sessions
-            </CardTitle>
-            <CardDescription className="text-orange-700 text-sm">
-              {stats.activeSessions} provider
-              {stats.activeSessions !== 1 ? "s are" : " is"} currently checked
-              in
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              className="touch-target w-full sm:w-auto"
-              onClick={() => {
-                // TODO: Navigate to active sessions view
-              }}
-            >
-              <Activity className="h-4 w-4 mr-2" />
-              View Active Sessions
-            </Button>
-          </CardContent>
-        </Card>
+        <AlertCallout
+          title="Active Sessions"
+          description={`${stats.activeSessions} provider${
+            stats.activeSessions !== 1 ? "s are" : " is"
+          } currently checked in`}
+          variant="warning"
+          action={{
+            label: "View Active Sessions",
+            onClick: () => {
+              // TODO: Navigate to active sessions view
+            },
+            icon: Activity,
+          }}
+        />
       )}
     </div>
   );

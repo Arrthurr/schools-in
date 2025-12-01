@@ -292,12 +292,12 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
           </div>
         </div>
 
-        {/* Action Button */}
+        {/* Action Button - Full width on mobile */}
         {status === "active" && (
           <div className="flex gap-3">
             <Button
               onClick={handleEnd}
-              className="flex-1 bg-red-600 hover:bg-red-700"
+              className="w-full sm:w-auto flex-1 bg-red-600 hover:bg-red-700 touch-target"
             >
               End Session
             </Button>
