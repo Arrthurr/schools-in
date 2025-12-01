@@ -1,8 +1,9 @@
-const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onCall } = require("firebase-functions/v2/https");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { logger } = require("firebase-functions");
-const admin = require("firebase-admin");
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall } from "firebase-functions/v2/https";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { logger } from "firebase-functions";
+import * as admin from "firebase-admin";
+import * as nodemailer from "nodemailer";
 
 admin.initializeApp();
 
@@ -17,7 +18,8 @@ const _PRODUCTION_CONFIG = {
   },
 };
 
-const sessionLimitInMs = _PRODUCTION_CONFIG.sessionTimeoutHours * 60 * 60 * 1000;
+const sessionLimitInMs =
+  _PRODUCTION_CONFIG.sessionTimeoutHours * 60 * 60 * 1000;
 
 // Callable function to start a session with atomic checks
 exports.startSession = onCall(async (request: any) => {
@@ -39,7 +41,7 @@ exports.startSession = onCall(async (request: any) => {
       !data.dayKey
     ) {
       throw new Error(
-        "Missing required session data: locationId, startTime, checkInMethod, distanceFromCenterAtCheckIn, dayKey",
+        "Missing required session data: locationId, startTime, checkInMethod, distanceFromCenterAtCheckIn, dayKey"
       );
     }
 
@@ -72,7 +74,7 @@ exports.startSession = onCall(async (request: any) => {
         .where("status", "in", ["active", "paused"]);
 
       const existingSessionsSnapshot = await transaction.get(
-        existingSessionsQuery,
+        existingSessionsQuery
       );
 
       if (!existingSessionsSnapshot.empty) {
@@ -80,7 +82,7 @@ exports.startSession = onCall(async (request: any) => {
         throw new Error(
           `Provider already has an ${existingSession.data().status} session: ${
             existingSession.id
-          }`,
+          }`
         );
       }
 
@@ -112,7 +114,7 @@ exports.startSession = onCall(async (request: any) => {
         locationId: data.locationId,
         startTime: admin.firestore.Timestamp.fromDate(new Date(data.startTime)),
         checkInTime: admin.firestore.Timestamp.fromDate(
-          new Date(data.startTime),
+          new Date(data.startTime)
         ),
         endTime: null,
         status: "active",
@@ -147,7 +149,7 @@ exports.startSession = onCall(async (request: any) => {
     });
 
     logger.info(
-      `Session started successfully for user ${userId}: ${result.sessionId}`,
+      `Session started successfully for user ${userId}: ${result.sessionId}`
     );
 
     return {
@@ -162,7 +164,7 @@ exports.startSession = onCall(async (request: any) => {
     if (error instanceof Error) {
       if (error.message.includes("already has an")) {
         throw new Error(
-          "You already have an active session. Please end your current session before starting a new one.",
+          "You already have an active session. Please end your current session before starting a new one."
         );
       } else if (error.message.includes("not assigned")) {
         throw new Error("You are not authorized to check in at this location.");
@@ -190,7 +192,7 @@ exports.cleanupStaleSessions = onSchedule(
 
       const now = admin.firestore.Timestamp.now();
       const cutoff = admin.firestore.Timestamp.fromMillis(
-        now.toMillis() - sessionLimitInMs,
+        now.toMillis() - sessionLimitInMs
       );
 
       const staleSessionsQuery = sessionsRef
@@ -235,7 +237,7 @@ exports.cleanupStaleSessions = onSchedule(
       logger.error("Error occurred:", error);
       throw error; // Re-throw for proper error tracking
     }
-  },
+  }
 );
 
 // Daily statistics aggregation
@@ -249,10 +251,10 @@ exports.generateDailyStats = onSchedule(
       yesterday.setDate(yesterday.getDate() - 1);
 
       const startOfDay = admin.firestore.Timestamp.fromDate(
-        new Date(yesterday.setHours(0, 0, 0, 0)),
+        new Date(yesterday.setHours(0, 0, 0, 0))
       );
       const endOfDay = admin.firestore.Timestamp.fromDate(
-        new Date(yesterday.setHours(23, 59, 59, 999)),
+        new Date(yesterday.setHours(23, 59, 59, 999))
       );
 
       // Aggregate session statistics
@@ -315,7 +317,7 @@ exports.generateDailyStats = onSchedule(
       logger.error("Error occurred:", error);
       throw error;
     }
-  },
+  }
 );
 
 // Cache performance monitoring
@@ -467,7 +469,7 @@ exports.trackUserActivity = onCall(async (request: any) => {
     await db
 
       .collection("system")
-
+      .doc("analytics")
       .collection("user_activity")
 
       .add({
@@ -537,8 +539,10 @@ exports.notifyOnFeedback = onDocumentCreated(
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background-color: #4F46E5; color: white; padding: 20px; border-radius: 5px 5px 0 0; }
         .content { background-color: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
-        .footer { background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 5px 5px; }
-        .button { display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+        .footer { background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; 
+          border-radius: 0 0 5px 5px; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; 
+          text-decoration: none; border-radius: 5px; margin-top: 15px; }
         .info-row { margin: 10px 0; }
         .label { font-weight: bold; color: #374151; }
         .description { background-color: white; padding: 15px; border-left: 4px solid #4F46E5; margin: 15px 0; }
@@ -551,7 +555,10 @@ exports.notifyOnFeedback = onDocumentCreated(
         </div>
         <div class="content">
           <div class="info-row">
-            <span class="label">From:</span> ${feedback.providerName || "Unknown"} (${feedback.providerEmail || "No email"})
+            <span class="label">From:</span> ${
+  feedback.providerName || "Unknown"
+} 
+            (${feedback.providerEmail || "No email"})
           </div>
           <div class="info-row">
             <span class="label">Category:</span> ${feedback.category}
@@ -559,7 +566,11 @@ exports.notifyOnFeedback = onDocumentCreated(
           <div class="info-row">
             <span class="label">Severity:</span> ${feedback.severity}
           </div>
-          ${feedback.url ? `<div class="info-row"><span class="label">URL:</span> ${feedback.url}</div>` : ""}
+          ${
+  feedback.url ?
+    `<div class="info-row"><span class="label">URL:</span> ${feedback.url}</div>` :
+    ""
+}
           <div class="description">
             <strong>Description:</strong><br>
             ${feedback.description.replace(/\n/g, "<br>")}
@@ -575,7 +586,9 @@ exports.notifyOnFeedback = onDocumentCreated(
   `;
 
     const emailText = `
-New feedback received from ${feedback.providerName || "Unknown"} (${feedback.providerEmail || "No email"}).
+New feedback received from ${feedback.providerName || "Unknown"} (${
+  feedback.providerEmail || "No email"
+}).
 
 Category: ${feedback.category}
 Severity: ${feedback.severity}
@@ -589,7 +602,7 @@ View in Admin Console: ${feedbackUrl}
     try {
       // Use SendGrid SMTP if API key is configured (SendGrid SMTP relay)
       if (emailConfig.sendGridApiKey) {
-        const nodemailer = require("nodemailer");
+        // const nodemailer = require("nodemailer"); // Imported at top
 
         const transporter = nodemailer.createTransport({
           host: "smtp.sendgrid.net",
@@ -610,7 +623,7 @@ View in Admin Console: ${feedbackUrl}
         });
 
         logger.info(
-          `Email sent via SendGrid SMTP to ${adminEmail} for feedback ${feedbackId}`,
+          `Email sent via SendGrid SMTP to ${adminEmail} for feedback ${feedbackId}`
         );
         return;
       }
@@ -621,7 +634,7 @@ View in Admin Console: ${feedbackUrl}
         emailConfig.smtpUser &&
         emailConfig.smtpPassword
       ) {
-        const nodemailer = require("nodemailer");
+        // const nodemailer = require("nodemailer"); // Imported at top
 
         const transporter = nodemailer.createTransport({
           host: emailConfig.smtpHost,
@@ -642,7 +655,7 @@ View in Admin Console: ${feedbackUrl}
         });
 
         logger.info(
-          `Email sent via SMTP to ${adminEmail} for feedback ${feedbackId}`,
+          `Email sent via SMTP to ${adminEmail} for feedback ${feedbackId}`
         );
         return;
       }
@@ -654,7 +667,7 @@ View in Admin Console: ${feedbackUrl}
           to: adminEmail,
           subject: emailSubject,
           feedbackId,
-        },
+        }
       );
 
       // Log the email payload for manual sending or debugging
@@ -669,5 +682,5 @@ View in Admin Console: ${feedbackUrl}
       // Don't throw - we don't want to fail the feedback creation if email fails
       // The feedback is already saved, email is just a notification
     }
-  },
+  }
 );

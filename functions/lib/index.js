@@ -1,9 +1,44 @@
 "use strict";
-const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onCall } = require("firebase-functions/v2/https");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { logger } = require("firebase-functions");
-const admin = require("firebase-admin");
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const scheduler_1 = require("firebase-functions/v2/scheduler");
+const https_1 = require("firebase-functions/v2/https");
+const firestore_1 = require("firebase-functions/v2/firestore");
+const firebase_functions_1 = require("firebase-functions");
+const admin = __importStar(require("firebase-admin"));
+const nodemailer = __importStar(require("nodemailer"));
 admin.initializeApp();
 // Production configuration
 const _PRODUCTION_CONFIG = {
@@ -17,7 +52,7 @@ const _PRODUCTION_CONFIG = {
 };
 const sessionLimitInMs = _PRODUCTION_CONFIG.sessionTimeoutHours * 60 * 60 * 1000;
 // Callable function to start a session with atomic checks
-exports.startSession = onCall(async (request) => {
+exports.startSession = (0, https_1.onCall)(async (request) => {
     try {
         const { data, auth } = request;
         // Authentication check
@@ -108,7 +143,7 @@ exports.startSession = onCall(async (request) => {
                 sessionData: sessionData,
             };
         });
-        logger.info(`Session started successfully for user ${userId}: ${result.sessionId}`);
+        firebase_functions_1.logger.info(`Session started successfully for user ${userId}: ${result.sessionId}`);
         return {
             success: true,
             sessionId: result.sessionId,
@@ -116,7 +151,7 @@ exports.startSession = onCall(async (request) => {
         };
     }
     catch (error) {
-        logger.error("Error starting session:", error);
+        firebase_functions_1.logger.error("Error starting session:", error);
         // Return user-friendly error messages
         if (error instanceof Error) {
             if (error.message.includes("already has an")) {
@@ -141,7 +176,7 @@ exports.startSession = onCall(async (request) => {
         throw new Error("Failed to start session. Please try again.");
     }
 });
-exports.cleanupStaleSessions = onSchedule("every 15 minutes", async (_event) => {
+exports.cleanupStaleSessions = (0, scheduler_1.onSchedule)("every 15 minutes", async (_event) => {
     try {
         const db = admin.firestore();
         const sessionsRef = db.collection("sessions");
@@ -153,12 +188,12 @@ exports.cleanupStaleSessions = onSchedule("every 15 minutes", async (_event) => 
             .limit(_PRODUCTION_CONFIG.maxBatchSize);
         const staleSessionsSnapshot = await staleSessionsQuery.get();
         if (staleSessionsSnapshot.empty) {
-            logger.info("No stale sessions found.");
+            firebase_functions_1.logger.info("No stale sessions found.");
             return;
         }
         const batch = db.batch();
         staleSessionsSnapshot.forEach((doc) => {
-            logger.info(`Found stale session: ${doc.id}`);
+            firebase_functions_1.logger.info(`Found stale session: ${doc.id}`);
             const sessionRef = sessionsRef.doc(doc.id);
             batch.update(sessionRef, {
                 status: "error",
@@ -167,7 +202,7 @@ exports.cleanupStaleSessions = onSchedule("every 15 minutes", async (_event) => 
             });
         });
         await batch.commit();
-        logger.info(`Cleaned up ${staleSessionsSnapshot.size} stale sessions.`);
+        firebase_functions_1.logger.info(`Cleaned up ${staleSessionsSnapshot.size} stale sessions.`);
         // Track cleanup metrics
         const metrics = {
             cleanedSessions: staleSessionsSnapshot.size,
@@ -180,13 +215,13 @@ exports.cleanupStaleSessions = onSchedule("every 15 minutes", async (_event) => 
             .set(metrics, { merge: true });
     }
     catch (error) {
-        logger.error("Error cleaning up stale sessions:", error);
-        logger.error("Error occurred:", error);
+        firebase_functions_1.logger.error("Error cleaning up stale sessions:", error);
+        firebase_functions_1.logger.error("Error occurred:", error);
         throw error; // Re-throw for proper error tracking
     }
 });
 // Daily statistics aggregation
-exports.generateDailyStats = onSchedule("every day 02:00", async (_event) => {
+exports.generateDailyStats = (0, scheduler_1.onSchedule)("every day 02:00", async (_event) => {
     try {
         const db = admin.firestore();
         const today = new Date();
@@ -238,16 +273,16 @@ exports.generateDailyStats = onSchedule("every day 02:00", async (_event) => {
             .collection("system")
             .doc(`daily_stats_${yesterday.toISOString().split("T")[0]}`)
             .set(sessionStats);
-        logger.info("Daily statistics generated:", sessionStats);
+        firebase_functions_1.logger.info("Daily statistics generated:", sessionStats);
     }
     catch (error) {
-        logger.error("Error generating daily statistics:", error);
-        logger.error("Error occurred:", error);
+        firebase_functions_1.logger.error("Error generating daily statistics:", error);
+        firebase_functions_1.logger.error("Error occurred:", error);
         throw error;
     }
 });
 // Cache performance monitoring
-exports.trackCachePerformance = onCall(async (request) => {
+exports.trackCachePerformance = (0, https_1.onCall)(async (request) => {
     try {
         const { data } = request;
         const db = admin.firestore();
@@ -265,13 +300,13 @@ exports.trackCachePerformance = onCall(async (request) => {
         return { success: true, timestamp: cacheMetrics.timestamp };
     }
     catch (error) {
-        logger.error("Error tracking cache performance:", error);
-        logger.error("Error occurred:", error);
+        firebase_functions_1.logger.error("Error tracking cache performance:", error);
+        firebase_functions_1.logger.error("Error occurred:", error);
         throw error;
     }
 });
 // Health check endpoint
-exports.healthCheck = onCall(async (_request) => {
+exports.healthCheck = (0, https_1.onCall)(async (_request) => {
     try {
         const db = admin.firestore();
         // Perform basic connectivity tests
@@ -290,7 +325,7 @@ exports.healthCheck = onCall(async (_request) => {
             checks.firestore = true;
         }
         catch (error) {
-            logger.warn("Firestore health check failed:", error);
+            firebase_functions_1.logger.warn("Firestore health check failed:", error);
         }
         // Test Auth connectivity
         try {
@@ -298,7 +333,7 @@ exports.healthCheck = onCall(async (_request) => {
             checks.auth = true;
         }
         catch (error) {
-            logger.warn("Auth health check failed:", error);
+            firebase_functions_1.logger.warn("Auth health check failed:", error);
         }
         // Test Storage connectivity
         try {
@@ -307,7 +342,7 @@ exports.healthCheck = onCall(async (_request) => {
             checks.storage = true;
         }
         catch (error) {
-            logger.warn("Storage health check failed:", error);
+            firebase_functions_1.logger.warn("Storage health check failed:", error);
         }
         const allHealthy = Object.values(checks)
             .filter((v) => typeof v === "boolean")
@@ -319,8 +354,8 @@ exports.healthCheck = onCall(async (_request) => {
         };
     }
     catch (error) {
-        logger.error("Health check failed:", error);
-        logger.error("Error occurred:", error);
+        firebase_functions_1.logger.error("Health check failed:", error);
+        firebase_functions_1.logger.error("Error occurred:", error);
         return {
             status: "error",
             error: error.message,
@@ -329,7 +364,7 @@ exports.healthCheck = onCall(async (_request) => {
     }
 });
 // User activity tracking
-exports.trackUserActivity = onCall(async (request) => {
+exports.trackUserActivity = (0, https_1.onCall)(async (request) => {
     try {
         const { data, auth } = request;
         if (!auth) {
@@ -347,6 +382,7 @@ exports.trackUserActivity = onCall(async (request) => {
         // Track activity in system collection for analytics
         await db
             .collection("system")
+            .doc("analytics")
             .collection("user_activity")
             .add({
             userId: auth.uid,
@@ -357,21 +393,21 @@ exports.trackUserActivity = onCall(async (request) => {
         return { success: true };
     }
     catch (error) {
-        logger.error("Error tracking user activity:", error);
-        logger.error("Error occurred:", error);
+        firebase_functions_1.logger.error("Error tracking user activity:", error);
+        firebase_functions_1.logger.error("Error occurred:", error);
         throw error;
     }
 });
 // Notify on new feedback
-exports.notifyOnFeedback = onDocumentCreated("feedback/{feedbackId}", async (event) => {
+exports.notifyOnFeedback = (0, firestore_1.onDocumentCreated)("feedback/{feedbackId}", async (event) => {
     const snapshot = event.data;
     if (!snapshot) {
-        logger.warn("Feedback snapshot is null, skipping notification");
+        firebase_functions_1.logger.warn("Feedback snapshot is null, skipping notification");
         return;
     }
     const feedback = snapshot.data();
     const feedbackId = event.params.feedbackId;
-    logger.info(`New feedback received: ${feedbackId}`, feedback);
+    firebase_functions_1.logger.info(`New feedback received: ${feedbackId}`, feedback);
     // Get configuration from environment variables
     const adminEmail = process.env.ADMIN_EMAIL || "admin@schools-in-check.web.app";
     const baseUrl = process.env.BASE_URL || "https://schools-in-check.web.app";
@@ -398,8 +434,10 @@ exports.notifyOnFeedback = onDocumentCreated("feedback/{feedbackId}", async (eve
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background-color: #4F46E5; color: white; padding: 20px; border-radius: 5px 5px 0 0; }
         .content { background-color: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
-        .footer { background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 5px 5px; }
-        .button { display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+        .footer { background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; 
+          border-radius: 0 0 5px 5px; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; 
+          text-decoration: none; border-radius: 5px; margin-top: 15px; }
         .info-row { margin: 10px 0; }
         .label { font-weight: bold; color: #374151; }
         .description { background-color: white; padding: 15px; border-left: 4px solid #4F46E5; margin: 15px 0; }
@@ -412,7 +450,8 @@ exports.notifyOnFeedback = onDocumentCreated("feedback/{feedbackId}", async (eve
         </div>
         <div class="content">
           <div class="info-row">
-            <span class="label">From:</span> ${feedback.providerName || "Unknown"} (${feedback.providerEmail || "No email"})
+            <span class="label">From:</span> ${feedback.providerName || "Unknown"} 
+            (${feedback.providerEmail || "No email"})
           </div>
           <div class="info-row">
             <span class="label">Category:</span> ${feedback.category}
@@ -420,7 +459,9 @@ exports.notifyOnFeedback = onDocumentCreated("feedback/{feedbackId}", async (eve
           <div class="info-row">
             <span class="label">Severity:</span> ${feedback.severity}
           </div>
-          ${feedback.url ? `<div class="info-row"><span class="label">URL:</span> ${feedback.url}</div>` : ""}
+          ${feedback.url ?
+        `<div class="info-row"><span class="label">URL:</span> ${feedback.url}</div>` :
+        ""}
           <div class="description">
             <strong>Description:</strong><br>
             ${feedback.description.replace(/\n/g, "<br>")}
@@ -448,7 +489,7 @@ View in Admin Console: ${feedbackUrl}
     try {
         // Use SendGrid SMTP if API key is configured (SendGrid SMTP relay)
         if (emailConfig.sendGridApiKey) {
-            const nodemailer = require("nodemailer");
+            // const nodemailer = require("nodemailer"); // Imported at top
             const transporter = nodemailer.createTransport({
                 host: "smtp.sendgrid.net",
                 port: 587,
@@ -465,14 +506,14 @@ View in Admin Console: ${feedbackUrl}
                 text: emailText,
                 html: emailHtml,
             });
-            logger.info(`Email sent via SendGrid SMTP to ${adminEmail} for feedback ${feedbackId}`);
+            firebase_functions_1.logger.info(`Email sent via SendGrid SMTP to ${adminEmail} for feedback ${feedbackId}`);
             return;
         }
         // Fallback to custom SMTP if configured
         if (emailConfig.smtpHost &&
             emailConfig.smtpUser &&
             emailConfig.smtpPassword) {
-            const nodemailer = require("nodemailer");
+            // const nodemailer = require("nodemailer"); // Imported at top
             const transporter = nodemailer.createTransport({
                 host: emailConfig.smtpHost,
                 port: emailConfig.smtpPort,
@@ -489,17 +530,17 @@ View in Admin Console: ${feedbackUrl}
                 text: emailText,
                 html: emailHtml,
             });
-            logger.info(`Email sent via SMTP to ${adminEmail} for feedback ${feedbackId}`);
+            firebase_functions_1.logger.info(`Email sent via SMTP to ${adminEmail} for feedback ${feedbackId}`);
             return;
         }
         // If no email provider is configured, log the email payload
-        logger.warn("No email provider configured. Email notification not sent.", {
+        firebase_functions_1.logger.warn("No email provider configured. Email notification not sent.", {
             to: adminEmail,
             subject: emailSubject,
             feedbackId,
         });
         // Log the email payload for manual sending or debugging
-        logger.info("Email notification payload (not sent):", {
+        firebase_functions_1.logger.info("Email notification payload (not sent):", {
             to: adminEmail,
             subject: emailSubject,
             text: emailText,
@@ -507,7 +548,7 @@ View in Admin Console: ${feedbackUrl}
         });
     }
     catch (error) {
-        logger.error("Error sending feedback notification email:", error);
+        firebase_functions_1.logger.error("Error sending feedback notification email:", error);
         // Don't throw - we don't want to fail the feedback creation if email fails
         // The feedback is already saved, email is just a notification
     }
