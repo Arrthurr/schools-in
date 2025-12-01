@@ -40,7 +40,7 @@ export interface Session {
   locationId: string;
   startTime: Timestamp;
   endTime?: Timestamp; // optional until completed
-  status: "active" | "paused" | "completed" | "cancelled";
+  status: "active" | "paused" | "completed" | "cancelled" | "error";
   durationMinutes?: number; // derived on completion; excludes paused time
   checkInMethod: "geo" | "manual" | "offline-sync";
   distanceFromCenterAtCheckIn: number; // in meters

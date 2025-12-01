@@ -192,13 +192,19 @@ exports.cleanupStaleSessions = (0, scheduler_1.onSchedule)("every 15 minutes", a
             return;
         }
         const batch = db.batch();
+        const durationMinutes = Math.floor(sessionLimitInMs / 60000);
+        const updateTime = admin.firestore.Timestamp.now();
         staleSessionsSnapshot.forEach((doc) => {
             firebase_functions_1.logger.info(`Found stale session: ${doc.id}`);
             const sessionRef = sessionsRef.doc(doc.id);
             batch.update(sessionRef, {
                 status: "error",
+                active: false, // Ensures legacy listener drops the session
+                endTime: cutoff, // Primary end time field
+                checkOutTime: cutoff, // Legacy compatibility
+                durationMinutes: durationMinutes, // Max duration in minutes
                 notes: "Session automatically closed due to timeout.",
-                checkOutTime: cutoff, // Set checkout time to the timeout limit (12 hours after check-in)
+                updatedAt: updateTime, // Track update time
             });
         });
         await batch.commit();
