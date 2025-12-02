@@ -52,9 +52,9 @@ export function AdminDashboard() {
   // const { announce } = useAnnouncement();
 
   useEffect(() => {
-  if (!loading && !error) {
-  // announce("Dashboard data loaded successfully", "polite");
-  }
+    if (!loading && !error) {
+      // announce("Dashboard data loaded successfully", "polite");
+    }
   }, [loading, error]);
 
   // Load total schools
@@ -151,15 +151,11 @@ export function AdminDashboard() {
   const activityItems = recent.map((activity) => {
     const message =
       activity.type === "check-in"
-        ? `${
-            activity.providerName || activity.userId
-          } checked in at ${
+        ? `${activity.providerName || activity.userId} checked in at ${
             activity.locationName || activity.locationId
           }`
         : activity.type === "check-out"
-        ? `${
-            activity.providerName || activity.userId
-          } checked out from ${
+        ? `${activity.providerName || activity.userId} checked out from ${
             activity.locationName || activity.locationId
           }`
         : activity.message;
@@ -212,14 +208,18 @@ export function AdminDashboard() {
           value={stats?.todayCheckIns ?? 0}
           description={
             stats
-              ? `${stats.percentChange >= 0 ? "+" : ""}${stats.percentChange}% from yesterday`
+              ? `${stats.percentChange >= 0 ? "+" : ""}${
+                  stats.percentChange
+                }% from yesterday`
               : "—"
           }
           icon={TrendingUp}
           trend={
             stats && stats.percentChange !== undefined
               ? {
-                  value: `${stats.percentChange >= 0 ? "+" : ""}${stats.percentChange}%`,
+                  value: `${stats.percentChange >= 0 ? "+" : ""}${
+                    stats.percentChange
+                  }%`,
                   isPositive: stats.percentChange >= 0,
                 }
               : undefined
@@ -233,23 +233,8 @@ export function AdminDashboard() {
         />
       </div>
 
-      {/* Main Content Grid - Responsive Layout */}
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
-        {/* Recent Activity - Takes more space on larger screens */}
-        <SectionCard
-          title="Recent Activity"
-          description="Latest check-ins, check-outs, and system updates"
-          className="lg:col-span-2"
-        >
-          <ActivityList
-            items={activityItems}
-            emptyMessage="No recent activity to show"
-          />
-        </SectionCard>
-      </div>
-
       {/* Active Sessions Alert - Responsive Design */}
-      {stats.activeSessions > 0 && (
+      {stats?.activeSessions && stats.activeSessions > 0 && (
         <AlertCallout
           title="Active Sessions"
           description={`${stats.activeSessions} provider${
@@ -265,6 +250,21 @@ export function AdminDashboard() {
           }}
         />
       )}
+
+      {/* Main Content Grid - Responsive Layout */}
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+        {/* Recent Activity - Takes more space on larger screens */}
+        <SectionCard
+          title="Recent Activity"
+          description="Latest check-ins, check-outs, and system updates"
+          className="lg:col-span-2"
+        >
+          <ActivityList
+            items={activityItems}
+            emptyMessage="No recent activity to show"
+          />
+        </SectionCard>
+      </div>
     </div>
   );
 }
