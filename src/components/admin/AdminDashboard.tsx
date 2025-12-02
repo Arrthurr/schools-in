@@ -24,15 +24,7 @@ import {
   ActivityList,
   AlertCallout,
 } from "@/components/dashboard";
-
-interface DashboardStats {
-  totalSchools: number;
-  activeProviders: number;
-  activeSessions: number;
-  todayCheckIns: number;
-  totalSessions: number;
-  avgSessionDuration: number;
-}
+import { ActiveSessionsModal } from "@/components/admin/ActiveSessionsModal";
 
 interface RecentActivity {
   id: string;
@@ -47,6 +39,7 @@ export function AdminDashboard() {
   const { user } = useCachedAuth();
   const { stats, recent, loading, error } = useAdminMetrics();
   const [totalSchools, setTotalSchools] = useState<number | null>(null);
+  const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
 
   // Accessibility hooks
   // const { announce } = useAnnouncement();
@@ -158,7 +151,7 @@ export function AdminDashboard() {
         ? `${activity.providerName || activity.userId} checked out from ${
             activity.locationName || activity.locationId
           }`
-        : activity.message;
+        : activity.message || "Unknown activity";
 
     return {
       id: activity.id,
@@ -244,7 +237,7 @@ export function AdminDashboard() {
           action={{
             label: "View Active Sessions",
             onClick: () => {
-              // TODO: Navigate to active sessions view
+              setIsSessionsModalOpen(true);
             },
             icon: Activity,
           }}
@@ -265,6 +258,12 @@ export function AdminDashboard() {
           />
         </SectionCard>
       </div>
+
+      {/* Active Sessions Modal */}
+      <ActiveSessionsModal
+        isOpen={isSessionsModalOpen}
+        onClose={() => setIsSessionsModalOpen(false)}
+      />
     </div>
   );
 }
