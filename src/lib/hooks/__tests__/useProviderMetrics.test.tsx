@@ -4,6 +4,20 @@ import { useCachedAuth } from "../useCachedAuth";
 import { CachedSessionService } from "../../services/cachedSessionService";
 import { Timestamp } from "firebase/firestore";
 
+jest.mock("firebase/firestore", () => {
+  const actual = jest.requireActual("firebase/firestore");
+  return {
+    ...actual,
+    collection: jest.fn(() => ({})),
+    doc: jest.fn(() => ({})),
+    query: jest.fn(() => ({})),
+    where: jest.fn(() => ({})),
+    orderBy: jest.fn(() => ({})),
+    limit: jest.fn(() => ({})),
+    onSnapshot: jest.fn(() => jest.fn()),
+  };
+});
+
 // Mock dependencies
 jest.mock("../useCachedAuth");
 jest.mock("../../services/cachedSessionService");
@@ -14,6 +28,12 @@ const mockUseCachedAuth = useCachedAuth as jest.MockedFunction<
 const mockCachedSessionService = CachedSessionService as jest.Mocked<
   typeof CachedSessionService
 >;
+
+const waitForMetrics = async (result: any) => {
+  await act(async () => {
+    await result.current.refresh();
+  });
+};
 
 describe("useProviderMetrics", () => {
   const mockUser = {
@@ -153,9 +173,7 @@ describe("useProviderMetrics", () => {
       const { result } = renderHook(() => useProviderMetrics());
 
       // Wait for async operations to complete
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      });
+      await waitForMetrics(result);
 
       expect(result.current.weeklyMetrics.weeklySessionsCount).toBe(3);
       expect(result.current.weeklyMetrics.weeklyTotalHours).toBe(4.5); // (120+90+60)/60
@@ -182,9 +200,7 @@ describe("useProviderMetrics", () => {
 
       const { result } = renderHook(() => useProviderMetrics());
 
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      });
+      await waitForMetrics(result);
 
       expect(result.current.weeklyMetrics.completionRate).toBeCloseTo(33.33, 1); // 1/3 = 33.33%
       expect(result.current.weeklyMetrics.totalSessionsThisWeek).toBe(3);
@@ -204,9 +220,7 @@ describe("useProviderMetrics", () => {
 
       const { result } = renderHook(() => useProviderMetrics());
 
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      });
+      await waitForMetrics(result);
 
       expect(result.current.weeklyMetrics.mostVisitedLocation).toBe("loc-1");
     });
@@ -230,9 +244,11 @@ describe("useProviderMetrics", () => {
     });
 
     it("should end a session successfully", async () => {
-      mockCachedSessionService.getCurrentSession.mockResolvedValue(mockSession);
+      mockCachedSessionService.getActiveSession.mockResolvedValue(mockSession);
 
       const { result } = renderHook(() => useProviderMetrics());
+
+      await waitForMetrics(result);
 
       await act(async () => {
         await result.current.endSession("Session complete");
@@ -245,9 +261,11 @@ describe("useProviderMetrics", () => {
     });
 
     it("should pause a session successfully", async () => {
-      mockCachedSessionService.getCurrentSession.mockResolvedValue(mockSession);
+      mockCachedSessionService.getActiveSession.mockResolvedValue(mockSession);
 
       const { result } = renderHook(() => useProviderMetrics());
+
+      await waitForMetrics(result);
 
       await act(async () => {
         await result.current.pauseSession();
@@ -260,11 +278,13 @@ describe("useProviderMetrics", () => {
 
     it("should resume a session successfully", async () => {
       const pausedSession = { ...mockSession, status: "paused" as const };
-      mockCachedSessionService.getCurrentSession.mockResolvedValue(
+      mockCachedSessionService.getActiveSession.mockResolvedValue(
         pausedSession
       );
 
       const { result } = renderHook(() => useProviderMetrics());
+
+      await waitForMetrics(result);
 
       await act(async () => {
         await result.current.resumeSession();
@@ -278,13 +298,11 @@ describe("useProviderMetrics", () => {
 
   describe("session state helpers", () => {
     it("should correctly identify active session", async () => {
-      mockCachedSessionService.getCurrentSession.mockResolvedValue(mockSession);
+      mockCachedSessionService.getActiveSession.mockResolvedValue(mockSession);
 
       const { result } = renderHook(() => useProviderMetrics());
 
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      });
+      await waitForMetrics(result);
 
       expect(result.current.isSessionActive).toBe(true);
       expect(result.current.canStartSession).toBe(false);
@@ -293,15 +311,13 @@ describe("useProviderMetrics", () => {
 
     it("should correctly identify paused session", async () => {
       const pausedSession = { ...mockSession, status: "paused" as const };
-      mockCachedSessionService.getCurrentSession.mockResolvedValue(
+      mockCachedSessionService.getActiveSession.mockResolvedValue(
         pausedSession
       );
 
       const { result } = renderHook(() => useProviderMetrics());
 
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      });
+      await waitForMetrics(result);
 
       expect(result.current.isSessionActive).toBe(false);
       expect(result.current.canStartSession).toBe(false);
@@ -309,13 +325,11 @@ describe("useProviderMetrics", () => {
     });
 
     it("should correctly identify no session state", async () => {
-      mockCachedSessionService.getCurrentSession.mockResolvedValue(null);
+      mockCachedSessionService.getActiveSession.mockResolvedValue(null);
 
       const { result } = renderHook(() => useProviderMetrics());
 
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      });
+      await waitForMetrics(result);
 
       expect(result.current.isSessionActive).toBe(false);
       expect(result.current.canStartSession).toBe(true);
@@ -326,15 +340,13 @@ describe("useProviderMetrics", () => {
   describe("error handling", () => {
     it("should handle session service errors", async () => {
       const error = new Error("Session service error");
-      mockCachedSessionService.getCurrentSession.mockRejectedValue(error);
+      mockCachedSessionService.getActiveSession.mockRejectedValue(error);
 
       const { result } = renderHook(() => useProviderMetrics());
 
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      });
+      await waitForMetrics(result);
 
-      expect(result.current.error).toBe("Failed to load session data");
+      expect(result.current.error).toBe("Failed to load metrics");
     });
 
     it("should handle start session errors", async () => {
@@ -351,15 +363,17 @@ describe("useProviderMetrics", () => {
         }
       });
 
-      expect(result.current.error).toBe("Failed to start session");
+      expect(result.current.error).toBe("Start session error");
     });
 
     it("should handle end session errors", async () => {
-      mockCachedSessionService.getCurrentSession.mockResolvedValue(mockSession);
+      mockCachedSessionService.getActiveSession.mockResolvedValue(mockSession);
       const error = new Error("End session error");
       mockCachedSessionService.endSession.mockRejectedValue(error);
 
       const { result } = renderHook(() => useProviderMetrics());
+
+      await waitForMetrics(result);
 
       await act(async () => {
         try {
@@ -369,7 +383,7 @@ describe("useProviderMetrics", () => {
         }
       });
 
-      expect(result.current.error).toBe("Failed to end session");
+      expect(result.current.error).toBe("End session error");
     });
   });
 
@@ -403,15 +417,13 @@ describe("useProviderMetrics", () => {
         startTime: Timestamp.fromDate(startTime),
       };
 
-      mockCachedSessionService.getCurrentSession.mockResolvedValue(
+      mockCachedSessionService.getActiveSession.mockResolvedValue(
         activeSession
       );
 
       const { result } = renderHook(() => useProviderMetrics());
 
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      });
+      await waitForMetrics(result);
 
       expect(result.current.sessionDuration).toBe(30);
 
@@ -425,15 +437,13 @@ describe("useProviderMetrics", () => {
 
     it("should not track duration for non-active sessions", async () => {
       const pausedSession = { ...mockSession, status: "paused" as const };
-      mockCachedSessionService.getCurrentSession.mockResolvedValue(
+      mockCachedSessionService.getActiveSession.mockResolvedValue(
         pausedSession
       );
 
       const { result } = renderHook(() => useProviderMetrics());
 
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      });
+      await waitForMetrics(result);
 
       expect(result.current.sessionDuration).toBe(0);
     });

@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, User, X } from "lucide-react";
+import { Clock, MapPin, User } from "lucide-react";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-empty-states";
 import { useActiveSessions } from "@/lib/hooks/useActiveSessions";

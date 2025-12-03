@@ -8,9 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
@@ -22,7 +19,6 @@ import {
   Menu,
   LogOut,
   Bell,
-  ChevronDown,
   Activity,
   MessageSquare,
 } from "lucide-react";

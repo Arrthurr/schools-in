@@ -5,6 +5,9 @@ jest.mock("@/lib/offline/cacheStrategy", () => ({
   getCachedData: jest.fn(),
   clearExpiredCache: jest.fn(),
   preloadCriticalData: jest.fn(),
+  getCacheStats: jest.fn(),
+  smartCacheRefresh: jest.fn(),
+  DEFAULT_CACHE_KEY: "__default__",
   CACHE_STORES: {
     SCHOOLS: "schools_cache",
     SESSIONS: "sessions_cache",
@@ -14,6 +17,12 @@ jest.mock("@/lib/offline/cacheStrategy", () => ({
     PENDING_ACTIONS: "pending_actions",
   },
   CACHE_CONFIG: {
+    EXPIRATION: {
+      SCHOOLS: 24 * 60 * 60 * 1000,
+      SESSIONS: 7 * 24 * 60 * 60 * 1000,
+      USER_DATA: 30 * 24 * 60 * 60 * 1000,
+      LOCATION_DATA: 60 * 60 * 1000,
+    },
     REFRESH_STRATEGIES: {
       BACKGROUND: "BACKGROUND",
       ON_DEMAND: "ON_DEMAND",
@@ -29,6 +38,7 @@ import {
   getCachedData,
   clearExpiredCache,
   preloadCriticalData,
+  getCacheStats,
 } from "@/lib/offline/cacheStrategy";
 
 // Type the mocked functions
@@ -43,10 +53,20 @@ const mockClearExpiredCache = clearExpiredCache as jest.MockedFunction<
 const mockPreloadCriticalData = preloadCriticalData as jest.MockedFunction<
   typeof preloadCriticalData
 >;
+const mockGetCacheStats = getCacheStats as jest.MockedFunction<
+  typeof getCacheStats
+>;
+
+let consoleErrorSpy: jest.SpyInstance;
+let consoleWarnSpy: jest.SpyInstance;
+let consoleLogSpy: jest.SpyInstance;
 
 describe("CacheManager", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 
     // Mock successful initialization
     mockInitCacheDB.mockResolvedValue(undefined as any);
@@ -58,10 +78,17 @@ describe("CacheManager", () => {
     });
     mockClearExpiredCache.mockResolvedValue();
     mockPreloadCriticalData.mockResolvedValue();
+    mockGetCacheStats.mockResolvedValue({
+      totalSize: 0,
+      storeStats: {},
+      recommendations: [],
+    } as any);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
   describe("Singleton Instance", () => {
@@ -115,8 +142,12 @@ describe("CacheManager", () => {
 
       const result = await cacheManager.getCachedSchools();
 
-      expect(mockGetCachedData).toHaveBeenCalledWith("schools_cache");
-      expect(result).toEqual(mockCachedData);
+      expect(mockGetCachedData).toHaveBeenCalledWith("schools_cache", undefined);
+      expect(result).toEqual({
+        schools: mockCachedData.data,
+        isStale: mockCachedData.isStale,
+        needsRefresh: mockCachedData.needsRefresh,
+      });
     });
 
     it("should retrieve cached sessions with filter", async () => {
@@ -151,20 +182,16 @@ describe("CacheManager", () => {
     });
 
     it("should get cache statistics", async () => {
-      const mockStats = {
-        totalSize: 1024,
-        storeStats: {},
-        recommendations: [],
-      };
-
-      // Mock getCacheStats since we're testing the manager wrapper
-      jest.doMock("@/lib/offline/cacheStrategy", () => ({
-        ...jest.requireActual("@/lib/offline/cacheStrategy"),
-        getCacheStats: jest.fn().mockResolvedValue(mockStats),
-      }));
-
       const stats = await cacheManager.getCacheStatistics();
-      expect(stats).toBeDefined();
+      expect(stats).toEqual({
+        overview: {
+          totalItems: 0,
+          totalStores: 0,
+          lastCleanup: null,
+        },
+        stores: {},
+        recommendations: [],
+      });
     });
   });
 
@@ -179,7 +206,8 @@ describe("CacheManager", () => {
 
       expect(strategy).toEqual(
         expect.objectContaining({
-          refreshStrategy: expect.any(String),
+          strategy: "STALE_WHILE_REVALIDATE",
+          backgroundRefresh: true,
         })
       );
     });
@@ -194,7 +222,8 @@ describe("CacheManager", () => {
 
       expect(strategy).toEqual(
         expect.objectContaining({
-          refreshStrategy: expect.any(String),
+          strategy: "STALE_WHILE_REVALIDATE",
+          backgroundRefresh: true,
         })
       );
     });

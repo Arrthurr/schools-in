@@ -14,6 +14,7 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 const nextConfig = {
   experimental: {
     typedRoutes: true,
+    instrumentationHook: true,
   },
 
   // Disable type checking for build

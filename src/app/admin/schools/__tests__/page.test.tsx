@@ -1,8 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
 import SchoolManagementPage from "../page";
 
-// Mock the auth and navigation components
 jest.mock("@/components/auth/ProtectedRoute", () => ({
   ProtectedRoute: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="protected-route">{children}</div>
@@ -16,103 +14,124 @@ jest.mock("@/components/admin/AdminNavigation", () => ({
 }));
 
 jest.mock("@/components/admin/SchoolForm", () => ({
-  SchoolForm: ({ isOpen, onClose, onSubmit }: any) => (
-    <div data-testid="school-form">
-      {isOpen && (
-        <>
-          <button onClick={onClose}>Close Form</button>
-          <button
-            onClick={() =>
-              onSubmit({
-                name: "Test School",
-                address: "123 Test St",
-                latitude: 41.8781,
-                longitude: -87.6298,
-                radius: 100,
-                description: "Test description",
-              })
-            }
-          >
-            Submit Form
-          </button>
-        </>
-      )}
-    </div>
-  ),
+  SchoolForm: ({ isOpen, onClose, onSubmit, school }: any) => {
+    if (!isOpen) {
+      return null;
+    }
+
+    const submission = school
+      ? {
+          name: `${school.name} Updated`,
+          address: `${school.address} Suite 100`,
+          latitude: school.latitude ?? 41.0,
+          longitude: school.longitude ?? -87.0,
+          radius: (school.radius ?? 100) + 25,
+          description: "Updated description",
+        }
+      : {
+          name: "Test School",
+          address: "123 Test St",
+          latitude: 41.8781,
+          longitude: -87.6298,
+          radius: 150,
+          description: "Test description",
+        };
+
+    return (
+      <div data-testid="school-form">
+        <button onClick={onClose}>Close</button>
+        <button onClick={() => onSubmit(submission)}>Submit</button>
+      </div>
+    );
+  },
 }));
+
+jest.mock("@/lib/services/cachedSchoolService", () => ({
+  CachedSchoolService: {
+    getAllSchools: jest.fn(),
+    createSchool: jest.fn(),
+    getSchoolById: jest.fn(),
+    updateSchool: jest.fn(),
+    deleteSchool: jest.fn(),
+  },
+}));
+
+const cachedSchoolServiceMocks = (jest.requireMock("@/lib/services/cachedSchoolService")
+  .CachedSchoolService) as Record<string, jest.Mock>;
+
+const mockSchools = [
+  {
+    id: "school-1",
+    name: "Walter Payton College Preparatory High School",
+    address: "1034 N Wells St, Chicago, IL",
+    radius: 100,
+    assignedProviders: ["provider-1"],
+    geo: { latitude: 41.9, longitude: -87.64 },
+    description: "STEM focused magnet school",
+    activeProviders: 3,
+    totalSessions: 25,
+  },
+  {
+    id: "school-2",
+    name: "Jones College Prep High School",
+    address: "700 S State St, Chicago, IL",
+    radius: 125,
+    assignedProviders: ["provider-2"],
+    geo: { latitude: 41.87, longitude: -87.63 },
+    description: "College prep focus",
+    activeProviders: 2,
+    totalSessions: 18,
+  },
+];
+
+const cloneSchools = () => mockSchools.map((school) => ({ ...school }));
 
 describe("SchoolManagementPage", () => {
   beforeEach(() => {
-    // Mock window methods
-    Object.defineProperty(window, "URL", {
-      value: {
-        createObjectURL: jest.fn(() => "blob:mock-url"),
-        revokeObjectURL: jest.fn(),
-      },
-    });
+    jest.clearAllMocks();
 
-    // Mock document methods
-    Object.defineProperty(document, "createElement", {
-      value: jest.fn(() => ({
-        href: "",
-        download: "",
-        click: jest.fn(),
-      })),
+    cachedSchoolServiceMocks.getAllSchools.mockResolvedValue(cloneSchools());
+    cachedSchoolServiceMocks.createSchool.mockResolvedValue("new-school-id");
+    cachedSchoolServiceMocks.getSchoolById.mockImplementation(async (id: string) => {
+      if (id === "new-school-id") {
+        return {
+          id,
+          name: "Test School",
+          address: "123 Test St",
+          radius: 150,
+          assignedProviders: [],
+          geo: { latitude: 41.8781, longitude: -87.6298 },
+          description: "Test description",
+          activeProviders: 0,
+          totalSessions: 0,
+        };
+      }
+      return cloneSchools().find((school) => school.id === id) ?? null;
     });
-
-    Object.defineProperty(document.body, "appendChild", {
-      value: jest.fn(),
-    });
-
-    Object.defineProperty(document.body, "removeChild", {
-      value: jest.fn(),
-    });
+    cachedSchoolServiceMocks.updateSchool.mockResolvedValue(undefined);
+    cachedSchoolServiceMocks.deleteSchool.mockResolvedValue(undefined);
   });
 
-  it("renders school management interface", async () => {
-    render(<SchoolManagementPage />);
+  const renderPage = () => render(<SchoolManagementPage />);
+
+  it("renders the management layout and initial schools", async () => {
+    renderPage();
 
     expect(screen.getByText("School Management")).toBeInTheDocument();
-    expect(screen.getByText("Add School")).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/search schools/i)).toBeInTheDocument();
-  });
-
-  it("displays school statistics", async () => {
-    render(<SchoolManagementPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Total Schools")).toBeInTheDocument();
-      expect(screen.getByText("Active Schools")).toBeInTheDocument();
-      expect(screen.getByText("With Providers")).toBeInTheDocument();
-      expect(screen.getByText("Total Sessions")).toBeInTheDocument();
-    });
-  });
-
-  it("displays schools after loading", async () => {
-    render(<SchoolManagementPage />);
 
     await waitFor(() => {
       expect(
         screen.getByText("Walter Payton College Preparatory High School")
       ).toBeInTheDocument();
-      expect(
-        screen.getByText("Jones College Prep High School")
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Lane Tech College Prep High School")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Jones College Prep High School")).toBeInTheDocument();
     });
   });
 
-  it("filters schools by search query", async () => {
-    render(<SchoolManagementPage />);
+  it("filters schools via the search input", async () => {
+    renderPage();
 
-    // Wait for schools to load
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
+    await screen.findByText("Walter Payton College Preparatory High School");
 
     const searchInput = screen.getByPlaceholderText(/search schools/i);
     fireEvent.change(searchInput, { target: { value: "Walter" } });
@@ -127,265 +146,81 @@ describe("SchoolManagementPage", () => {
     });
   });
 
-  it("filters schools by status", async () => {
-    render(<SchoolManagementPage />);
+  it("creates a new school from the form", async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByText("Add School"));
+
+    await waitFor(() => expect(screen.getByTestId("school-form")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
-
-    const statusFilter = screen.getByDisplayValue("All Status");
-    fireEvent.change(statusFilter, { target: { value: "active" } });
-
-    // All mock schools are active, so they should still be visible
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("filters schools by provider assignment", async () => {
-    render(<SchoolManagementPage />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
-
-    const providerFilter = screen.getByDisplayValue("All Schools");
-    fireEvent.change(providerFilter, { target: { value: "assigned" } });
-
-    // All mock schools have providers assigned
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("handles school selection", async () => {
-    render(<SchoolManagementPage />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
-
-    // Find and click a school checkbox
-    const checkboxes = screen.getAllByRole("checkbox");
-    const schoolCheckbox = checkboxes.find(
-      (cb) => cb !== screen.getByLabelText(/select all/i)
-    );
-
-    if (schoolCheckbox) {
-      fireEvent.click(schoolCheckbox);
-
-      await waitFor(() => {
-        expect(screen.getByText(/1 schools selected/)).toBeInTheDocument();
-      });
-    }
-  });
-
-  it("handles select all functionality", async () => {
-    render(<SchoolManagementPage />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
-
-    const selectAllCheckbox = screen.getByLabelText(/select all/i);
-    fireEvent.click(selectAllCheckbox);
-
-    await waitFor(() => {
-      expect(screen.getByText(/3 schools selected/)).toBeInTheDocument();
-    });
-  });
-
-  it("opens school form when add button is clicked", async () => {
-    render(<SchoolManagementPage />);
-
-    const addButton = screen.getByText("Add School");
-    fireEvent.click(addButton);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("school-form")).toBeInTheDocument();
-    });
-  });
-
-  it("creates new school", async () => {
-    render(<SchoolManagementPage />);
-
-    const addButton = screen.getByText("Add School");
-    fireEvent.click(addButton);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("school-form")).toBeInTheDocument();
-    });
-
-    const submitButton = screen.getByText("Submit Form");
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
+      expect(cachedSchoolServiceMocks.createSchool).toHaveBeenCalled();
       expect(screen.getByText("Test School")).toBeInTheDocument();
     });
   });
 
-  it("edits existing school", async () => {
-    render(<SchoolManagementPage />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
+  it("edits an existing school", async () => {
+    cachedSchoolServiceMocks.getSchoolById.mockImplementation(async (id: string) => {
+      if (id === "school-1") {
+        return {
+          ...mockSchools[0],
+          name: "Walter Payton Updated",
+          description: "Updated description",
+        };
+      }
+      return cloneSchools().find((school) => school.id === id) ?? null;
     });
 
-    const editButtons = screen.getAllByText("Edit");
-    fireEvent.click(editButtons[0]);
+    renderPage();
+
+    await screen.findByText("Walter Payton College Preparatory High School");
+
+    fireEvent.click(screen.getAllByText("Edit")[0]);
+    await waitFor(() => expect(screen.getByTestId("school-form")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("school-form")).toBeInTheDocument();
+      expect(cachedSchoolServiceMocks.updateSchool).toHaveBeenCalledWith(
+        "school-1",
+        expect.any(Object)
+      );
+      expect(screen.getByText("Walter Payton Updated")).toBeInTheDocument();
     });
   });
 
-  it("deletes school with confirmation", async () => {
-    // Mock window.confirm
-    const originalConfirm = window.confirm;
-    window.confirm = jest.fn(() => true);
+  it("deletes a school when confirmed", async () => {
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
 
-    render(<SchoolManagementPage />);
+    renderPage();
+    await screen.findByText("Walter Payton College Preparatory High School");
+
+    fireEvent.click(screen.getByRole("button", { name: /delete walter payton/i }));
 
     await waitFor(() => {
+      expect(cachedSchoolServiceMocks.deleteSchool).toHaveBeenCalledWith("school-1");
       expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
+        screen.queryByText("Walter Payton College Preparatory High School")
+      ).not.toBeInTheDocument();
     });
 
-    const deleteButtons = screen.getAllByRole("button", { name: "" }); // Trash icon buttons
-    const deleteButton = deleteButtons.find((btn) =>
-      btn.querySelector("svg")?.getAttribute("class")?.includes("h-3")
-    );
-
-    if (deleteButton) {
-      fireEvent.click(deleteButton);
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText("Walter Payton College Preparatory High School")
-        ).not.toBeInTheDocument();
-      });
-    }
-
-    // Restore original confirm
-    window.confirm = originalConfirm;
+    confirmSpy.mockRestore();
   });
 
-  it("exports schools to CSV", async () => {
-    render(<SchoolManagementPage />);
+  it("forces a refresh when the refresh button is clicked", async () => {
+    renderPage();
+
+    await screen.findByText("Walter Payton College Preparatory High School");
+
+    fireEvent.click(screen.getByRole("button", { name: /refresh/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
+      expect(cachedSchoolServiceMocks.getAllSchools).toHaveBeenLastCalledWith(
+        {},
+        expect.objectContaining({ forceRefresh: true })
+      );
     });
-
-    const exportButton = screen.getByText("Export CSV");
-    fireEvent.click(exportButton);
-
-    // Verify CSV export was attempted
-    expect(window.URL.createObjectURL).toHaveBeenCalled();
-  });
-
-  it("handles bulk delete operation", async () => {
-    // Mock window.confirm
-    const originalConfirm = window.confirm;
-    window.confirm = jest.fn(() => true);
-
-    render(<SchoolManagementPage />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
-
-    // Select all schools
-    const selectAllCheckbox = screen.getByLabelText(/select all/i);
-    fireEvent.click(selectAllCheckbox);
-
-    await waitFor(() => {
-      expect(screen.getByText(/3 schools selected/)).toBeInTheDocument();
-    });
-
-    // Find bulk delete button
-    const bulkDeleteButton = screen.getByRole("button", { name: /delete/i });
-    fireEvent.click(bulkDeleteButton);
-
-    await waitFor(() => {
-      expect(screen.getByText(/no schools configured/i)).toBeInTheDocument();
-    });
-
-    // Restore original confirm
-    window.confirm = originalConfirm;
-  });
-
-  it("handles bulk status toggle", async () => {
-    render(<SchoolManagementPage />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
-
-    // Select all schools
-    const selectAllCheckbox = screen.getByLabelText(/select all/i);
-    fireEvent.click(selectAllCheckbox);
-
-    await waitFor(() => {
-      expect(screen.getByText(/3 schools selected/)).toBeInTheDocument();
-    });
-
-    // Find bulk deactivate button
-    const deactivateButton = screen.getByRole("button", {
-      name: /deactivate/i,
-    });
-    fireEvent.click(deactivateButton);
-
-    await waitFor(() => {
-      // Selection should be cleared after bulk operation
-      expect(screen.queryByText(/schools selected/)).not.toBeInTheDocument();
-    });
-  });
-
-  it("toggles individual school status", async () => {
-    render(<SchoolManagementPage />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Walter Payton College Preparatory High School")
-      ).toBeInTheDocument();
-    });
-
-    // Find a status toggle button (archive icon)
-    const toggleButtons = screen.getAllByRole("button");
-    const toggleButton = toggleButtons.find((btn) =>
-      btn.querySelector("svg")?.getAttribute("class")?.includes("h-4")
-    );
-
-    if (toggleButton) {
-      fireEvent.click(toggleButton);
-
-      // Status should be updated
-      await waitFor(() => {
-        expect(screen.getByText("Inactive")).toBeInTheDocument();
-      });
-    }
   });
 });

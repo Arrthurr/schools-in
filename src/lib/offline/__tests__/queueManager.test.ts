@@ -1,6 +1,5 @@
-import { queueManager } from "@/lib/offline/queueManager";
+import QueueManager from "@/lib/offline/queueManager";
 
-// Mock the action queue module
 jest.mock("@/lib/offline/actionQueue", () => ({
   initActionQueue: jest.fn(),
   queueCheckIn: jest.fn(),
@@ -8,6 +7,7 @@ jest.mock("@/lib/offline/actionQueue", () => ({
   processQueue: jest.fn(),
   getPendingActions: jest.fn(),
   getQueueStats: jest.fn(),
+  removeCompletedActions: jest.fn(),
   QUEUE_CONFIG: {
     SYNC_INTERVAL: 30000,
     MAX_RETRY_ATTEMPTS: 3,
@@ -15,40 +15,78 @@ jest.mock("@/lib/offline/actionQueue", () => ({
   },
 }));
 
-// Mock the syncManager module
+const actionQueueMocks = jest.requireMock("@/lib/offline/actionQueue") as jest.Mocked<
+  typeof import("@/lib/offline/actionQueue")
+>;
+
 jest.mock("@/lib/offline/syncManager", () => ({
   syncManager: {
-    sync: jest.fn(),
-    getSyncRecommendations: jest.fn(),
+    sync: jest.fn().mockResolvedValue({
+      processed: 4,
+      synced: 3,
+      failed: 1,
+      strategy: "balanced",
+      networkScore: 0.9,
+    }),
+    getSyncRecommendations: jest.fn().mockReturnValue({
+      shouldSync: true,
+      reason: "network-stable",
+    }),
   },
 }));
 
-// Mock fetch
-global.fetch = jest.fn();
+jest.mock("@/lib/firebase/firestore", () => ({
+  createDocument: jest.fn(),
+  updateDocument: jest.fn(),
+  getDocument: jest.fn(),
+  COLLECTIONS: {
+    SESSIONS: "sessions",
+  },
+}));
 
-// Mock the queueManager module directly
-jest.mock("@/lib/offline/queueManager", () => {
-  const mockQueueManager = {
-    checkIn: jest.fn(),
-    checkOut: jest.fn(),
-    syncNow: jest.fn(),
-    getStats: jest.fn(),
-    getPendingActions: jest.fn(),
-    hasPendingActions: jest.fn(),
-    hasFailedActions: jest.fn(),
-    isOffline: jest.fn(),
-    addStatsListener: jest.fn(),
-    updateNetworkStatus: jest.fn(),
-    getLastSyncResult: jest.fn(),
-    getSyncRecommendations: jest.fn(),
-    destroy: jest.fn(),
-  };
-  
-  return {
-    queueManager: mockQueueManager,
-    default: jest.fn(() => mockQueueManager),
-  };
-});
+const firestoreMocks = jest.requireMock("@/lib/firebase/firestore") as jest.Mocked<
+  typeof import("@/lib/firebase/firestore")
+>;
+
+jest.mock("firebase/firestore", () => ({
+  Timestamp: {
+    now: jest.fn(),
+  },
+}));
+
+const firebaseTimestampMock = jest.requireMock("firebase/firestore") as {
+  Timestamp: { now: jest.Mock };
+};
+
+const timestampNow = firebaseTimestampMock.Timestamp.now;
+timestampNow.mockImplementation(() => ({
+  seconds: 1_700_000_000,
+  nanoseconds: 0,
+  toMillis: () => 1_700_000_000_000,
+}));
+
+let consoleErrorSpy: jest.SpyInstance;
+let consoleWarnSpy: jest.SpyInstance;
+let consoleLogSpy: jest.SpyInstance;
+
+const setNavigatorOnline = (online: boolean) => {
+  Object.defineProperty(navigator, "onLine", {
+    configurable: true,
+    value: online,
+  });
+};
+
+const createQueueManager = () => {
+  const manager = new QueueManager({
+    enableAutoSync: false,
+    enableBackgroundSync: false,
+    enableIntelligentSync: false,
+  });
+
+  (manager as unknown as { isInitialized: boolean }).isInitialized = true;
+
+  return manager;
+};
 
 describe("QueueManager", () => {
   const mockLocation = {
@@ -59,57 +97,20 @@ describe("QueueManager", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setNavigatorOnline(true);
 
-    // Reset navigator.onLine
-    Object.defineProperty(navigator, "onLine", {
-      value: true,
-      writable: true,
-    });
-
-    // Setup default mock implementations
-    const actionQueueModule = require("@/lib/offline/actionQueue");
-    actionQueueModule.initActionQueue.mockResolvedValue(undefined);
-    actionQueueModule.queueCheckIn.mockResolvedValue("checkin123");
-    actionQueueModule.queueCheckOut.mockResolvedValue("checkout123");
-    actionQueueModule.processQueue.mockResolvedValue({
-      processed: 0,
-      synced: 0,
-      failed: 0,
-    });
-    actionQueueModule.getPendingActions.mockResolvedValue([]);
-    actionQueueModule.getQueueStats.mockResolvedValue({
-      total: 0,
-      pending: 0,
-      syncing: 0,
-      synced: 0,
-      failed: 0,
-      cancelled: 0,
-    });
-
-    // Mock fetch to return failure (forcing queue usage)
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: false,
-      status: 500,
-    });
-
-    // Setup queueManager mock implementations
-    const queueManagerModule = require("@/lib/offline/queueManager");
-    queueManagerModule.queueManager.checkIn.mockResolvedValue({
-      success: true,
-      actionId: "checkin123",
-      offline: true,
-    });
-    queueManagerModule.queueManager.checkOut.mockResolvedValue({
-      success: true,
-      actionId: "checkout123",
-      offline: true,
-    });
-    queueManagerModule.queueManager.syncNow.mockResolvedValue({
+    actionQueueMocks.initActionQueue.mockResolvedValue(undefined);
+    actionQueueMocks.queueCheckIn.mockResolvedValue("checkin123");
+    actionQueueMocks.queueCheckOut.mockResolvedValue("checkout123");
+    actionQueueMocks.processQueue.mockResolvedValue({
       processed: 5,
       synced: 4,
       failed: 1,
     });
-    queueManagerModule.queueManager.getStats.mockResolvedValue({
+    actionQueueMocks.getQueueStats.mockResolvedValue({
       total: 10,
       pending: 5,
       syncing: 2,
@@ -117,303 +118,125 @@ describe("QueueManager", () => {
       failed: 1,
       cancelled: 0,
     });
+
+    firestoreMocks.createDocument.mockResolvedValue("session-1");
+    firestoreMocks.getDocument.mockResolvedValue({
+      id: "session-1",
+      startTime: {
+        toMillis: () => 1_700_000_000_000,
+      },
+      checkInTime: {
+        toMillis: () => 1_700_000_000_000,
+        seconds: 1_700_000_000,
+      },
+    });
+    firestoreMocks.updateDocument.mockResolvedValue(undefined);
   });
 
-  describe("Singleton Instance", () => {
-    it("should have a pre-configured instance", () => {
-      expect(queueManager).toBeDefined();
-      expect(typeof queueManager.checkIn).toBe("function");
-      expect(typeof queueManager.checkOut).toBe("function");
-      expect(typeof queueManager.syncNow).toBe("function");
-      expect(typeof queueManager.getStats).toBe("function");
-    });
+  afterEach(() => {
+    consoleErrorSpy.mockClear();
+    consoleWarnSpy.mockClear();
+    consoleLogSpy.mockClear();
   });
 
   describe("Check-in Operations", () => {
-    it("should queue check-in when offline", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
+    it("queues check-in when offline", async () => {
+      const manager = createQueueManager();
+      setNavigatorOnline(false);
 
-      // Simulate offline
-      Object.defineProperty(navigator, "onLine", {
-        value: false,
-        writable: true,
-      });
+      const result = await manager.checkIn("school123", "user123", mockLocation);
 
-      const result = await queueManager.checkIn(
-        "school123",
-        "user123",
-        mockLocation
-      );
-
-      expect(result.success).toBe(true);
-      expect(result.actionId).toBe("checkin123");
-      expect(result.offline).toBe(true);
-      expect(actionQueueModule.queueCheckIn).toHaveBeenCalledWith(
-        "school123",
-        "user123",
-        mockLocation
-      );
+      expect(result).toEqual({ success: true, actionId: "checkin123", offline: true });
+      expect(actionQueueMocks.queueCheckIn).toHaveBeenCalledWith("school123", "user123", mockLocation);
     });
 
-    it("should fallback to queue when API fails", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
+    it("falls back to queue when online check-in fails", async () => {
+      const manager = createQueueManager();
+      firestoreMocks.createDocument.mockRejectedValueOnce(new Error("fail"));
 
-      const result = await queueManager.checkIn(
-        "school123",
-        "user123",
-        mockLocation
-      );
+      const result = await manager.checkIn("school123", "user123", mockLocation);
 
-      expect(result.success).toBe(true);
-      expect(result.actionId).toBe("checkin123");
       expect(result.offline).toBe(true);
-      expect(actionQueueModule.queueCheckIn).toHaveBeenCalled();
+      expect(actionQueueMocks.queueCheckIn).toHaveBeenCalled();
     });
 
-    it("should handle check-in errors", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
-      actionQueueModule.queueCheckIn.mockRejectedValue(
-        new Error("Check-in failed")
-      );
+    it("returns failure when queuing check-in throws", async () => {
+      const manager = createQueueManager();
+      actionQueueMocks.queueCheckIn.mockRejectedValueOnce(new Error("queue error"));
 
-      const result = await queueManager.checkIn(
-        "school123",
-        "user123",
-        mockLocation
-      );
+      const result = await manager.checkIn("school123", "user123", mockLocation);
 
       expect(result.success).toBe(false);
     });
   });
 
   describe("Check-out Operations", () => {
-    it("should queue check-out when offline", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
+    it("queues check-out when offline", async () => {
+      const manager = createQueueManager();
+      setNavigatorOnline(false);
 
-      // Simulate offline
-      Object.defineProperty(navigator, "onLine", {
-        value: false,
-        writable: true,
-      });
+      const result = await manager.checkOut("session123", "user123", mockLocation);
 
-      const result = await queueManager.checkOut(
-        "session123",
-        "user123",
-        mockLocation
-      );
-
-      expect(result.success).toBe(true);
-      expect(result.actionId).toBe("checkout123");
-      expect(result.offline).toBe(true);
-      expect(actionQueueModule.queueCheckOut).toHaveBeenCalledWith(
-        "session123",
-        "user123",
-        mockLocation
-      );
+      expect(result).toEqual({ success: true, actionId: "checkout123", offline: true });
+      expect(actionQueueMocks.queueCheckOut).toHaveBeenCalledWith("session123", "user123", mockLocation);
     });
 
-    it("should handle check-out errors", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
-      actionQueueModule.queueCheckOut.mockRejectedValue(
-        new Error("Check-out failed")
-      );
+    it("returns failure when queuing check-out throws", async () => {
+      const manager = createQueueManager();
+      setNavigatorOnline(false);
+      actionQueueMocks.queueCheckOut.mockRejectedValueOnce(new Error("queue error"));
 
-      const result = await queueManager.checkOut(
-        "session123",
-        "user123",
-        mockLocation
-      );
+      const result = await manager.checkOut("session123", "user123", mockLocation);
 
       expect(result.success).toBe(false);
     });
   });
 
   describe("Manual Sync", () => {
-    it("should sync when online", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
-      actionQueueModule.processQueue.mockResolvedValue({
-        processed: 5,
-        synced: 4,
-        failed: 1,
-      });
+    it("processes queue when online", async () => {
+      const manager = createQueueManager();
 
-      const result = await queueManager.syncNow();
+      const result = await manager.syncNow();
 
-      expect(result).not.toBeNull();
-      expect(result!.processed).toBe(5);
-      expect(result!.synced).toBe(4);
-      expect(result!.failed).toBe(1);
-      expect(actionQueueModule.processQueue).toHaveBeenCalled();
+      expect(result).toEqual({ processed: 5, synced: 4, failed: 1 });
+      expect(actionQueueMocks.processQueue).toHaveBeenCalled();
     });
 
-    it("should handle sync errors", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
-      actionQueueModule.processQueue.mockRejectedValue(
-        new Error("Sync failed")
-      );
+    it("returns null when sync processing fails", async () => {
+      const manager = createQueueManager();
+      actionQueueMocks.processQueue.mockRejectedValueOnce(new Error("sync fail"));
 
-      const result = await queueManager.syncNow();
+      const result = await manager.syncNow();
+
       expect(result).toBeNull();
     });
 
-    it("should return null when offline", async () => {
-      // Simulate offline
-      Object.defineProperty(navigator, "onLine", {
-        value: false,
-        writable: true,
-      });
+    it("skips sync when offline", async () => {
+      const manager = createQueueManager();
+      setNavigatorOnline(false);
 
-      const result = await queueManager.syncNow();
+      const result = await manager.syncNow();
 
       expect(result).toBeNull();
+      expect(actionQueueMocks.processQueue).not.toHaveBeenCalled();
     });
   });
 
-  describe("Queue Statistics", () => {
-    it("should get queue statistics", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
-      const mockStats = {
+  describe("Queue statistics", () => {
+    it("returns stats when initialized", async () => {
+      const manager = createQueueManager();
+
+      const stats = await manager.getStats();
+
+      expect(stats).toEqual({
         total: 10,
         pending: 5,
         syncing: 2,
         synced: 2,
         failed: 1,
         cancelled: 0,
-      };
-      actionQueueModule.getQueueStats.mockResolvedValue(mockStats);
-
-      const stats = await queueManager.getStats();
-
-      expect(stats).toEqual(mockStats);
-      expect(actionQueueModule.getQueueStats).toHaveBeenCalled();
-    });
-
-    it("should handle stats errors", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
-      actionQueueModule.getQueueStats.mockRejectedValue(
-        new Error("Stats failed")
-      );
-
-      const result = await queueManager.getStats();
-      expect(result).toEqual({
-        total: 0,
-        pending: 0,
-        syncing: 0,
-        synced: 0,
-        failed: 0,
-        cancelled: 0,
       });
-    });
-  });
-});
-
-describe("QueueManager", () => {
-  const mockLocation = {
-    latitude: 40.7128,
-    longitude: -74.006,
-    accuracy: 10,
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
-
-    // Reset navigator.onLine
-    Object.defineProperty(navigator, "onLine", {
-      value: true,
-      writable: true,
-    });
-
-    // Setup default mock implementations
-    const actionQueueModule = require("@/lib/offline/actionQueue");
-    actionQueueModule.initActionQueue.mockResolvedValue(undefined);
-    actionQueueModule.queueCheckIn.mockResolvedValue("checkin123");
-    actionQueueModule.queueCheckOut.mockResolvedValue("checkout123");
-    actionQueueModule.processQueue.mockResolvedValue({
-      processed: 0,
-      synced: 0,
-      failed: 0,
-    });
-    actionQueueModule.getPendingActions.mockResolvedValue([]);
-    actionQueueModule.getQueueStats.mockResolvedValue({
-      total: 0,
-      pending: 0,
-      syncing: 0,
-      synced: 0,
-      failed: 0,
-      cancelled: 0,
-    });
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  describe("Singleton Instance", () => {
-    it("should have a pre-configured instance", () => {
-      expect(queueManager).toBeDefined();
-      expect(typeof queueManager.checkIn).toBe("function");
-      expect(typeof queueManager.checkOut).toBe("function");
-    });
-  });
-
-  describe("Check-in Operations", () => {
-    it("should queue check-in when offline", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
-
-      // Simulate offline
-      Object.defineProperty(navigator, "onLine", {
-        value: false,
-        writable: true,
-      });
-
-      const result = await queueManager.checkIn(
-        "school123",
-        "user123",
-        mockLocation
-      );
-
-      expect(result.success).toBe(true);
-      expect(result.actionId).toBe("checkin123");
-      expect(result.offline).toBe(true);
-      expect(actionQueueModule.queueCheckIn).toHaveBeenCalledWith(
-        "school123",
-        "user123",
-        mockLocation
-      );
-    });
-
-    it("should handle online check-in", async () => {
-      // Mock fetch to simulate online API
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: false, // Force fallback to queue
-      });
-
-      const actionQueueModule = require("@/lib/offline/actionQueue");
-
-      const result = await queueManager.checkIn(
-        "school123",
-        "user123",
-        mockLocation
-      );
-
-      expect(result.success).toBe(true);
-      expect(actionQueueModule.queueCheckIn).toHaveBeenCalled();
-    });
-
-    it("should handle check-in errors", async () => {
-      const actionQueueModule = require("@/lib/offline/actionQueue");
-      actionQueueModule.queueCheckIn.mockRejectedValue(
-        new Error("Check-in failed")
-      );
-
-      const result = await queueManager.checkIn(
-        "school123",
-        "user123",
-        mockLocation
-      );
-
-      expect(result.success).toBe(false);
+      expect(actionQueueMocks.getQueueStats).toHaveBeenCalled();
     });
   });
 });

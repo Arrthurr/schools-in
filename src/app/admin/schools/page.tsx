@@ -406,7 +406,8 @@ function SchoolManagementContent() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDeleteSchool(school.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  aria-label={`Delete ${school.name}`}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

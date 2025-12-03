@@ -373,6 +373,7 @@ export function SessionReports() {
             <div className="space-y-2">
               <Label htmlFor="dateRange">Date Range</Label>
               <SimpleSelect
+                id="dateRange"
                 options={[
                   { value: "today", label: "Today" },
                   { value: "week", label: "This Week" },
@@ -391,6 +392,7 @@ export function SessionReports() {
             <div className="space-y-2">
               <Label htmlFor="provider">Provider</Label>
               <SimpleSelect
+                id="provider"
                 options={[
                   { value: "__all__", label: "All Providers" },
                   ...providers.map((provider) => ({
@@ -410,6 +412,7 @@ export function SessionReports() {
             <div className="space-y-2">
               <Label htmlFor="school">School</Label>
               <SimpleSelect
+                id="school"
                 options={[
                   { value: "__all__", label: "All Schools" },
                   ...schools.map((school) => ({
@@ -429,6 +432,7 @@ export function SessionReports() {
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <SimpleSelect
+                id="status"
                 options={[
                   { value: "__all__", label: "All Statuses" },
                   { value: "active", label: "Active" },

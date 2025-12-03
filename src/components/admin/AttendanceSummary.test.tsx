@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { AttendanceSummary } from "./AttendanceSummary";
 
 // Mock the entire firestore module
@@ -24,8 +24,14 @@ jest.mock("../../lib/utils/session", () => ({
 }));
 
 describe("AttendanceSummary Component", () => {
-  it("renders attendance summary dashboard", () => {
-    render(<AttendanceSummary />);
+  const renderComponent = async () => {
+    await act(async () => {
+      render(<AttendanceSummary />);
+    });
+  };
+
+  it("renders attendance summary dashboard", async () => {
+    await renderComponent();
 
     expect(screen.getByText("Attendance Summary Filters")).toBeInTheDocument();
     expect(screen.getByText("Total Providers")).toBeInTheDocument();
@@ -34,16 +40,16 @@ describe("AttendanceSummary Component", () => {
     expect(screen.getByText("Total Session Days")).toBeInTheDocument();
   });
 
-  it("renders filter controls", () => {
-    render(<AttendanceSummary />);
+  it("renders filter controls", async () => {
+    await renderComponent();
 
     expect(screen.getByLabelText("Date Range")).toBeInTheDocument();
     expect(screen.getByLabelText("Provider")).toBeInTheDocument();
     expect(screen.getByLabelText("School")).toBeInTheDocument();
   });
 
-  it("renders provider and school attendance tables", () => {
-    render(<AttendanceSummary />);
+  it("renders provider and school attendance tables", async () => {
+    await renderComponent();
 
     expect(
       screen.getByText("Provider Attendance Summary (0 providers)")
@@ -53,8 +59,8 @@ describe("AttendanceSummary Component", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows empty state messages", () => {
-    render(<AttendanceSummary />);
+  it("shows empty state messages", async () => {
+    await renderComponent();
 
     expect(
       screen.getByText(
@@ -66,10 +72,12 @@ describe("AttendanceSummary Component", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders apply and reset filter buttons", () => {
-    render(<AttendanceSummary />);
+  it("renders apply and reset filter buttons", async () => {
+    await renderComponent();
 
-    expect(screen.getByText("Apply Filters")).toBeInTheDocument();
-    expect(screen.getByText("Reset Filters")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Apply Filters" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reset Filters" })).toBeInTheDocument();
   });
 });

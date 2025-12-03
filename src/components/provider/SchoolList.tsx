@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useId, useMemo } from "react";
+import { useState, useEffect, useId, useMemo, useCallback } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useLocation } from "../../lib/hooks/useLocation";
 import { useSession } from "../../lib/hooks/useSession";
@@ -73,7 +73,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
   // Accessibility hooks
   // const { announce } = useAnnouncement();
-  const announce = () => {}; // No-op function placeholder
+  const announce = useCallback(() => {}, []);
   const ScreenReaderOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <span className="sr-only">{children}</span>
   );

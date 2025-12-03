@@ -664,6 +664,7 @@ export function SessionManagement() {
               <div className="space-y-1">
                 <Label htmlFor="status">Session Status</Label>
                 <SimpleSelect
+                  id="status"
                   options={[
                     { value: "active", label: "Active" },
                     { value: "completed", label: "Completed" },
