@@ -12,6 +12,7 @@ import {
   preloadCriticalData,
   CACHE_STORES,
   CACHE_CONFIG,
+  resetCacheDBForTests,
 } from "@/lib/offline/cacheStrategy";
 import { openDB } from "idb";
 
@@ -30,6 +31,7 @@ const mockDB = {
 
 describe("CacheStrategy", () => {
   beforeEach(() => {
+    resetCacheDBForTests();
     jest.clearAllMocks();
 
     // Setup mock DB return

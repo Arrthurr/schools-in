@@ -2,18 +2,21 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SchoolList } from "./SchoolList";
 import * as useAuthModule from "../../lib/hooks/useAuth";
 import * as useLocationModule from "../../lib/hooks/useLocation";
-import * as CachedSchoolServiceModule from "../../lib/services/cachedSchoolService";
+import * as LocationServiceModule from "../../lib/services/locationService";
+import * as useSessionModule from "../../lib/hooks/useSession";
 
 // Mock the modules
 jest.mock("../../lib/hooks/useAuth");
 jest.mock("../../lib/hooks/useLocation");
-jest.mock("../../lib/services/cachedSchoolService");
+jest.mock("../../lib/services/locationService");
+jest.mock("../../lib/hooks/useSession");
 
 const mockUseAuth = jest.spyOn(useAuthModule, "useAuth");
 const mockUseLocation = jest.spyOn(useLocationModule, "useLocation");
-const mockCachedSchoolService = CachedSchoolServiceModule.CachedSchoolService as jest.Mocked<
-  typeof CachedSchoolServiceModule.CachedSchoolService
+const mockLocationService = LocationServiceModule as jest.Mocked<
+  typeof LocationServiceModule
 >;
+const mockUseSession = jest.spyOn(useSessionModule, "useSession");
 
 const mockSchools = [
   {
@@ -22,7 +25,7 @@ const mockSchools = [
     latitude: 41.90191443941818,
     longitude: -87.63472443763325,
     address: "Walter Payton HS Location",
-    radius: 100,
+    radiusMeters: 100,
     isAssigned: true,
     distance: 50,
   },
@@ -32,7 +35,7 @@ const mockSchools = [
     latitude: 33.32774730573383,
     longitude: -112.42321335568697,
     address: "Estrella Foothills HS Location",
-    radius: 100,
+    radiusMeters: 100,
     isAssigned: true,
     distance: 150,
   },
@@ -69,14 +72,16 @@ describe("SchoolList Component", () => {
       clearError: jest.fn(),
     });
 
-    mockCachedSchoolService.getSchoolsByProvider = jest
-      .fn()
-      .mockResolvedValue(mockSchools);
-    mockCachedSchoolService.searchSchools = jest.fn().mockResolvedValue(mockSchools);
-    mockCachedSchoolService.isWithinRadius = jest.fn().mockReturnValue(true);
-    mockCachedSchoolService.getSchoolsWithDistance = jest
-      .fn()
-      .mockResolvedValue(mockSchools);
+    mockUseSession.mockReturnValue({
+      checkIn: jest.fn(),
+      currentSession: null,
+      loading: false,
+    } as any);
+
+    mockLocationService.getAssignedLocations.mockResolvedValue(mockSchools as any);
+    mockLocationService.addDistances.mockImplementation((schools) => schools as any);
+    mockLocationService.sortByDistance.mockImplementation((schools) => schools as any);
+    mockLocationService.calculateDistance.mockReturnValue(50);
   });
 
   it("renders school list when schools are loaded", async () => {
@@ -91,9 +96,17 @@ describe("SchoolList Component", () => {
   });
 
   it("renders empty state when no schools assigned", async () => {
-    mockCachedSchoolService.getSchoolsByProvider = jest.fn().mockResolvedValue([]);
+    mockLocationService.getAssignedLocations.mockResolvedValue([]);
 
     render(<SchoolList />);
+
+    await waitFor(() => {
+      expect(mockLocationService.getAssignedLocations).toHaveBeenCalled();
+    });
+
+    await expect(
+      mockLocationService.getAssignedLocations.mock.results[0]?.value,
+    ).resolves.toEqual([]);
 
     await waitFor(() => {
       expect(
@@ -169,7 +182,7 @@ describe("SchoolList Component", () => {
   });
 
   it("shows loading state initially", () => {
-    mockCachedSchoolService.getSchoolsByProvider = jest.fn().mockImplementation(
+    mockLocationService.getAssignedLocations.mockImplementationOnce(
       () => new Promise(() => {}), // Never resolves
     );
 

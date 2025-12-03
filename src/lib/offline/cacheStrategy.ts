@@ -57,7 +57,15 @@ const CACHE_STORES = {
   PENDING_ACTIONS: "pending_actions",
 } as const;
 
+export const DEFAULT_CACHE_KEY = "__global__";
+
 let dbInstance: IDBPDatabase | null = null;
+
+export function resetCacheDBForTests() {
+  if (process.env.NODE_ENV === "test") {
+    dbInstance = null;
+  }
+}
 
 // Initialize enhanced caching database
 export async function initCacheDB() {

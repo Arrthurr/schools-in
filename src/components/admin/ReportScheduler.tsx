@@ -378,6 +378,7 @@ export function ReportScheduler() {
                   <div className="space-y-2">
                     <Label htmlFor="reportType">Report Type</Label>
                     <SimpleSelect
+                      id="reportType"
                       options={[
                         { value: "sessions", label: "Session Reports" },
                         { value: "attendance", label: "Attendance Summary" },
@@ -415,6 +416,7 @@ export function ReportScheduler() {
                   <div className="space-y-2">
                     <Label htmlFor="frequency">Frequency</Label>
                     <SimpleSelect
+                      id="frequency"
                       options={[
                         { value: "daily", label: "Daily" },
                         { value: "weekly", label: "Weekly" },
@@ -447,6 +449,7 @@ export function ReportScheduler() {
                   <div className="space-y-2">
                     <Label htmlFor="format">Format</Label>
                     <SimpleSelect
+                      id="format"
                       options={[
                         { value: "pdf", label: "PDF Document" },
                         { value: "csv", label: "CSV File" },

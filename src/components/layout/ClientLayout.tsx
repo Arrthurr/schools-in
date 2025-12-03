@@ -1,6 +1,8 @@
 "use client";
 
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useStartupLogging } from "@/lib/hooks/useStartupLogging";
+import { appLogger } from "@/lib/logging/appLogger";
 
 import { Button } from "@/components/ui/button";
 import { logOut } from "@/lib/firebase/auth";
@@ -21,6 +23,8 @@ interface ClientLayoutProps {
 }
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
+  useStartupLogging();
+
   return (
     <OfflineMessagingProvider enableToasts={true} enableNotifications={true}>
       <div className="flex flex-col min-h-screen">
@@ -50,7 +54,7 @@ function Header() {
       await logOut();
       router.push("/");
     } catch (error) {
-      console.error("Sign out failed:", error);
+      appLogger.error("Sign out failed", { error });
     }
   };
 

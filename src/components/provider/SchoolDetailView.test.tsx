@@ -1,22 +1,31 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SchoolDetailView } from "./SchoolDetailView";
 import * as useLocationModule from "../../lib/hooks/useLocation";
-import * as SchoolServiceModule from "../../lib/services/schoolService";
+import * as locationServiceModule from "../../lib/services/locationService";
 
 // Mock the modules
 jest.mock("../../lib/hooks/useLocation");
-jest.mock("../../lib/services/schoolService");
+jest.mock("../../lib/services/locationService");
 
 const mockUseLocation = jest.spyOn(useLocationModule, "useLocation");
-const mockSchoolService = SchoolServiceModule.SchoolService as jest.Mocked<
-  typeof SchoolServiceModule.SchoolService
->;
+const mockCalculateDistance =
+  locationServiceModule.calculateDistance as jest.MockedFunction<
+    typeof locationServiceModule.calculateDistance
+  >;
+const mockIsWithinRadius =
+  locationServiceModule.isWithinRadius as jest.MockedFunction<
+    typeof locationServiceModule.isWithinRadius
+  >;
 
 const mockSchool = {
   id: "school-1",
   name: "Walter Payton High School",
   latitude: 41.90191443941818,
   longitude: -87.63472443763325,
+  geo: {
+    latitude: 41.90191443941818,
+    longitude: -87.63472443763325,
+  },
   address: "1034 N Wells St, Chicago, IL 60610",
   radius: 100,
   isAssigned: true,
@@ -44,8 +53,8 @@ describe("SchoolDetailView Component", () => {
       clearError: jest.fn(),
     });
 
-    mockSchoolService.calculateDistance = jest.fn().mockReturnValue(50);
-    mockSchoolService.isWithinRadius = jest.fn().mockReturnValue(true);
+    mockCalculateDistance.mockReturnValue(50);
+    mockIsWithinRadius.mockReturnValue(true);
   });
 
   it("renders school details correctly", () => {
@@ -115,7 +124,7 @@ describe("SchoolDetailView Component", () => {
   });
 
   it("disables check-in button when outside radius", () => {
-    mockSchoolService.isWithinRadius = jest.fn().mockReturnValue(false);
+    mockIsWithinRadius.mockReturnValue(false);
 
     render(
       <SchoolDetailView
@@ -139,7 +148,7 @@ describe("SchoolDetailView Component", () => {
   });
 
   it("shows location status badge correctly when out of range", () => {
-    mockSchoolService.isWithinRadius = jest.fn().mockReturnValue(false);
+    mockIsWithinRadius.mockReturnValue(false);
 
     render(
       <SchoolDetailView school={mockSchool} onBack={mockOnBack} />
@@ -194,7 +203,7 @@ describe("SchoolDetailView Component", () => {
   });
 
   it("displays distance in kilometers when over 1000m", () => {
-    mockSchoolService.calculateDistance = jest.fn().mockReturnValue(1500);
+    mockCalculateDistance.mockReturnValue(1500);
 
     render(
       <SchoolDetailView school={mockSchool} onBack={mockOnBack} />
@@ -237,8 +246,8 @@ describe("SchoolDetailView Component", () => {
   });
 
   it("shows check-in instructions when outside radius", () => {
-    mockSchoolService.isWithinRadius = jest.fn().mockReturnValue(false);
-    mockSchoolService.calculateDistance = jest.fn().mockReturnValue(150);
+    mockIsWithinRadius.mockReturnValue(false);
+    mockCalculateDistance.mockReturnValue(150);
 
     render(
       <SchoolDetailView

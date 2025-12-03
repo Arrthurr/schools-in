@@ -546,6 +546,7 @@ export function SessionAnalytics() {
             <div className="space-y-2">
               <Label htmlFor="dateRange">Date Range</Label>
               <SimpleSelect
+                id="dateRange"
                 options={[
                   { value: "week", label: "Last 7 Days" },
                   { value: "month", label: "Last 30 Days" },
@@ -562,6 +563,7 @@ export function SessionAnalytics() {
             <div className="space-y-2">
               <Label htmlFor="chartType">Chart Type</Label>
               <SimpleSelect
+                id="chartType"
                 options={[
                   { value: "volume", label: "Session Volume" },
                   { value: "duration", label: "Duration Trends" },

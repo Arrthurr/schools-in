@@ -281,6 +281,7 @@ export function CacheSettings() {
           <div className="space-y-2">
             <Label htmlFor="offline-mode">Offline Mode</Label>
             <SimpleSelect
+              id="offline-mode"
               value={settings.offlineMode}
               onValueChange={(value: string) =>
                 updateSetting(

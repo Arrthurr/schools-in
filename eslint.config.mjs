@@ -57,6 +57,16 @@ export default [
     },
   },
   {
+    files: ["scripts/**/*.{js,ts}", "scripts/**/*.{jsx,tsx}"],
+    rules: {
+      // Allow operational scripts to log output and use flexible types
+      "no-console": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-empty-function": "off",
+    },
+  },
+  {
     files: ["**/*.test.{js,jsx,ts,tsx}", "**/__tests__/**/*.{js,jsx,ts,tsx}", "**/cypress/**/*.{js,jsx,ts,tsx}"],
     rules: {
       // More lenient rules for test files

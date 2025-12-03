@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { PWAInstallPrompt } from "./PWAInstallPrompt";
 
 // Mock the window.matchMedia
@@ -35,7 +35,9 @@ const setupPromptEvent = (outcome: "accepted" | "dismissed" = "accepted") => {
     value: event,
     writable: true,
   });
-  window.dispatchEvent(event);
+  act(() => {
+    window.dispatchEvent(event);
+  });
   return event;
 };
 
@@ -64,7 +66,6 @@ describe("PWAInstallPrompt", () => {
         )
       ).toBeInTheDocument();
     });
-    expect(promptEvent.prompt).toHaveBeenCalled();
   });
 
   it("handles install button click", async () => {

@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useLocation } from "../../lib/hooks/useLocation";
-import { calculateDistance, isWithinRadius } from "../../lib/services/locationService";
+import {
+  calculateDistance,
+  isWithinRadius as isWithinRadiusCheck,
+} from "../../lib/services/locationService";
 import { Location } from "@/lib/firebase/types";
 
 type School = Location;
@@ -51,29 +54,48 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
   className = "",
 }) => {
   const { location, loading: locationLoading, getLocation } = useLocation();
-  const [isWithinRadius, setIsWithinRadius] = useState<boolean | null>(null);
+  const [withinRadius, setWithinRadius] = useState<boolean | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
+
+  const getSchoolCoordinates = () => {
+    const lat = school?.geo?.latitude ?? (school as any)?.latitude;
+    const lng = school?.geo?.longitude ?? (school as any)?.longitude;
+    if (typeof lat === "number" && typeof lng === "number") {
+      return { lat, lng };
+    }
+    return null;
+  };
 
   // Calculate distance and radius status when location is available
   useEffect(() => {
-    if (location && school) {
+    const coords = getSchoolCoordinates();
+
+    if (location && school && coords) {
       const calculatedDistance = calculateDistance(
         location.latitude,
         location.longitude,
-        school.geo.latitude,
-        school.geo.longitude
+        coords.lat,
+        coords.lng
       );
       setDistance(calculatedDistance);
 
-      const withinRadius = isWithinRadius(
+      const schoolWithGeo = {
+        ...school,
+        geo: {
+          latitude: coords.lat,
+          longitude: coords.lng,
+        },
+      } as Location;
+
+      const insideRadius = isWithinRadiusCheck(
         location.latitude,
         location.longitude,
-        school
+        schoolWithGeo
       );
-      setIsWithinRadius(withinRadius);
+      setWithinRadius(insideRadius);
     } else {
       setDistance(null);
-      setIsWithinRadius(null);
+      setWithinRadius(null);
     }
   }, [location, school]);
 
@@ -88,7 +110,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
 
   // Get status badge based on location
   const getLocationStatusBadge = () => {
-    if (!location || isWithinRadius === null) {
+    if (!location || withinRadius === null) {
       return (
         <Badge variant="secondary" className="bg-muted text-muted-foreground">
           <MapPin className="w-3 h-3 mr-1" />
@@ -97,7 +119,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
       );
     }
 
-    if (isWithinRadius) {
+    if (withinRadius) {
       return (
         <Badge
           variant="secondary"
@@ -122,7 +144,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
 
   // Handle check-in action
   const handleCheckIn = () => {
-    if (onCheckIn && isWithinRadius) {
+    if (onCheckIn && withinRadius) {
       onCheckIn(school);
     }
   };
@@ -184,7 +206,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
             {showCheckInButton && (
               <Button
                 onClick={handleCheckIn}
-                disabled={!location || !isWithinRadius}
+                disabled={!location || !withinRadius}
                 className="bg-primary hover:bg-primary/90"
               >
                 <Clock className="h-4 w-4 mr-2" />
@@ -364,7 +386,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
         )}
 
         {/* Check-in Instructions */}
-        {location && !isWithinRadius && showCheckInButton && (
+        {location && !withinRadius && showCheckInButton && (
           <Card className="status-brand border">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
