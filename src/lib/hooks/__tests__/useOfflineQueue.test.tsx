@@ -49,6 +49,10 @@ jest.mock("@/lib/hooks/useNetworkStatus", () => ({
   useNetworkStatus: () => mockNetworkStatus,
 }));
 
+let consoleErrorSpy: jest.SpyInstance;
+let consoleWarnSpy: jest.SpyInstance;
+let consoleLogSpy: jest.SpyInstance;
+
 describe("useOfflineQueue", () => {
   const mockSessionData = {
     providerId: "provider123",
@@ -65,6 +69,9 @@ describe("useOfflineQueue", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 
     // Reset network status
     mockNetworkStatus.isOnline = true;
@@ -87,6 +94,12 @@ describe("useOfflineQueue", () => {
       synced: 0,
       failed: 0,
     });
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockClear();
+    consoleWarnSpy.mockClear();
+    consoleLogSpy.mockClear();
   });
 
   describe("Hook Initialization", () => {

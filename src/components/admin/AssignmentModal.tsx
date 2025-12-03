@@ -16,22 +16,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Search,
-  Users,
-  UserPlus,
-  UserMinus,
-  Check,
-  X,
   AlertCircle,
   Mail,
   Calendar,
 } from "lucide-react";
-import { LoadingButton, LoadingOverlay } from "@/components/ui/loading";
-import { SkeletonList } from "@/components/ui/skeleton";
-import {
-  ErrorState,
-  EmptyState,
-  CompactEmptyState,
-} from "@/components/ui/error-empty-states";
+import { LoadingButton } from "@/components/ui/loading";
 import {
   SchoolAssignment,
   replaceSchoolAssignments,

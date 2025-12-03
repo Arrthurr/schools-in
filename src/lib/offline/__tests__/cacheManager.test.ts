@@ -57,9 +57,16 @@ const mockGetCacheStats = getCacheStats as jest.MockedFunction<
   typeof getCacheStats
 >;
 
+let consoleErrorSpy: jest.SpyInstance;
+let consoleWarnSpy: jest.SpyInstance;
+let consoleLogSpy: jest.SpyInstance;
+
 describe("CacheManager", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 
     // Mock successful initialization
     mockInitCacheDB.mockResolvedValue(undefined as any);
@@ -79,7 +86,9 @@ describe("CacheManager", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
   describe("Singleton Instance", () => {

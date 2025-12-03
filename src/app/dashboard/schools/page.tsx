@@ -8,12 +8,12 @@ import { School } from "../../../lib/services/schoolService";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { ArrowLeft, School as SchoolIcon, MapPin, List } from "lucide-react";
+import { appLogger } from "@/lib/logging/appLogger";
 
 export default function SchoolsPage() {
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
@@ -21,7 +21,7 @@ export default function SchoolsPage() {
 
   // Handle school selection for check-in
   const handleSchoolSelect = (school: School) => {
-    console.log("School selected for check-in:", school.name);
+    appLogger.info("School selected for check-in", { school: school.name });
     // This would trigger check-in flow in a real implementation
   };
 
@@ -39,7 +39,9 @@ export default function SchoolsPage() {
 
   // Handle check-in from detail view
   const handleCheckInFromDetail = (school: School) => {
-    console.log("Check-in initiated from detail view:", school.name);
+    appLogger.info("Check-in initiated from detail view", {
+      school: school.name,
+    });
     // This would trigger the actual check-in process
   };
 

@@ -65,6 +65,10 @@ timestampNow.mockImplementation(() => ({
   toMillis: () => 1_700_000_000_000,
 }));
 
+let consoleErrorSpy: jest.SpyInstance;
+let consoleWarnSpy: jest.SpyInstance;
+let consoleLogSpy: jest.SpyInstance;
+
 const setNavigatorOnline = (online: boolean) => {
   Object.defineProperty(navigator, "onLine", {
     configurable: true,
@@ -93,6 +97,9 @@ describe("QueueManager", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
     setNavigatorOnline(true);
 
     actionQueueMocks.initActionQueue.mockResolvedValue(undefined);
@@ -124,6 +131,12 @@ describe("QueueManager", () => {
       },
     });
     firestoreMocks.updateDocument.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockClear();
+    consoleWarnSpy.mockClear();
+    consoleLogSpy.mockClear();
   });
 
   describe("Check-in Operations", () => {

@@ -1,7 +1,23 @@
 import { cacheManager } from "@/lib/offline/cacheManager";
 
+let consoleErrorSpy: jest.SpyInstance;
+let consoleWarnSpy: jest.SpyInstance;
+let consoleLogSpy: jest.SpyInstance;
+
 // Simple integration test for cache manager
 describe("CacheManager Integration", () => {
+  beforeEach(() => {
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockClear();
+    consoleWarnSpy.mockClear();
+    consoleLogSpy.mockClear();
+  });
+
   describe("Public API", () => {
     it("should have cache manager instance", () => {
       expect(cacheManager).toBeDefined();

@@ -156,7 +156,7 @@ describe("SchoolForm", () => {
     render(<SchoolForm {...defaultProps} />);
 
     const addressInput = screen.getByLabelText(/address/i);
-    fireEvent.change(addressInput, { target: { value: "123 Main St" } });
+    fireEvent.change(addressInput, { target: { value: "123 Main St, Chicago, IL" } });
 
     const geocodeButton = screen.getByRole("button", { name: /get coords/i });
     fireEvent.click(geocodeButton);
@@ -164,6 +164,12 @@ describe("SchoolForm", () => {
     expect(
       screen.getByRole("button", { name: /finding.../i })
     ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: /finding.../i })
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("does not render when isOpen is false", () => {
