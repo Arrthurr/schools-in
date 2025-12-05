@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CompactEmptyState } from "@/components/ui/error-empty-states";
 import {
   Search,
   AlertCircle,
@@ -149,11 +150,6 @@ export function AssignmentModal({
   const getProviderName = (providerId: string) => {
     const provider = availableProviders.find((p) => p.id === providerId);
     return provider?.displayName || "Unknown Provider";
-  };
-
-  const getProviderEmail = (providerId: string) => {
-    const provider = availableProviders.find((p) => p.id === providerId);
-    return provider?.email || "";
   };
 
   const isProviderCurrentlyAssigned = (providerId: string) => {
@@ -346,10 +342,6 @@ export function AssignmentModal({
                         <p className="text-xs text-gray-500 flex items-center">
                           <Mail className="h-3 w-3 mr-1" />
                           {provider.email}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {provider.assignedSchools?.length || 0} schools
-                          assigned
                         </p>
                         <p className="text-xs text-gray-500 flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
