@@ -23,6 +23,8 @@ export const COLLECTIONS = {
   SESSIONS: "sessions",
   LOCATIONS: "locations",
   ASSIGNMENTS: "assignments",
+  SERVICES: "services",
+  SCHEDULES: "schedules",
 } as const;
 
 // Generic CRUD operations
