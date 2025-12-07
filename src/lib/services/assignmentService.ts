@@ -23,6 +23,7 @@ import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "../firebase/firestore";
 import { UserRecord } from "./userService";
 import { Location } from "../firebase/types";
+import { softDeleteSchedulesForProviderAtLocation } from "./scheduleService";
 
 export interface SchoolAssignment {
   schoolId: string;
@@ -154,6 +155,9 @@ export const removeProviderFromSchool = async (
       assignedProviders: arrayRemove(providerId),
       updatedAt: Timestamp.now(),
     });
+
+    // Soft delete schedules for this provider at the school
+    await softDeleteSchedulesForProviderAtLocation(providerId, schoolId);
   } catch (error) {
     console.error("Error removing provider from school:", error);
     throw new Error("Failed to remove provider from school");
@@ -216,6 +220,13 @@ export const bulkRemoveProvidersFromSchool = async (
       assignedProviders: updatedProviders,
       updatedAt: Timestamp.now(),
     });
+
+    // Soft delete schedules for removed providers
+    await Promise.all(
+      providerIds.map((providerId) =>
+        softDeleteSchedulesForProviderAtLocation(providerId, schoolId)
+      )
+    );
   } catch (error) {
     console.error("Error bulk removing providers from school:", error);
     throw new Error("Failed to bulk remove providers from school");
@@ -228,12 +239,27 @@ export const replaceSchoolAssignments = async (
   newProviderIds: string[]
 ): Promise<void> => {
   try {
-    // Simply replace the assignedProviders array
+    // Get current assignments to identify removals
     const locationRef = doc(db, COLLECTIONS.LOCATIONS, schoolId);
+    const locationDoc = await getDoc(locationRef);
+    const currentProviders = (locationDoc.data() as Location | undefined)?.assignedProviders || [];
+
+    // Simply replace the assignedProviders array
     await updateDoc(locationRef, {
       assignedProviders: newProviderIds,
       updatedAt: Timestamp.now(),
     });
+
+    // Soft delete schedules for providers that were removed
+    const removedProviders = currentProviders.filter(
+      (providerId) => !newProviderIds.includes(providerId)
+    );
+
+    await Promise.all(
+      removedProviders.map((providerId) =>
+        softDeleteSchedulesForProviderAtLocation(providerId, schoolId)
+      )
+    );
   } catch (error) {
     console.error("Error replacing school assignments:", error);
     throw new Error("Failed to replace school assignments");

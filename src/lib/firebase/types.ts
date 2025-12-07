@@ -69,6 +69,30 @@ export interface Feedback {
   updatedAt: Timestamp;
 }
 
+export interface Service {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface Schedule {
+  id: string;
+  providerId: string;
+  locationId: string;
+  serviceId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  createdBy: string;
+}
+
 // Additional utility types
 export interface UserFilters {
   role?: "provider" | "admin";

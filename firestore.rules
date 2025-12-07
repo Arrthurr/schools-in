@@ -37,6 +37,18 @@ service cloud.firestore {
              data.updatedAt is timestamp;
     }
 
+    function isProviderAssignedToLocation(providerId, locationId) {
+      return get(/databases/$(database)/documents/locations/$(locationId)).data.assignedProviders.hasAny([providerId]);
+    }
+
+    function serviceExists(serviceId) {
+      return get(/databases/$(database)/documents/services/$(serviceId)).data != null;
+    }
+
+    function isActiveService(serviceId) {
+      return serviceExists(serviceId) && get(/databases/$(database)/documents/services/$(serviceId)).data.isActive != false;
+    }
+
     // Users collection rules - Enhanced security per PRD
     match /users/{userId} {
       allow create: if isOwner(userId) && 
@@ -147,6 +159,56 @@ service cloud.firestore {
       allow update: if isAdmin() &&
                       hasValidTimestamp(request.resource.data) &&
                       request.resource.data.status in ['open', 'in_progress', 'resolved', 'closed'];
+    }
+
+    // Services collection rules
+    match /services/{serviceId} {
+      // Authenticated users can read services
+      allow read: if isAuthenticated();
+
+      // Only admins can write
+      allow create, update, delete: if isAdmin() &&
+        hasValidTimestamp(request.resource.data) &&
+        request.resource.data.name is string &&
+        request.resource.data.code is string &&
+        request.resource.data.isActive is bool;
+
+      // List operations allowed for authenticated users
+      allow list: if isAuthenticated();
+    }
+
+    // Schedules collection rules
+    match /schedules/{scheduleId} {
+      // Admins can read all; providers can read their own schedules
+      allow read: if isAdmin() ||
+                    (isProvider() && resource.data.providerId == request.auth.uid);
+
+      // Only admins can create schedules with validation
+      allow create: if isAdmin() &&
+        hasValidTimestamp(request.resource.data) &&
+        request.resource.data.providerId is string &&
+        request.resource.data.locationId is string &&
+        request.resource.data.serviceId is string &&
+        request.resource.data.dayOfWeek >= 0 &&
+        request.resource.data.dayOfWeek <= 6 &&
+        request.resource.data.startTime is string &&
+        request.resource.data.endTime is string &&
+        request.resource.data.createdBy is string &&
+        isProviderAssignedToLocation(request.resource.data.providerId, request.resource.data.locationId) &&
+        isActiveService(request.resource.data.serviceId);
+
+      // Only admins can update schedules
+      allow update: if isAdmin() &&
+        hasValidTimestamp(request.resource.data);
+
+      // Only admins can delete schedules
+      allow delete: if isAdmin();
+
+      // List operations
+      allow list: if isAdmin() ||
+        (isProvider() &&
+          request.query.where.path == "providerId" &&
+          request.query.where.value == request.auth.uid);
     }
 
     // Assignments collection - DEPRECATED

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, MapPin, Edit, Trash2, Users, RefreshCw } from "lucide-react";
+import { Plus, Search, MapPin, Edit, Trash2, Users, RefreshCw, CalendarClock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,6 +17,17 @@ import { AdminNavigation } from "@/components/admin/AdminNavigation";
 import { SchoolForm } from "@/components/admin/SchoolForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CachedSchoolService } from "@/lib/services/cachedSchoolService";
+import { getSchedulesByLocation } from "@/lib/services/scheduleService";
+import { getUserById } from "@/lib/services/userService";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Schedule } from "@/lib/firebase/types";
 
 type SchoolRecord = Awaited<
   ReturnType<typeof CachedSchoolService.getAllSchools>
@@ -72,6 +83,11 @@ function SchoolManagementContent() {
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [scheduleLocation, setScheduleLocation] = useState<School | null>(null);
+  const [locationSchedules, setLocationSchedules] = useState<Schedule[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [providerNames, setProviderNames] = useState<Record<string, string>>({});
 
   const loadSchools = async (forceRefresh = false) => {
     setIsLoading(true);
@@ -242,6 +258,52 @@ function SchoolManagementContent() {
     setEditingSchool(null);
   };
 
+  const loadLocationSchedules = async (school: School) => {
+    try {
+      setScheduleLoading(true);
+      setScheduleError(null);
+      setScheduleLocation(school);
+
+      const schedules = await getSchedulesByLocation(school.id);
+      setLocationSchedules(schedules);
+
+      const uniqueProviderIds = Array.from(
+        new Set(schedules.map((s) => s.providerId))
+      );
+
+      const providers = await Promise.all(
+        uniqueProviderIds.map(async (id) => {
+          const user = await getUserById(id);
+          return { id, name: user?.displayName || user?.email || id };
+        })
+      );
+
+      const namesMap = providers.reduce<Record<string, string>>(
+        (acc, item) => ({ ...acc, [item.id]: item.name }),
+        {}
+      );
+      setProviderNames(namesMap);
+    } catch (err) {
+      console.error("Failed to load schedules for location", err);
+      setScheduleError("Failed to load schedules for this school.");
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const groupedByProvider = locationSchedules.reduce<Record<string, Schedule[]>>(
+    (acc, schedule) => {
+      const providerId = schedule.providerId;
+      acc[providerId] = acc[providerId]
+        ? [...acc[providerId], schedule]
+        : [schedule];
+      return acc;
+    },
+    {}
+  );
+
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -411,6 +473,15 @@ function SchoolManagementContent() {
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => loadLocationSchedules(school)}
+                      className="flex-1"
+                    >
+                      <CalendarClock className="h-3 w-3 mr-1" />
+                      View schedules
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -428,6 +499,99 @@ function SchoolManagementContent() {
         onSubmit={editingSchool ? handleUpdateSchool : handleCreateSchool}
         isLoading={isLoading}
       />
+
+      <Dialog
+        open={!!scheduleLocation}
+        onOpenChange={(open) => {
+          if (!open) {
+            setScheduleLocation(null);
+            setLocationSchedules([]);
+            setProviderNames({});
+            setScheduleError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              Schedules for {scheduleLocation?.name || "School"}
+            </DialogTitle>
+            <DialogDescription>
+              Provider time blocks scheduled at this school.
+            </DialogDescription>
+          </DialogHeader>
+
+          {scheduleError && (
+            <Alert variant="destructive">
+              <AlertDescription>{scheduleError}</AlertDescription>
+            </Alert>
+          )}
+
+          {scheduleLoading ? (
+            <div className="flex items-center justify-center py-10 text-muted-foreground">
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              Loading schedules...
+            </div>
+          ) : locationSchedules.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No schedules for this school yet.
+            </div>
+          ) : (
+            <ScrollArea className="max-h-[420px] pr-2">
+              <div className="space-y-4">
+                {Object.entries(groupedByProvider).map(([providerId, items]) => (
+                  <div key={providerId} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          {providerNames[providerId] || providerId}
+                        </Badge>
+                      </div>
+                      <Badge>
+                        {items.filter((s) => s.isActive !== false).length} active
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {items
+                        .sort((a, b) => {
+                          if (a.dayOfWeek === b.dayOfWeek) {
+                            return a.startTime.localeCompare(b.startTime);
+                          }
+                          return a.dayOfWeek - b.dayOfWeek;
+                        })
+                        .map((schedule) => (
+                          <div
+                            key={schedule.id}
+                            className="flex items-center justify-between rounded-md border p-3 bg-muted/50"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Badge variant="outline">
+                                {dayLabels[schedule.dayOfWeek] || schedule.dayOfWeek}
+                              </Badge>
+                              <span className="font-medium">
+                                {schedule.startTime} — {schedule.endTime}
+                              </span>
+                              <Badge
+                                variant={
+                                  schedule.isActive === false ? "secondary" : "default"
+                                }
+                              >
+                                {schedule.isActive === false ? "Inactive" : "Active"}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Service: {schedule.serviceId}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
