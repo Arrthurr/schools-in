@@ -21,6 +21,7 @@ import {
   Bell,
   Activity,
   MessageSquare,
+  Package,
 } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { logOut } from "@/lib/firebase/auth";
@@ -63,6 +64,12 @@ const navigationItems: NavItem[] = [
     label: "Users",
     icon: Users,
     description: "Manage providers and admins",
+  },
+  {
+    href: "/admin/services",
+    label: "Services",
+    icon: Package,
+    description: "Service types for scheduling",
   },
   {
     href: "/admin/assignments",
