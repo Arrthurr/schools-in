@@ -14,6 +14,7 @@ import {
   Square,
   Mail,
   Calendar,
+  CalendarClock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ import {
   UserRecord,
   UserStats,
 } from "@/lib/services/userService";
+import { ScheduleManager } from "@/components/schedules/ScheduleManager";
 
 function UserManagementContent() {
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -62,6 +64,7 @@ function UserManagementContent() {
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [scheduleUser, setScheduleUser] = useState<UserRecord | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -167,6 +170,14 @@ function UserManagementContent() {
     setEditingUser(user);
     setFormMode("edit");
     setShowUserForm(true);
+  };
+
+  const handleManageSchedule = (user: UserRecord) => {
+    if (user.role !== "provider") {
+      setError("Schedules can only be managed for providers.");
+      return;
+    }
+    setScheduleUser(user);
   };
 
   const handleCloseForm = () => {
@@ -530,6 +541,16 @@ function UserManagementContent() {
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Button>
+                  {user.role === "provider" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleManageSchedule(user)}
+                    >
+                      <CalendarClock className="h-4 w-4 mr-1" />
+                      Manage schedule
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -554,6 +575,14 @@ function UserManagementContent() {
         onSave={handleSaveUser}
         mode={formMode}
       />
+      {scheduleUser && (
+        <ScheduleManager
+          providerId={scheduleUser.id}
+          providerName={scheduleUser.displayName || scheduleUser.email || "Provider"}
+          isOpen={!!scheduleUser}
+          onClose={() => setScheduleUser(null)}
+        />
+      )}
     </div>
   );
 }
