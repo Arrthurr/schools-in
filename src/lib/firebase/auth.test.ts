@@ -5,6 +5,8 @@ import {
   signInWithMicrosoft,
   logOut,
   getCurrentUser,
+  syncUserFromM365,
+  M365SyncResult,
 } from "./auth";
 
 // Mock user object
@@ -37,12 +39,28 @@ const mockUserCredential = {
   operationType: "signIn",
 };
 
+// Mock httpsCallable result
+const mockSyncResult: M365SyncResult = {
+  role: "provider",
+  assignedLocations: [{ id: "loc1", name: "Test School" }],
+  removedLocations: [],
+  groupsFound: ["Test School", "Another Group"],
+};
+
+const mockAdminSyncResult: M365SyncResult = {
+  role: "admin",
+  assignedLocations: [],
+  removedLocations: [],
+  groupsFound: ["DMDL Office", "Admin Group"],
+};
+
 // Mock Firebase Auth
 jest.mock("../../../firebase.config", () => ({
   auth: {
     currentUser: null, // Start with null, will be set in tests
   },
   db: {}, // Mock Firestore db
+  functions: {}, // Mock Firebase Functions
 }));
 
 // Mock Firestore
@@ -64,6 +82,12 @@ jest.mock("./firestore", () => ({
     LOCATIONS: "locations",
     SESSIONS: "sessions",
   },
+}));
+
+// Mock Firebase Functions
+const mockHttpsCallable = jest.fn();
+jest.mock("firebase/functions", () => ({
+  httpsCallable: (...args: any[]) => mockHttpsCallable(...args),
 }));
 
 jest.mock("firebase/auth", () => ({
@@ -171,6 +195,102 @@ describe("Firebase Auth Utilities", () => {
       // Restore original mock
       require("../../../firebase.config").auth.currentUser =
         originalCurrentUser;
+    });
+  });
+
+  describe("syncUserFromM365", () => {
+    beforeEach(() => {
+      // Reset mocks before each test
+      mockHttpsCallable.mockReset();
+    });
+
+    it("throws error when user is not authenticated", async () => {
+      // Set currentUser to null
+      require("../../../firebase.config").auth.currentUser = null;
+
+      await expect(syncUserFromM365()).rejects.toThrow(
+        "No authenticated user. Please sign in first."
+      );
+    });
+
+    it("calls syncUserFromM365 cloud function for authenticated user", async () => {
+      // Set currentUser to mockUser
+      require("../../../firebase.config").auth.currentUser = mockUser;
+
+      // Mock the callable function
+      const mockCallable = jest.fn().mockResolvedValue({ data: mockSyncResult });
+      mockHttpsCallable.mockReturnValue(mockCallable);
+
+      const result = await syncUserFromM365();
+
+      // Verify httpsCallable was called with correct function name
+      expect(mockHttpsCallable).toHaveBeenCalledWith(
+        expect.any(Object), // functions instance
+        "syncUserFromM365"
+      );
+
+      // Verify the callable was invoked
+      expect(mockCallable).toHaveBeenCalled();
+
+      // Verify returned result
+      expect(result).toEqual(mockSyncResult);
+      expect(result.role).toBe("provider");
+      expect(result.assignedLocations).toHaveLength(1);
+      expect(result.assignedLocations[0].name).toBe("Test School");
+    });
+
+    it("returns admin role when user is in DMDL Office group", async () => {
+      require("../../../firebase.config").auth.currentUser = mockUser;
+
+      const mockCallable = jest.fn().mockResolvedValue({ data: mockAdminSyncResult });
+      mockHttpsCallable.mockReturnValue(mockCallable);
+
+      const result = await syncUserFromM365();
+
+      expect(result.role).toBe("admin");
+      expect(result.groupsFound).toContain("DMDL Office");
+    });
+
+    it("returns provider role with assigned locations when user is not in DMDL Office", async () => {
+      require("../../../firebase.config").auth.currentUser = mockUser;
+
+      const mockCallable = jest.fn().mockResolvedValue({ data: mockSyncResult });
+      mockHttpsCallable.mockReturnValue(mockCallable);
+
+      const result = await syncUserFromM365();
+
+      expect(result.role).toBe("provider");
+      expect(result.assignedLocations.length).toBeGreaterThan(0);
+      expect(result.groupsFound).not.toContain("DMDL Office");
+    });
+
+    it("propagates errors from cloud function", async () => {
+      require("../../../firebase.config").auth.currentUser = mockUser;
+
+      const mockError = new Error("Microsoft Graph API error");
+      const mockCallable = jest.fn().mockRejectedValue(mockError);
+      mockHttpsCallable.mockReturnValue(mockCallable);
+
+      await expect(syncUserFromM365()).rejects.toThrow("Microsoft Graph API error");
+    });
+
+    it("includes removed locations when user is unassigned from schools", async () => {
+      require("../../../firebase.config").auth.currentUser = mockUser;
+
+      const resultWithRemovals: M365SyncResult = {
+        role: "provider",
+        assignedLocations: [{ id: "loc1", name: "Test School" }],
+        removedLocations: [{ id: "loc2", name: "Old School" }],
+        groupsFound: ["Test School"],
+      };
+
+      const mockCallable = jest.fn().mockResolvedValue({ data: resultWithRemovals });
+      mockHttpsCallable.mockReturnValue(mockCallable);
+
+      const result = await syncUserFromM365();
+
+      expect(result.removedLocations).toHaveLength(1);
+      expect(result.removedLocations[0].name).toBe("Old School");
     });
   });
 });

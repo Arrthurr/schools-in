@@ -8,8 +8,17 @@ import {
   UserCredential
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
-import { auth, db } from '../../../firebase.config';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from '../../../firebase.config';
 import { COLLECTIONS } from './firestore';
+
+// Types for M365 sync result
+export interface M365SyncResult {
+  role: 'admin' | 'provider';
+  assignedLocations: Array<{ id: string; name: string }>;
+  removedLocations: Array<{ id: string; name: string }>;
+  groupsFound: string[];
+}
 
 // Microsoft Auth Provider
 const microsoftProvider = new OAuthProvider('microsoft.com');
@@ -74,4 +83,44 @@ async function createUserDocument(user: User): Promise<void> {
   await setDoc(userRef, userData);
   
   console.log(`✅ Created Firestore user document for ${user.email}`);
+}
+
+/**
+ * Sync user role and school assignments from Microsoft 365 groups
+ * 
+ * This function calls the syncUserFromM365 Cloud Function which:
+ * 1. Fetches the user's M365 group memberships
+ * 2. Determines if user is admin (member of DMDL Office) or provider
+ * 3. Matches school groups to Firestore locations by exact name match
+ * 4. Updates the user's role and location assignments in Firestore
+ * 
+ * @returns Promise<M365SyncResult> The sync result with role and assigned locations
+ * @throws Error if sync fails
+ */
+export async function syncUserFromM365(): Promise<M365SyncResult> {
+  const currentUser = auth.currentUser;
+  
+  if (!currentUser) {
+    throw new Error('No authenticated user. Please sign in first.');
+  }
+
+  console.log(`🔄 Starting M365 sync for user: ${currentUser.email}`);
+
+  try {
+    const syncFunction = httpsCallable<void, M365SyncResult>(functions, 'syncUserFromM365');
+    const result = await syncFunction();
+    
+    console.log(`✅ M365 sync completed:`, result.data);
+    console.log(`   Role: ${result.data.role}`);
+    console.log(`   Assigned locations: ${result.data.assignedLocations.map(l => l.name).join(', ') || 'None'}`);
+    
+    if (result.data.removedLocations.length > 0) {
+      console.log(`   Removed from: ${result.data.removedLocations.map(l => l.name).join(', ')}`);
+    }
+    
+    return result.data;
+  } catch (error) {
+    console.error('❌ M365 sync failed:', error);
+    throw error;
+  }
 }
