@@ -1,7 +1,7 @@
 "use strict";
-const __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    let desc = Object.getOwnPropertyDescriptor(m, k);
+    var desc = Object.getOwnPropertyDescriptor(m, k);
     if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
       desc = { enumerable: true, get: function() { return m[k]; } };
     }
@@ -10,31 +10,24 @@ const __createBinding = (this && this.__createBinding) || (Object.create ? (func
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
 }));
-const __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
     Object.defineProperty(o, "default", { enumerable: true, value: v });
 }) : function(o, v) {
     o["default"] = v;
 });
-const __importStar = (this && this.__importStar) || (function () {
-    const ownKeys = function(o) {
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
         ownKeys = Object.getOwnPropertyNames || function (o) {
-            const ar = [];
-            for (const key in o) if (Object.prototype.hasOwnProperty.call(o, key)) ar[ar.length] = key;
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
             return ar;
         };
         return ownKeys(o);
     };
     return function (mod) {
         if (mod && mod.__esModule) return mod;
-        const result = {};
-        if (mod != null) {
-            const keys = ownKeys(mod);
-            for (let i = 0; i < keys.length; i++) {
-                if (keys[i] !== "default") {
-                    __createBinding(result, mod, keys[i]);
-                }
-            }
-        }
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
         __setModuleDefault(result, mod);
         return result;
     };
@@ -47,6 +40,183 @@ const firebase_functions_1 = require("firebase-functions");
 const admin = __importStar(require("firebase-admin"));
 const nodemailer = __importStar(require("nodemailer"));
 admin.initializeApp();
+/**
+ * Acquire an app-only access token from Microsoft Identity Platform
+ * using client credentials flow
+ */
+async function getM365AccessToken() {
+    const tenantId = process.env.MS_TENANT_ID;
+    const clientId = process.env.MS_CLIENT_ID;
+    const clientSecret = process.env.MS_CLIENT_SECRET;
+    if (!tenantId || !clientId || !clientSecret) {
+        throw new Error("Microsoft 365 configuration missing. Ensure MS_TENANT_ID, MS_CLIENT_ID, and MS_CLIENT_SECRET are set.");
+    }
+    const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+    const params = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: "https://graph.microsoft.com/.default",
+        grant_type: "client_credentials",
+    });
+    const response = await fetch(tokenUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+    });
+    if (!response.ok) {
+        const errorText = await response.text();
+        firebase_functions_1.logger.error("Failed to acquire M365 access token:", errorText);
+        throw new Error(`Failed to acquire M365 access token: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.access_token;
+}
+/**
+ * Fetch all groups a user is a member of from Microsoft Graph
+ */
+async function getUserM365Groups(accessToken, userEmail) {
+    const groups = [];
+    // Use the user's email (UPN) to query their group membership
+    let url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userEmail)}/memberOf?$select=id,displayName&$top=100`;
+    while (url) {
+        const response = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+            },
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            firebase_functions_1.logger.error(`Failed to fetch user groups for ${userEmail}:`, errorText);
+            throw new Error(`Failed to fetch user groups: ${response.status}`);
+        }
+        const data = await response.json();
+        // Filter to only include groups (not other directory objects like roles)
+        for (const item of data.value || []) {
+            if (item["@odata.type"] === "#microsoft.graph.group" &&
+                item.displayName) {
+                groups.push({
+                    id: item.id,
+                    displayName: item.displayName,
+                });
+            }
+        }
+        // Handle pagination
+        url = data["@odata.nextLink"] || null;
+    }
+    return groups;
+}
+/**
+ * Sync user role and school assignments from Microsoft 365 groups
+ *
+ * This callable function:
+ * 1. Fetches the user's M365 group memberships
+ * 2. Determines if user is admin (member of DMDL Office) or provider
+ * 3. Matches school groups to Firestore locations by exact name match
+ * 4. Updates the user's role in Firestore
+ * 5. Updates locations.assignedProviders for matched schools
+ * 6. Removes user from locations they're no longer assigned to
+ */
+exports.syncUserFromM365 = (0, https_1.onCall)({
+    secrets: ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET"],
+}, async (request) => {
+    const { auth } = request;
+    // Require authentication
+    if (!auth) {
+        throw new Error("Authentication required");
+    }
+    const userId = auth.uid;
+    const userEmail = auth.token.email;
+    if (!userEmail) {
+        throw new Error("User email not available in authentication token");
+    }
+    firebase_functions_1.logger.info(`Starting M365 sync for user: ${userEmail} (${userId})`);
+    try {
+        // Step 1: Get M365 access token
+        const accessToken = await getM365AccessToken();
+        // Step 2: Fetch user's group memberships
+        const userGroups = await getUserM365Groups(accessToken, userEmail);
+        const groupNames = userGroups.map((g) => g.displayName);
+        firebase_functions_1.logger.info(`User ${userEmail} is member of ${userGroups.length} groups:`, groupNames);
+        // Step 3: Determine role based on DMDL Office membership
+        const adminGroupName = process.env.DMDL_OFFICE_GROUP_NAME || "DMDL Office";
+        const isAdmin = userGroups.some((g) => g.displayName.toLowerCase() === adminGroupName.toLowerCase());
+        const role = isAdmin ? "admin" : "provider";
+        firebase_functions_1.logger.info(`User ${userEmail} role determined: ${role}`);
+        // Step 4: Update user document with role
+        const db = admin.firestore();
+        const userRef = db.collection("users").doc(userId);
+        await userRef.update({
+            role: role,
+            updatedAt: admin.firestore.Timestamp.now(),
+        });
+        // Step 5: Match groups to Firestore locations (for providers only)
+        // Admins don't need school assignments as they have access to all
+        const assignedLocations = [];
+        const removedLocations = [];
+        if (role === "provider") {
+            // Get all active locations from Firestore
+            const locationsSnapshot = await db
+                .collection("locations")
+                .where("active", "==", true)
+                .get();
+            const allLocations = locationsSnapshot.docs.map((doc) => ({
+                id: doc.id,
+                name: doc.data().name,
+                assignedProviders: (doc.data().assignedProviders || []),
+            }));
+            // Filter out admin group from matching
+            const schoolGroupNames = groupNames.filter((name) => name.toLowerCase() !== adminGroupName.toLowerCase());
+            // Find locations that match user's school groups (exact name match)
+            const matchedLocations = allLocations.filter((loc) => schoolGroupNames.some((groupName) => groupName.toLowerCase() === loc.name.toLowerCase()));
+            const matchedLocationIds = new Set(matchedLocations.map((l) => l.id));
+            // Find locations user is currently assigned to
+            const currentlyAssignedLocations = allLocations.filter((loc) => loc.assignedProviders.includes(userId));
+            // Add user to newly matched locations
+            for (const location of matchedLocations) {
+                if (!location.assignedProviders.includes(userId)) {
+                    await db
+                        .collection("locations")
+                        .doc(location.id)
+                        .update({
+                        assignedProviders: admin.firestore.FieldValue.arrayUnion(userId),
+                        updatedAt: admin.firestore.Timestamp.now(),
+                    });
+                    firebase_functions_1.logger.info(`Added user ${userId} to location: ${location.name}`);
+                }
+                assignedLocations.push({ id: location.id, name: location.name });
+            }
+            // Remove user from locations they're no longer in groups for
+            for (const location of currentlyAssignedLocations) {
+                if (!matchedLocationIds.has(location.id)) {
+                    await db
+                        .collection("locations")
+                        .doc(location.id)
+                        .update({
+                        assignedProviders: admin.firestore.FieldValue.arrayRemove(userId),
+                        updatedAt: admin.firestore.Timestamp.now(),
+                    });
+                    firebase_functions_1.logger.info(`Removed user ${userId} from location: ${location.name}`);
+                    removedLocations.push({ id: location.id, name: location.name });
+                }
+            }
+        }
+        const result = {
+            role,
+            assignedLocations,
+            removedLocations,
+            groupsFound: groupNames,
+        };
+        firebase_functions_1.logger.info(`M365 sync completed for user ${userEmail}:`, result);
+        return result;
+    }
+    catch (error) {
+        firebase_functions_1.logger.error(`M365 sync failed for user ${userEmail}:`, error);
+        throw new Error(`Failed to sync user from Microsoft 365: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+});
 // Production configuration
 const _PRODUCTION_CONFIG = {
     sessionTimeoutHours: 2,
