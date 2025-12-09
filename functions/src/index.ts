@@ -1,5 +1,5 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { onCall } from "firebase-functions/v2/https";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions";
 import * as admin from "firebase-admin";
@@ -14,8 +14,11 @@ admin.initializeApp();
 // firebase functions:secrets:set MS_TENANT_ID
 // firebase functions:secrets:set MS_CLIENT_ID
 // firebase functions:secrets:set MS_CLIENT_SECRET
+// firebase functions:secrets:set DMDL_OFFICE_GROUP_ID (optional, preferred)
 // firebase functions:secrets:set DMDL_OFFICE_GROUP_NAME (default: "DMDL Office")
 // ============================================================================
+
+const DEFAULT_ADMIN_GROUP_NAME = "DMDL Office";
 
 interface M365Group {
   id: string;
@@ -29,6 +32,39 @@ interface SyncResult {
   groupsFound: string[];
 }
 
+function getAdminGroupConfig() {
+  return {
+    adminGroupId: process.env.DMDL_OFFICE_GROUP_ID?.toLowerCase(),
+    adminGroupName: (process.env.DMDL_OFFICE_GROUP_NAME ||
+      DEFAULT_ADMIN_GROUP_NAME).toLowerCase(),
+  };
+}
+
+function isAdminGroup(group: M365Group): boolean {
+  const { adminGroupId, adminGroupName } = getAdminGroupConfig();
+  const byId = adminGroupId && group.id?.toLowerCase() === adminGroupId;
+  const byName =
+    group.displayName && group.displayName.toLowerCase() === adminGroupName;
+  return Boolean(byId || byName);
+}
+
+function requireAuth(request: any): { uid: string; email: string } {
+  const { auth, data } = request;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "Authentication required");
+  }
+  const emailFromData =
+    typeof data?.email === "string" ? data.email.trim() : undefined;
+  const email = emailFromData || auth.token.email;
+  if (!email) {
+    throw new HttpsError(
+      "failed-precondition",
+      "User email not available in authentication token"
+    );
+  }
+  return { uid: auth.uid, email };
+}
+
 /**
  * Acquire an app-only access token from Microsoft Identity Platform
  * using client credentials flow
@@ -39,7 +75,8 @@ async function getM365AccessToken(): Promise<string> {
   const clientSecret = process.env.MS_CLIENT_SECRET;
 
   if (!tenantId || !clientId || !clientSecret) {
-    throw new Error(
+    throw new HttpsError(
+      "failed-precondition",
       "Microsoft 365 configuration missing. Ensure MS_TENANT_ID, MS_CLIENT_ID, and MS_CLIENT_SECRET are set."
     );
   }
@@ -64,7 +101,10 @@ async function getM365AccessToken(): Promise<string> {
   if (!response.ok) {
     const errorText = await response.text();
     logger.error("Failed to acquire M365 access token:", errorText);
-    throw new Error(`Failed to acquire M365 access token: ${response.status}`);
+    throw new HttpsError(
+      "internal",
+      `Failed to acquire M365 access token: ${response.status}`
+    );
   }
 
   const data = await response.json();
@@ -96,7 +136,10 @@ async function getUserM365Groups(
     if (!response.ok) {
       const errorText = await response.text();
       logger.error(`Failed to fetch user groups for ${userEmail}:`, errorText);
-      throw new Error(`Failed to fetch user groups: ${response.status}`);
+      throw new HttpsError(
+        "internal",
+        `Failed to fetch user groups: ${response.status}`
+      );
     }
 
     const data = await response.json();
@@ -134,22 +177,16 @@ async function getUserM365Groups(
  */
 exports.syncUserFromM365 = onCall(
   {
-    secrets: ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET"],
+    secrets: [
+      "MS_TENANT_ID",
+      "MS_CLIENT_ID",
+      "MS_CLIENT_SECRET",
+      "DMDL_OFFICE_GROUP_ID",
+      "DMDL_OFFICE_GROUP_NAME",
+    ],
   },
   async (request: any): Promise<SyncResult> => {
-    const { auth } = request;
-
-    // Require authentication
-    if (!auth) {
-      throw new Error("Authentication required");
-    }
-
-    const userId = auth.uid;
-    const userEmail = auth.token.email;
-
-    if (!userEmail) {
-      throw new Error("User email not available in authentication token");
-    }
+    const { uid: userId, email: userEmail } = requireAuth(request);
 
     logger.info(`Starting M365 sync for user: ${userEmail} (${userId})`);
 
@@ -161,25 +198,29 @@ exports.syncUserFromM365 = onCall(
       const userGroups = await getUserM365Groups(accessToken, userEmail);
       const groupNames = userGroups.map((g) => g.displayName);
 
-      logger.info(`User ${userEmail} is member of ${userGroups.length} groups:`, groupNames);
+      logger.info(
+        `User ${userEmail} is member of ${userGroups.length} groups:`,
+        groupNames
+      );
 
       // Step 3: Determine role based on DMDL Office membership
-      const adminGroupName = process.env.DMDL_OFFICE_GROUP_NAME || "DMDL Office";
-      const isAdmin = userGroups.some(
-        (g) => g.displayName.toLowerCase() === adminGroupName.toLowerCase()
-      );
+      const isAdmin = userGroups.some(isAdminGroup);
       const role: "admin" | "provider" = isAdmin ? "admin" : "provider";
 
       logger.info(`User ${userEmail} role determined: ${role}`);
 
-      // Step 4: Update user document with role
+      // Step 4: Update or create user document with role
       const db = admin.firestore();
       const userRef = db.collection("users").doc(userId);
 
-      await userRef.update({
-        role: role,
-        updatedAt: admin.firestore.Timestamp.now(),
-      });
+      await userRef.set(
+        {
+          role,
+          updatedAt: admin.firestore.Timestamp.now(),
+          email: userEmail,
+        },
+        { merge: true }
+      );
 
       // Step 5: Match groups to Firestore locations (for providers only)
       // Admins don't need school assignments as they have access to all
@@ -195,14 +236,13 @@ exports.syncUserFromM365 = onCall(
 
         const allLocations = locationsSnapshot.docs.map((doc) => ({
           id: doc.id,
-          name: doc.data().name as string,
+          name: (doc.data().name as string) || "",
           assignedProviders: (doc.data().assignedProviders || []) as string[],
         }));
 
         // Filter out admin group from matching
-        const schoolGroupNames = groupNames.filter(
-          (name) => name.toLowerCase() !== adminGroupName.toLowerCase()
-        );
+        const schoolGroups = userGroups.filter((group) => !isAdminGroup(group));
+        const schoolGroupNames = schoolGroups.map((g) => g.displayName);
 
         // Find locations that match user's school groups (exact name match)
         const matchedLocations = allLocations.filter((loc) =>
@@ -261,7 +301,11 @@ exports.syncUserFromM365 = onCall(
       return result;
     } catch (error) {
       logger.error(`M365 sync failed for user ${userEmail}:`, error);
-      throw new Error(
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError(
+        "internal",
         `Failed to sync user from Microsoft 365: ${
           error instanceof Error ? error.message : "Unknown error"
         }`

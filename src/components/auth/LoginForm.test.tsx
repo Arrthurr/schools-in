@@ -1,11 +1,17 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LoginForm } from "./LoginForm";
-import { signInWithMicrosoft, syncUserFromM365, M365SyncResult } from "@/lib/firebase/auth";
+import {
+  signInWithMicrosoft,
+  syncUserFromM365,
+  waitForUserDocument,
+  M365SyncResult,
+} from "@/lib/firebase/auth";
 
 jest.mock("@/lib/firebase/auth", () => ({
   signInWithMicrosoft: jest.fn(),
   syncUserFromM365: jest.fn(),
+  waitForUserDocument: jest.fn(),
 }));
 
 const mockReplace = jest.fn();
@@ -37,10 +43,15 @@ const mockSyncUserFromM365 = syncUserFromM365 as jest.MockedFunction<
   typeof syncUserFromM365
 >;
 
+const mockWaitForUserDocument = waitForUserDocument as jest.MockedFunction<
+  typeof waitForUserDocument
+>;
+
 describe("LoginForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockReplace.mockClear();
+    mockWaitForUserDocument.mockResolvedValue(undefined);
   });
 
   describe("Microsoft Authentication", () => {
@@ -152,6 +163,8 @@ describe("LoginForm", () => {
       await waitFor(() => {
         expect(mockSyncUserFromM365).toHaveBeenCalledTimes(1);
       });
+
+      expect(mockWaitForUserDocument).toHaveBeenCalledWith("test-uid");
     });
 
     it("routes to /dashboard for provider users after sync", async () => {

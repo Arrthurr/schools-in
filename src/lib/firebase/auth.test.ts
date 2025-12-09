@@ -6,6 +6,7 @@ import {
   logOut,
   getCurrentUser,
   syncUserFromM365,
+  waitForUserDocument,
   M365SyncResult,
 } from "./auth";
 
@@ -67,9 +68,11 @@ jest.mock("../../../firebase.config", () => ({
 jest.mock("firebase/firestore", () => ({
   doc: jest.fn(),
   setDoc: jest.fn(),
-  getDoc: jest.fn(() => Promise.resolve({
-    exists: () => false,
-  })),
+  getDoc: jest.fn(() =>
+    Promise.resolve({
+      exists: () => false,
+    })
+  ),
   Timestamp: {
     now: jest.fn(() => ({ seconds: 1234567890, nanoseconds: 0 })),
   },
@@ -107,10 +110,14 @@ import {
   signOut,
   getAuth,
 } from "firebase/auth";
+import { getDoc } from "firebase/firestore";
 
 describe("Firebase Auth Utilities", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getDoc as jest.Mock).mockResolvedValue({
+      exists: () => false,
+    });
   });
 
   describe("signInWithMicrosoft", () => {
@@ -231,6 +238,7 @@ describe("Firebase Auth Utilities", () => {
 
       // Verify the callable was invoked
       expect(mockCallable).toHaveBeenCalled();
+      expect(mockCallable).toHaveBeenCalledWith({ email: mockUser.email });
 
       // Verify returned result
       expect(result).toEqual(mockSyncResult);
@@ -249,6 +257,7 @@ describe("Firebase Auth Utilities", () => {
 
       expect(result.role).toBe("admin");
       expect(result.groupsFound).toContain("DMDL Office");
+      expect(mockCallable).toHaveBeenCalledWith({ email: mockUser.email });
     });
 
     it("returns provider role with assigned locations when user is not in DMDL Office", async () => {
@@ -262,6 +271,7 @@ describe("Firebase Auth Utilities", () => {
       expect(result.role).toBe("provider");
       expect(result.assignedLocations.length).toBeGreaterThan(0);
       expect(result.groupsFound).not.toContain("DMDL Office");
+      expect(mockCallable).toHaveBeenCalledWith({ email: mockUser.email });
     });
 
     it("propagates errors from cloud function", async () => {
@@ -272,6 +282,7 @@ describe("Firebase Auth Utilities", () => {
       mockHttpsCallable.mockReturnValue(mockCallable);
 
       await expect(syncUserFromM365()).rejects.toThrow("Microsoft Graph API error");
+      expect(mockCallable).toHaveBeenCalledWith({ email: mockUser.email });
     });
 
     it("includes removed locations when user is unassigned from schools", async () => {
@@ -291,6 +302,29 @@ describe("Firebase Auth Utilities", () => {
 
       expect(result.removedLocations).toHaveLength(1);
       expect(result.removedLocations[0].name).toBe("Old School");
+      expect(mockCallable).toHaveBeenCalledWith({ email: mockUser.email });
+    });
+  });
+
+  describe("waitForUserDocument", () => {
+    it("resolves when a user document with role is found", async () => {
+      (getDoc as jest.Mock)
+        .mockResolvedValueOnce({
+          exists: () => true,
+          data: () => ({ role: "provider" }),
+        });
+
+      await expect(waitForUserDocument("user123", 2, 1)).resolves.toBeUndefined();
+    });
+
+    it("throws after exhausting retries", async () => {
+      (getDoc as jest.Mock).mockResolvedValue({
+        exists: () => false,
+      });
+
+      await expect(waitForUserDocument("missing", 2, 1)).rejects.toThrow(
+        "Timed out"
+      );
     });
   });
 });

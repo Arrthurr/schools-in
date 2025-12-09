@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useId } from "react";
-import { signInWithMicrosoft, syncUserFromM365 } from "@/lib/firebase/auth";
+import {
+  signInWithMicrosoft,
+  syncUserFromM365,
+  waitForUserDocument,
+} from "@/lib/firebase/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadingButton } from "@/components/ui/loading";
 
@@ -23,7 +27,7 @@ export function LoginForm() {
     setError(null);
 
     try {
-      await signInWithMicrosoft();
+      const credential = await signInWithMicrosoft();
       const redirectTo = searchParams.get("redirectTo");
       
       // Sync user role and school assignments from Microsoft 365 groups
@@ -32,6 +36,9 @@ export function LoginForm() {
       console.log("🔄 Syncing user from Microsoft 365 groups...");
       const syncResult = await syncUserFromM365();
       console.log("✅ M365 sync complete. Role:", syncResult.role);
+
+      // Ensure user document has been written with the latest role and metadata
+      await waitForUserDocument(credential.user.uid);
       
       // Wait for Firebase Auth state to propagate before redirecting
       // This ensures onAuthStateChanged listeners fire on the destination page
@@ -47,13 +54,13 @@ export function LoginForm() {
       }
 
       // announce("Successfully signed in with Microsoft", "polite");
-      } catch (error: any) {
-      const errorMessage = error.message || "Sign-in failed";
+    } catch (error: any) {
+      const errorMessage = error?.message || "Sign-in failed";
 
       console.error("Sign-in error:", errorMessage);
       setError(errorMessage);
       // announce(`Microsoft sign in failed: ${errorMessage}`, "assertive");
-      } finally {
+    } finally {
       setLoading(false);
     }
   };
