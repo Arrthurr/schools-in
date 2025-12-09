@@ -1,11 +1,318 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { onCall } from "firebase-functions/v2/https";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as nodemailer from "nodemailer";
 
 admin.initializeApp();
+
+// ============================================================================
+// Microsoft 365 Group Sync Configuration
+// ============================================================================
+// These values should be set via Firebase Functions config or environment secrets:
+// firebase functions:secrets:set MS_TENANT_ID
+// firebase functions:secrets:set MS_CLIENT_ID
+// firebase functions:secrets:set MS_CLIENT_SECRET
+// firebase functions:secrets:set DMDL_OFFICE_GROUP_ID (optional, preferred)
+// firebase functions:secrets:set DMDL_OFFICE_GROUP_NAME (default: "DMDL Office")
+// ============================================================================
+
+const DEFAULT_ADMIN_GROUP_NAME = "DMDL Office";
+
+interface M365Group {
+  id: string;
+  displayName: string;
+}
+
+interface SyncResult {
+  role: "admin" | "provider";
+  assignedLocations: Array<{ id: string; name: string }>;
+  removedLocations: Array<{ id: string; name: string }>;
+  groupsFound: string[];
+}
+
+function getAdminGroupConfig() {
+  return {
+    adminGroupId: process.env.DMDL_OFFICE_GROUP_ID?.toLowerCase(),
+    adminGroupName: (process.env.DMDL_OFFICE_GROUP_NAME ||
+      DEFAULT_ADMIN_GROUP_NAME).toLowerCase(),
+  };
+}
+
+function isAdminGroup(group: M365Group): boolean {
+  const { adminGroupId, adminGroupName } = getAdminGroupConfig();
+  const byId = adminGroupId && group.id?.toLowerCase() === adminGroupId;
+  const byName =
+    group.displayName && group.displayName.toLowerCase() === adminGroupName;
+  return Boolean(byId || byName);
+}
+
+function requireAuth(request: any): { uid: string; email: string } {
+  const { auth, data } = request;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "Authentication required");
+  }
+  const emailFromData =
+    typeof data?.email === "string" ? data.email.trim() : undefined;
+  const email = emailFromData || auth.token.email;
+  if (!email) {
+    throw new HttpsError(
+      "failed-precondition",
+      "User email not available in authentication token"
+    );
+  }
+  return { uid: auth.uid, email };
+}
+
+/**
+ * Acquire an app-only access token from Microsoft Identity Platform
+ * using client credentials flow
+ */
+async function getM365AccessToken(): Promise<string> {
+  const tenantId = process.env.MS_TENANT_ID;
+  const clientId = process.env.MS_CLIENT_ID;
+  const clientSecret = process.env.MS_CLIENT_SECRET;
+
+  if (!tenantId || !clientId || !clientSecret) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Microsoft 365 configuration missing. Ensure MS_TENANT_ID, MS_CLIENT_ID, and MS_CLIENT_SECRET are set."
+    );
+  }
+
+  const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    scope: "https://graph.microsoft.com/.default",
+    grant_type: "client_credentials",
+  });
+
+  const response = await fetch(tokenUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error("Failed to acquire M365 access token:", errorText);
+    throw new HttpsError(
+      "internal",
+      `Failed to acquire M365 access token: ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+  return data.access_token;
+}
+
+/**
+ * Fetch all groups a user is a member of from Microsoft Graph
+ */
+async function getUserM365Groups(
+  accessToken: string,
+  userEmail: string
+): Promise<M365Group[]> {
+  const groups: M365Group[] = [];
+
+  // Use the user's email (UPN) to query their group membership
+  let url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(
+    userEmail
+  )}/memberOf?$select=id,displayName&$top=100`;
+
+  while (url) {
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error(`Failed to fetch user groups for ${userEmail}:`, errorText);
+      throw new HttpsError(
+        "internal",
+        `Failed to fetch user groups: ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    // Filter to only include groups (not other directory objects like roles)
+    for (const item of data.value || []) {
+      if (
+        item["@odata.type"] === "#microsoft.graph.group" &&
+        item.displayName
+      ) {
+        groups.push({
+          id: item.id,
+          displayName: item.displayName,
+        });
+      }
+    }
+
+    // Handle pagination
+    url = data["@odata.nextLink"] || null;
+  }
+
+  return groups;
+}
+
+/**
+ * Sync user role and school assignments from Microsoft 365 groups
+ *
+ * This callable function:
+ * 1. Fetches the user's M365 group memberships
+ * 2. Determines if user is admin (member of DMDL Office) or provider
+ * 3. Matches school groups to Firestore locations by exact name match
+ * 4. Updates the user's role in Firestore
+ * 5. Updates locations.assignedProviders for matched schools
+ * 6. Removes user from locations they're no longer assigned to
+ */
+exports.syncUserFromM365 = onCall(
+  {
+    secrets: [
+      "MS_TENANT_ID",
+      "MS_CLIENT_ID",
+      "MS_CLIENT_SECRET",
+      "DMDL_OFFICE_GROUP_ID",
+      "DMDL_OFFICE_GROUP_NAME",
+    ],
+  },
+  async (request: any): Promise<SyncResult> => {
+    const { uid: userId, email: userEmail } = requireAuth(request);
+
+    logger.info(`Starting M365 sync for user: ${userEmail} (${userId})`);
+
+    try {
+      // Step 1: Get M365 access token
+      const accessToken = await getM365AccessToken();
+
+      // Step 2: Fetch user's group memberships
+      const userGroups = await getUserM365Groups(accessToken, userEmail);
+      const groupNames = userGroups.map((g) => g.displayName);
+
+      logger.info(
+        `User ${userEmail} is member of ${userGroups.length} groups:`,
+        groupNames
+      );
+
+      // Step 3: Determine role based on DMDL Office membership
+      const isAdmin = userGroups.some(isAdminGroup);
+      const role: "admin" | "provider" = isAdmin ? "admin" : "provider";
+
+      logger.info(`User ${userEmail} role determined: ${role}`);
+
+      // Step 4: Update or create user document with role
+      const db = admin.firestore();
+      const userRef = db.collection("users").doc(userId);
+
+      await userRef.set(
+        {
+          role,
+          updatedAt: admin.firestore.Timestamp.now(),
+          email: userEmail,
+        },
+        { merge: true }
+      );
+
+      // Step 5: Match groups to Firestore locations (for providers only)
+      // Admins don't need school assignments as they have access to all
+      const assignedLocations: Array<{ id: string; name: string }> = [];
+      const removedLocations: Array<{ id: string; name: string }> = [];
+
+      if (role === "provider") {
+        // Get all active locations from Firestore
+        const locationsSnapshot = await db
+          .collection("locations")
+          .where("active", "==", true)
+          .get();
+
+        const allLocations = locationsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          name: (doc.data().name as string) || "",
+          assignedProviders: (doc.data().assignedProviders || []) as string[],
+        }));
+
+        // Filter out admin group from matching
+        const schoolGroups = userGroups.filter((group) => !isAdminGroup(group));
+        const schoolGroupNames = schoolGroups.map((g) => g.displayName);
+
+        // Find locations that match user's school groups (exact name match)
+        const matchedLocations = allLocations.filter((loc) =>
+          schoolGroupNames.some(
+            (groupName) => groupName.toLowerCase() === loc.name.toLowerCase()
+          )
+        );
+
+        const matchedLocationIds = new Set(matchedLocations.map((l) => l.id));
+
+        // Find locations user is currently assigned to
+        const currentlyAssignedLocations = allLocations.filter((loc) =>
+          loc.assignedProviders.includes(userId)
+        );
+
+        // Add user to newly matched locations
+        for (const location of matchedLocations) {
+          if (!location.assignedProviders.includes(userId)) {
+            await db
+              .collection("locations")
+              .doc(location.id)
+              .update({
+                assignedProviders: admin.firestore.FieldValue.arrayUnion(userId),
+                updatedAt: admin.firestore.Timestamp.now(),
+              });
+            logger.info(`Added user ${userId} to location: ${location.name}`);
+          }
+          assignedLocations.push({ id: location.id, name: location.name });
+        }
+
+        // Remove user from locations they're no longer in groups for
+        for (const location of currentlyAssignedLocations) {
+          if (!matchedLocationIds.has(location.id)) {
+            await db
+              .collection("locations")
+              .doc(location.id)
+              .update({
+                assignedProviders: admin.firestore.FieldValue.arrayRemove(userId),
+                updatedAt: admin.firestore.Timestamp.now(),
+              });
+            logger.info(`Removed user ${userId} from location: ${location.name}`);
+            removedLocations.push({ id: location.id, name: location.name });
+          }
+        }
+      }
+
+      const result: SyncResult = {
+        role,
+        assignedLocations,
+        removedLocations,
+        groupsFound: groupNames,
+      };
+
+      logger.info(`M365 sync completed for user ${userEmail}:`, result);
+
+      return result;
+    } catch (error) {
+      logger.error(`M365 sync failed for user ${userEmail}:`, error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError(
+        "internal",
+        `Failed to sync user from Microsoft 365: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+);
 
 // Production configuration
 const _PRODUCTION_CONFIG = {

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { SchoolList } from "./SchoolList";
 import * as useAuthModule from "../../lib/hooks/useAuth";
 import * as useLocationModule from "../../lib/hooks/useLocation";
@@ -179,6 +179,39 @@ describe("SchoolList Component", () => {
         screen.getByRole("button", { name: /enable location/i })
       ).toBeInTheDocument();
     });
+  });
+
+  it("shows error state when assignments fail to load", async () => {
+    mockLocationService.getAssignedLocations.mockRejectedValueOnce(
+      new Error("Network down")
+    );
+
+    render(<SchoolList />);
+
+    const errorMessages = await screen.findAllByText(/failed to load schools/i);
+    expect(errorMessages.length).toBeGreaterThan(0);
+  });
+
+  it("shows empty search state when no schools match query", async () => {
+    jest.useFakeTimers();
+    render(<SchoolList />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Walter Payton HS")).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText("Search schools...");
+    fireEvent.change(searchInput, { target: { value: "nonexistent" } });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(
+      await screen.findByText(/no schools found/i)
+    ).toBeInTheDocument();
+
+    jest.useRealTimers();
   });
 
   it("shows loading state initially", () => {

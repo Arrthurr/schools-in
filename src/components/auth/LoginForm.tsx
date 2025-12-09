@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useId } from "react";
-import { signInWithMicrosoft } from "@/lib/firebase/auth";
+import {
+  signInWithMicrosoft,
+  syncUserFromM365,
+  waitForUserDocument,
+} from "@/lib/firebase/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LoadingButton } from "@/components/ui/loading";
 
@@ -22,87 +26,44 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const startTime = performance.now();
     try {
-      const result = await signInWithMicrosoft();
-      const loginTime = performance.now() - startTime;
+      const credential = await signInWithMicrosoft();
       const redirectTo = searchParams.get("redirectTo");
       
-      // Redirect based on user role
+      // Sync user role and school assignments from Microsoft 365 groups
+      // This updates the user's role (admin/provider) and assigns them to schools
+      // based on their M365 group memberships
+      console.log("🔄 Syncing user from Microsoft 365 groups...");
+      const syncResult = await syncUserFromM365();
+      console.log("✅ M365 sync complete. Role:", syncResult.role);
+
+      // Ensure user document has been written with the latest role and metadata
+      await waitForUserDocument(credential.user.uid);
+      
+      // Wait for Firebase Auth state to propagate before redirecting
+      // This ensures onAuthStateChanged listeners fire on the destination page
+      await waitForAuthStatePropagation();
+      
+      // Redirect based on user role (use syncResult.role which is authoritative from M365)
       if (!redirectTo) {
-        // Wait for Firestore document to be available with exponential backoff retry
-        const userDoc = await waitForUserDocument(result.user.uid);
-        
-        // Check if user document exists and has proper access
-        if (!userDoc || !userDoc.role) {
-          console.error("User document missing role:", userDoc);
-          throw new Error("Your account is not authorized.");
-        }
-        
-        // Wait for Firebase Auth state to propagate before redirecting
-        // This ensures onAuthStateChanged listeners fire on the destination page
-        await waitForAuthStatePropagation();
-        
-        console.log("✅ Sign-in successful. User role:", userDoc.role);
-        const defaultRoute = userDoc.role === "admin" ? "/admin" : "/dashboard";
+        console.log("✅ Sign-in successful. User role:", syncResult.role);
+        const defaultRoute = syncResult.role === "admin" ? "/admin" : "/dashboard";
         router.replace(defaultRoute as Route);
       } else {
-        // Also wait for auth propagation for redirect URLs
-        await waitForAuthStatePropagation();
         router.replace(redirectTo as Route);
       }
 
       // announce("Successfully signed in with Microsoft", "polite");
-      } catch (error: any) {
-      const loginTime = performance.now() - startTime;
-      const errorMessage = error.message || "Sign-in failed";
+    } catch (error: any) {
+      const errorMessage = error?.message || "Sign-in failed";
 
       console.error("Sign-in error:", errorMessage);
       setError(errorMessage);
       // announce(`Microsoft sign in failed: ${errorMessage}`, "assertive");
-      } finally {
+    } finally {
       setLoading(false);
     }
   };
-
-  /**
-   * Wait for user document to be created in Firestore with exponential backoff retry
-   * Retries up to 5 times with increasing delays: 100ms, 200ms, 400ms, 800ms, 1600ms
-   */
-  async function waitForUserDocument(
-    userId: string,
-    maxRetries: number = 5
-  ): Promise<{ role: "provider" | "admin" } | null> {
-    const { getDocument } = await import("@/lib/firebase/firestore");
-    
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const userDoc = await getDocument<{ role: "provider" | "admin" }>(
-          "users",
-          userId
-        );
-        
-        if (userDoc) {
-          console.log(`✅ User document found on attempt ${attempt + 1}:`, userDoc);
-          return userDoc;
-        }
-        
-        // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
-        const delayMs = 100 * Math.pow(2, attempt);
-        console.log(`⏳ User document not found. Retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-      } catch (err) {
-        console.warn(`⚠️ Attempt ${attempt + 1} failed:`, err);
-        if (attempt < maxRetries - 1) {
-          const delayMs = 100 * Math.pow(2, attempt);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
-      }
-    }
-    
-    console.error("❌ Failed to retrieve user document after", maxRetries, "attempts");
-    return null;
-  }
 
   /**
    * Wait for Firebase Auth state to propagate before redirecting
