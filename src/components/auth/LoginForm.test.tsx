@@ -18,13 +18,22 @@ const mockReplace = jest.fn();
 const mockPrefetch = jest.fn();
 
 jest.mock("next/navigation", () => {
+  let searchParams = new URLSearchParams();
+
+  const useSearchParams = () => searchParams;
+
+  // Allow tests to override the search params
+  (useSearchParams as any).__setSearchParams = (nextParams: URLSearchParams) => {
+    searchParams = nextParams;
+  };
+
   return {
     useRouter: () => ({
       push: jest.fn(),
       replace: mockReplace,
       prefetch: mockPrefetch,
     }),
-    useSearchParams: () => new URLSearchParams(),
+    useSearchParams,
   };
 });
 
@@ -52,6 +61,10 @@ describe("LoginForm", () => {
     jest.clearAllMocks();
     mockReplace.mockClear();
     mockWaitForUserDocument.mockResolvedValue(undefined);
+
+    // Reset search params before each test
+    const { useSearchParams } = require("next/navigation");
+    useSearchParams.__setSearchParams(new URLSearchParams());
   });
 
   describe("Microsoft Authentication", () => {
@@ -212,6 +225,35 @@ describe("LoginForm", () => {
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith("/admin");
+      });
+    });
+
+    it("respects redirectTo search param when present", async () => {
+      const user = userEvent.setup();
+      mockSignInWithMicrosoft.mockResolvedValue({
+        user: { uid: "redirect-uid", email: "redirect@example.com" },
+      } as any);
+      mockSyncUserFromM365.mockResolvedValue({
+        role: "provider",
+        assignedLocations: [],
+        removedLocations: [],
+        groupsFound: [],
+      });
+
+      const { useSearchParams } = require("next/navigation");
+      useSearchParams.__setSearchParams(
+        new URLSearchParams([["redirectTo", "/custom-route"]])
+      );
+
+      render(<LoginForm />);
+      const microsoftButton = screen.getByRole("button", {
+        name: /sign in with microsoft/i,
+      });
+
+      await user.click(microsoftButton);
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith("/custom-route");
       });
     });
 
