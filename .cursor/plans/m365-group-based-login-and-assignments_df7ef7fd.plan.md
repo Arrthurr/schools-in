@@ -16,7 +16,7 @@ todos:
     status: in_progress
   - id: coverage-and-ci
     content: Raise Jest coverage back to >=70% (currently ~38% global); focus on auth/login, dashboard assignments, and sync edge cases.
-    status: pending
+    status: completed
   - id: e2e-validation
     content: Run Cypress login/admin/provider routing flows headless after coverage issues are resolved.
     status: pending

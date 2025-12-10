@@ -8,6 +8,9 @@
 // https://on.cypress.io/custom-commands
 // ***********************************************
 
+// Accessibility commands from cypress-axe (registers checkA11y before we overwrite)
+import "cypress-axe";
+
 // Custom command for login (will be implemented later with Firebase Auth)
 Cypress.Commands.add("login", (email, password, options = {}) => {
   // For now, we'll just set a cookie to simulate the user being logged in
