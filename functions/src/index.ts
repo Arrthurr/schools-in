@@ -30,6 +30,7 @@ interface SyncResult {
   assignedLocations: Array<{ id: string; name: string }>;
   removedLocations: Array<{ id: string; name: string }>;
   groupsFound: string[];
+  alreadySynced?: boolean;
 }
 
 function getAdminGroupConfig() {
@@ -128,7 +129,7 @@ async function getUserM365Groups(
   while (url) {
     const response = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        "Authorization": `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
     });
@@ -187,6 +188,37 @@ exports.syncUserFromM365 = onCall(
   },
   async (request: any): Promise<SyncResult> => {
     const { uid: userId, email: userEmail } = requireAuth(request);
+    const db = admin.firestore();
+    const userRef = db.collection("users").doc(userId);
+
+    const forceFlag = Boolean(request?.data?.force);
+    const userDoc = await userRef.get();
+    const userData = userDoc.exists ? userDoc.data() || {} : {};
+    const hasSynced = Boolean(userData?.m365SyncedAt);
+    const resyncRequested = Boolean(userData?.m365ResyncRequestedAt);
+    const shouldSync = forceFlag || resyncRequested || !hasSynced;
+
+    if (forceFlag) {
+      logger.info(`Force flag set for M365 sync for user ${userEmail} (${userId}).`);
+    } else if (resyncRequested) {
+      logger.info(
+        `Resync requested flag detected for user ${userEmail} (${userId}). Proceeding with full sync.`
+      );
+    }
+
+    if (!shouldSync) {
+      const role: "admin" | "provider" = userData?.role === "admin" ? "admin" : "provider";
+      logger.info(
+        `Skipping M365 sync for user ${userEmail} (${userId}) – already synced and no resync requested.`
+      );
+      return {
+        role,
+        assignedLocations: [],
+        removedLocations: [],
+        groupsFound: [],
+        alreadySynced: true,
+      };
+    }
 
     logger.info(`Starting M365 sync for user: ${userEmail} (${userId})`);
 
@@ -210,9 +242,6 @@ exports.syncUserFromM365 = onCall(
       logger.info(`User ${userEmail} role determined: ${role}`);
 
       // Step 4: Update or create user document with role
-      const db = admin.firestore();
-      const userRef = db.collection("users").doc(userId);
-
       await userRef.set(
         {
           role,
@@ -296,6 +325,17 @@ exports.syncUserFromM365 = onCall(
         groupsFound: groupNames,
       };
 
+      await userRef.set(
+        {
+          m365SyncedAt: admin.firestore.Timestamp.now(),
+          m365SyncedVersion: 1,
+          m365ResyncRequestedAt: admin.firestore.FieldValue.delete(),
+          m365ResyncReason: admin.firestore.FieldValue.delete(),
+          updatedAt: admin.firestore.Timestamp.now(),
+        },
+        { merge: true }
+      );
+
       logger.info(`M365 sync completed for user ${userEmail}:`, result);
 
       return result;
@@ -313,6 +353,30 @@ exports.syncUserFromM365 = onCall(
     }
   }
 );
+
+exports.requestM365Resync = onCall(async (request: any) => {
+  const { uid: userId, email } = requireAuth(request);
+  const db = admin.firestore();
+  const userRef = db.collection("users").doc(userId);
+
+  const reason = typeof request?.data?.reason === "string" ?
+    request.data.reason.trim().slice(0, 500) :
+    undefined;
+
+  await userRef.set(
+    {
+      m365ResyncRequestedAt: admin.firestore.Timestamp.now(),
+      m365ResyncReason: reason || admin.firestore.FieldValue.delete(),
+      updatedAt: admin.firestore.Timestamp.now(),
+      email,
+    },
+    { merge: true }
+  );
+
+  logger.info(`Resync requested for user ${email} (${userId})`);
+
+  return { success: true };
+});
 
 // Production configuration
 const _PRODUCTION_CONFIG = {
@@ -517,7 +581,7 @@ exports.cleanupStaleSessions = onSchedule(
       const batch = db.batch();
       const durationMinutes = Math.floor(sessionLimitInMs / 60000);
       const updateTime = admin.firestore.Timestamp.now();
-      
+
       staleSessionsSnapshot.forEach((doc: any) => {
         logger.info(`Found stale session: ${doc.id}`);
         const sessionRef = sessionsRef.doc(doc.id);
