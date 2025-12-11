@@ -86,6 +86,7 @@ async function createUserDocument(user: User): Promise<void> {
     createdAt: Timestamp.now(),
     lastActiveAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
+    autoGeofenceCheckEnabled: false,
   };
 
   await setDoc(userRef, userData);

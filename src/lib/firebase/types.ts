@@ -12,6 +12,8 @@ export interface User {
   lastActiveAt: Timestamp;
   phoneNumber?: string | null;
   updatedAt?: Timestamp;
+  // Opt-in flag for automatic geofence-based check-in/out
+  autoGeofenceCheckEnabled?: boolean;
 }
 
 export interface Location {

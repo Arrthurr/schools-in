@@ -108,6 +108,7 @@ export const createUser = async (data: UserFormData): Promise<string> => {
       createdAt: timestamp,
       updatedAt: timestamp,
       lastSignIn: timestamp,
+      autoGeofenceCheckEnabled: false,
     };
 
     await setDoc(newUserRef, newUser);

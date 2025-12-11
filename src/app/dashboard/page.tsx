@@ -36,6 +36,8 @@ import { Logo } from "../../components/ui/logo";
 import { CachedSessionService } from "@/lib/services/cachedSessionService";
 import { Session } from "@/lib/firebase/types";
 import { SkeletonList } from "@/components/ui/skeleton";
+import { useAutoGeofencePreference } from "@/lib/hooks/useAutoGeofencePreference";
+import { useAutoGeofenceCheck } from "@/lib/hooks/useAutoGeofenceCheck";
 
 export default function DashboardPage() {
   const { user } = useCachedAuth();
@@ -44,6 +46,8 @@ export default function DashboardPage() {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
+  const { enabled: autoGeofenceEnabled } = useAutoGeofencePreference();
+  const autoGeofence = useAutoGeofenceCheck();
 
   // New state for recent activity
   const [recentSessions, setRecentSessions] = useState<Session[]>([]);
@@ -282,6 +286,21 @@ export default function DashboardPage() {
                   </h1>
                 </div>
                 <div className="flex items-center gap-x-4 lg:gap-x-6">
+                  {autoGeofenceEnabled && (
+                    <Badge
+                      variant={
+                        autoGeofence.pausedReason ? "destructive" : "secondary"
+                      }
+                      className="flex items-center gap-2"
+                    >
+                      <MapPin className="h-4 w-4" />
+                      {autoGeofence.pausedReason
+                        ? "Auto Check Paused (GPS)"
+                        : autoGeofence.isPolling
+                          ? "Auto Check Active"
+                          : "Auto Check Ready"}
+                    </Badge>
+                  )}
                   <Button variant="ghost" size="sm">
                     <Bell className="h-5 w-5" />
                   </Button>
