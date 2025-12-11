@@ -183,3 +183,10 @@
 - **CI/CD Pipeline**: Automated testing on PR and main branch
 - **Performance Monitoring**: Lighthouse CI with performance budgets
 - **Accessibility Auditing**: axe-core integration with Cypress
+
+## System Tools
+
+- **Github CLI**: `gh`
+- **Firebase CLI**: `firebase`
+- **Homebrew**: `brew`
+
