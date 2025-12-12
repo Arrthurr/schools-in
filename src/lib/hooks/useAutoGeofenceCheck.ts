@@ -1,7 +1,8 @@
 "use client";
 
+import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Location } from "@/lib/firebase/types";
+import type { Location } from "@/lib/firebase/types";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useCachedSession } from "@/lib/hooks/useCachedSession";
 import { useSession } from "@/lib/hooks/useSession";
@@ -11,7 +12,7 @@ import { validateGeofence } from "@/lib/utils/geo";
 import { getAssignedLocations } from "@/lib/services/locationService";
 import { appLogger } from "@/lib/logging/appLogger";
 import { toast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
+import { ToastAction, type ToastActionElement } from "@/components/ui/toast";
 
 type GeofenceState = "idle" | "outside" | "entering" | "inside" | "exiting";
 
@@ -70,7 +71,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     AutoGeofenceState["activeCountdown"]
   >(null);
 
-  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const poorAccuracyCount = useRef(0);
   const insideStreak = useRef(0);
   const outsideStreak = useRef(0);
@@ -126,19 +127,25 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       const toastInstance = toast({
         title,
         description: initialDescription,
-        action: (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              toastInstance.dismiss();
-              onCancel?.();
-            }}
-          >
-            {ctaLabel}
-          </Button>
-        ),
         duration: durationMs + 1000, // keep toast visible through countdown
+      });
+
+      // Add action after toast exists (avoids self-reference in initializer)
+      const actionEl = React.createElement(
+        ToastAction,
+        {
+          altText: ctaLabel,
+          onClick: () => {
+            toastInstance.dismiss();
+            onCancel?.();
+          },
+        },
+        ctaLabel
+      ) as unknown as ToastActionElement;
+
+      toastInstance.update({
+        id: toastInstance.id,
+        action: actionEl,
       });
 
       const interval = setInterval(() => {
@@ -148,6 +155,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         );
         const secondsLeft = Math.ceil(remaining / 1000);
         toastInstance.update({
+          id: toastInstance.id,
           title,
           description: `${initialDescription} • Auto in ${secondsLeft}s`,
         });
@@ -266,77 +274,90 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         handleGoodAccuracy();
         setLastAccuracyMeters(current.accuracy);
 
-        // Determine distances to assigned locations
+        // Determine geofence state
         let firstInside: Location | null = null;
         let firstInsideDistance: number | null = null;
-        let activeLocation: Location | null = null;
 
-        assignedLocations.forEach((loc) => {
-          const { distance, isWithinGeofence } = validateGeofence(
-            current.latitude,
-            current.longitude,
-            loc.geo,
-            loc.radiusMeters ?? 100
+        if (activeSession) {
+          const activeLoc = assignedLocations.find(
+            (loc) => loc.id === activeSession.locationId
           );
+          if (activeLoc) {
+            const { distance, isWithinGeofence } = validateGeofence(
+              current.latitude,
+              current.longitude,
+              activeLoc.geo,
+              activeLoc.radiusMeters ?? 100
+            );
 
-          if (loc.id === activeSession?.locationId) {
-            activeLocation = loc;
+            setLastDistanceMeters(distance);
+
             if (isWithinGeofence) {
               outsideStreak.current = 0;
+              setGeofenceState("inside");
             } else {
               outsideStreak.current += 1;
-              setLastDistanceMeters(distance);
               setGeofenceState(
                 outsideStreak.current >= DEBOUNCE_POLLS ? "exiting" : "inside"
               );
             }
 
-            if (
-              outsideStreak.current >= DEBOUNCE_POLLS &&
-              !activeCountdown
-            ) {
-              const countdownKey = `checkout-${loc.id}`;
-              setActiveCountdown({ type: "checkout", locationId: loc.id });
+            if (outsideStreak.current >= DEBOUNCE_POLLS && !activeCountdown) {
+              const countdownKey = `checkout-${activeLoc.id}`;
+              setActiveCountdown({
+                type: "checkout",
+                locationId: activeLoc.id,
+              });
               appLogger.info("Auto checkout countdown started", {
-                locationId: loc.id,
+                locationId: activeLoc.id,
                 distance,
               });
               startCountdownToast({
                 id: countdownKey,
                 title: "Auto check-out",
-                initialDescription: `Leaving ${loc.name}`,
+                initialDescription: `Leaving ${activeLoc.name}`,
                 ctaLabel: "Stay Checked In",
                 onCancel: () => {
                   outsideStreak.current = 0;
                   clearCountdown(countdownKey);
                   setActiveCountdown(null);
-                  cancelledCheckIn.current[loc.id] = Date.now();
-                  appLogger.info("Auto checkout cancelled", { locationId: loc.id });
+                  cancelledCheckIn.current[activeLoc.id] = Date.now();
+                  appLogger.info("Auto checkout cancelled", {
+                    locationId: activeLoc.id,
+                  });
                 },
                 onConfirm: async () => {
                   clearCountdown(countdownKey);
                   setActiveCountdown(null);
-                  if (activeSession?.id) {
-                    await checkOut(activeSession.id, {
-                      latitude: current.latitude,
-                      longitude: current.longitude,
-                      accuracy: current.accuracy,
-                    });
-                    appLogger.info("Auto checkout completed", {
-                      locationId: loc.id,
-                    });
-                  }
+                  await checkOut(activeSession.id, {
+                    latitude: current.latitude,
+                    longitude: current.longitude,
+                    accuracy: current.accuracy,
+                  });
+                  appLogger.info("Auto checkout completed", {
+                    locationId: activeLoc.id,
+                  });
                 },
               });
             }
           }
+        } else {
+          for (const loc of assignedLocations) {
+            const { distance, isWithinGeofence } = validateGeofence(
+              current.latitude,
+              current.longitude,
+              loc.geo,
+              loc.radiusMeters ?? 100
+            );
 
-          if (!firstInside && isWithinGeofence) {
-            firstInside = loc;
-            firstInsideDistance = distance;
-            setLastDistanceMeters(distance);
+            if (isWithinGeofence) {
+              firstInside = loc;
+              firstInsideDistance = distance;
+              setLastDistanceMeters(distance);
+              break;
+            }
           }
-        });
+        }
 
         // Handle check-in logic only when no active session
         if (!activeSession && firstInside) {
