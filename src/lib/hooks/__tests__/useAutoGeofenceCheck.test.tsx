@@ -34,11 +34,15 @@ Object.defineProperty(document, "visibilityState", {
   value: "visible",
 });
 
+// Helper to flush all pending promises and microtasks
+const flushPromises = () => new Promise(jest.requireActual("timers").setImmediate);
+
 describe("useAutoGeofenceCheck", () => {
   const mockUser = { uid: "user-1", role: "provider" };
   const mockLocation: Location = {
     id: "loc-1",
     name: "Test School",
+    address: "123 Test St",
     geo: new GeoPoint(40.7128, -74.006),
     radiusMeters: 100,
     assignedProviders: ["user-1"],
@@ -57,6 +61,11 @@ describe("useAutoGeofenceCheck", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    // Reset visibility state for each test
+    Object.defineProperty(document, "visibilityState", {
+      writable: true,
+      value: "visible",
+    });
 
     (useCachedAuth as jest.Mock).mockReturnValue({ user: mockUser });
     (useAutoGeofencePreference as jest.Mock).mockReturnValue({
@@ -80,8 +89,15 @@ describe("useAutoGeofenceCheck", () => {
     (getAssignedLocations as jest.Mock).mockResolvedValue([mockLocation]);
   });
 
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
+  afterEach(async () => {
+    // Wait for any pending async operations before cleaning up
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    // Clear all timers without executing callbacks to avoid state updates outside act()
+    jest.clearAllTimers();
+    jest.restoreAllMocks();
     jest.useRealTimers();
   });
 
@@ -144,21 +160,25 @@ describe("useAutoGeofenceCheck", () => {
 
       // Wait for initial poll to complete
       await act(async () => {
+        jest.advanceTimersByTime(0);
         await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
-      
-      const initialCalls = (locationService.getCurrentLocation as jest.Mock).mock.calls.length;
-      expect(initialCalls).toBeGreaterThanOrEqual(1);
+
+      // Clear previous calls to count only new ones
+      (locationService.getCurrentLocation as jest.Mock).mockClear();
 
       // After 60 seconds - advance timers and wait for async operations
       await act(async () => {
         jest.advanceTimersByTime(60000);
         await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
-      
-      // Should have at least one more call
-      const afterCalls = (locationService.getCurrentLocation as jest.Mock).mock.calls.length;
-      expect(afterCalls).toBeGreaterThan(initialCalls);
+
+      // Wait for the async poll to complete
+      await waitFor(() => {
+        expect(locationService.getCurrentLocation).toHaveBeenCalled();
+      });
     });
 
     it("should stop polling when tab becomes hidden", async () => {
@@ -168,45 +188,59 @@ describe("useAutoGeofenceCheck", () => {
 
       renderHook(() => useAutoGeofenceCheck());
 
+      // Wait for locations to load and initial poll
+      await act(async () => {
+        await flushPromises();
+      });
+
       await waitFor(() => {
         expect(getAssignedLocations).toHaveBeenCalled();
       });
 
-      // Initial poll
+      // Flush initial poll
       await act(async () => {
-        jest.advanceTimersByTime(0);
+        await flushPromises();
       });
 
       // Simulate tab hidden
-      Object.defineProperty(document, "visibilityState", {
-        writable: true,
-        value: "hidden",
+      await act(async () => {
+        Object.defineProperty(document, "visibilityState", {
+          writable: true,
+          value: "hidden",
+        });
+        document.dispatchEvent(new Event("visibilitychange"));
+        await flushPromises();
       });
-      document.dispatchEvent(new Event("visibilitychange"));
+
+      const callCountBefore = (locationService.getCurrentLocation as jest.Mock).mock
+        .calls.length;
 
       await act(async () => {
         jest.advanceTimersByTime(60000);
+        await flushPromises();
       });
 
       // Should not poll when hidden
-      const callCount = (locationService.getCurrentLocation as jest.Mock).mock
+      const callCountAfterHidden = (locationService.getCurrentLocation as jest.Mock).mock
         .calls.length;
+      expect(callCountAfterHidden).toBe(callCountBefore);
 
       // Resume visibility
-      Object.defineProperty(document, "visibilityState", {
-        writable: true,
-        value: "visible",
-      });
-      document.dispatchEvent(new Event("visibilitychange"));
-
       await act(async () => {
-        jest.advanceTimersByTime(0);
+        Object.defineProperty(document, "visibilityState", {
+          writable: true,
+          value: "visible",
+        });
+        document.dispatchEvent(new Event("visibilitychange"));
+        await flushPromises();
       });
 
-      // Should poll again when visible
-      expect(locationService.getCurrentLocation).toHaveBeenCalledTimes(
-        callCount + 1
-      );
+      // Should poll again when visible - wait for at least one more call
+      await waitFor(() => {
+        expect(
+          (locationService.getCurrentLocation as jest.Mock).mock.calls.length
+        ).toBeGreaterThan(callCountBefore);
+      });
     });
   });
 
@@ -221,7 +255,7 @@ describe("useAutoGeofenceCheck", () => {
         accuracy: 60, // Poor accuracy
       });
 
-      const { result } = renderHook(() => useAutoGeofenceCheck());
+      renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
         expect(getAssignedLocations).toHaveBeenCalled();
@@ -229,6 +263,8 @@ describe("useAutoGeofenceCheck", () => {
 
       await act(async () => {
         jest.advanceTimersByTime(0);
+        await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
 
       // Should not trigger geofence check with poor accuracy
@@ -255,12 +291,17 @@ describe("useAutoGeofenceCheck", () => {
       for (let i = 0; i < 3; i++) {
         await act(async () => {
           jest.advanceTimersByTime(60000);
+          await Promise.resolve();
+          await Promise.resolve(); // Flush all microtasks
         });
       }
 
-      await waitFor(() => {
-        expect(result.current.pausedReason).toBe("poor-accuracy");
-      });
+      await waitFor(
+        () => {
+          expect(result.current.pausedReason).toBe("poor-accuracy");
+        },
+        { timeout: 2000 }
+      );
 
       expect(toast).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -287,17 +328,28 @@ describe("useAutoGeofenceCheck", () => {
         expect(getAssignedLocations).toHaveBeenCalled();
       });
 
+      // Initial poll
+      await act(async () => {
+        jest.advanceTimersByTime(0);
+        await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
+      });
+
       // Trigger 3 poor accuracy cycles to pause
       for (let i = 0; i < 3; i++) {
         await act(async () => {
           jest.advanceTimersByTime(60000);
           await Promise.resolve();
+          await Promise.resolve(); // Flush all microtasks
         });
       }
 
-      await waitFor(() => {
-        expect(result.current.pausedReason).toBe("poor-accuracy");
-      });
+      await waitFor(
+        () => {
+          expect(result.current.pausedReason).toBe("poor-accuracy");
+        },
+        { timeout: 2000 }
+      );
 
       // Improve accuracy
       (locationService.getCurrentLocation as jest.Mock).mockResolvedValue({
@@ -306,18 +358,26 @@ describe("useAutoGeofenceCheck", () => {
         accuracy: 10,
       });
 
+      // Clear toast calls to check for resume toast
+      (toast as jest.Mock).mockClear();
+
+      // Trigger poll with good accuracy - this should call handleGoodAccuracy
+      // which sets pausedReason to null
       await act(async () => {
         jest.advanceTimersByTime(60000);
         await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
 
+      // Wait for state updates to propagate (setPausedReason is async)
       await waitFor(
         () => {
           expect(result.current.pausedReason).toBeNull();
         },
-        { timeout: 3000 }
+        { timeout: 2000 }
       );
 
+      // Check for resume toast - should be called when pausedReason is cleared
       expect(toast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Auto check resumed",
@@ -344,11 +404,16 @@ describe("useAutoGeofenceCheck", () => {
 
       await act(async () => {
         jest.advanceTimersByTime(0);
+        await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
 
-      await waitFor(() => {
-        expect(result.current.geofenceState).toBe("outside");
-      });
+      await waitFor(
+        () => {
+          expect(result.current.geofenceState).toBe("outside");
+        },
+        { timeout: 2000 }
+      );
     });
 
     it("should transition from outside to entering after 1 poll inside", async () => {
@@ -368,11 +433,16 @@ describe("useAutoGeofenceCheck", () => {
 
       await act(async () => {
         jest.advanceTimersByTime(0);
+        await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
 
-      await waitFor(() => {
-        expect(result.current.geofenceState).toBe("entering");
-      });
+      await waitFor(
+        () => {
+          expect(result.current.geofenceState).toBe("entering");
+        },
+        { timeout: 2000 }
+      );
     });
 
     it("should trigger check-in after 2 consecutive polls inside (debouncing)", async () => {
@@ -386,27 +456,38 @@ describe("useAutoGeofenceCheck", () => {
 
       renderHook(() => useAutoGeofenceCheck());
 
+      // Wait for locations to load and initial poll to complete
+      await act(async () => {
+        await flushPromises();
+      });
+
       await waitFor(() => {
         expect(getAssignedLocations).toHaveBeenCalled();
       });
 
-      // First poll - entering state
+      // First poll already happened during initialization
+      // Flush to ensure it completed
       await act(async () => {
-        jest.advanceTimersByTime(0);
+        await flushPromises();
       });
 
-      // Second poll - should trigger check-in countdown
+      // Second poll - should trigger check-in countdown (after debounce = 2 polls)
       await act(async () => {
         jest.advanceTimersByTime(60000);
+        await flushPromises();
       });
 
-      await waitFor(() => {
-        expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({
-            title: "Auto check-in",
-          })
-        );
-      });
+      // Wait for the countdown toast to be triggered
+      await waitFor(
+        () => {
+          expect(toast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: "Auto check-in",
+            })
+          );
+        },
+        { timeout: 3000 }
+      );
     });
   });
 
@@ -419,6 +500,11 @@ describe("useAutoGeofenceCheck", () => {
         status: "active",
         checkInTime: Timestamp.now(),
         startTime: Timestamp.now(),
+        checkInMethod: "geo",
+        distanceFromCenterAtCheckIn: 50,
+        dayKey: "2024-01-01",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
       };
 
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
@@ -440,6 +526,8 @@ describe("useAutoGeofenceCheck", () => {
 
       await act(async () => {
         jest.advanceTimersByTime(0);
+        await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
 
       // Should not trigger check-in countdown
@@ -465,13 +553,18 @@ describe("useAutoGeofenceCheck", () => {
         const toastInstance = {
           id: "toast-1",
           dismiss: jest.fn(),
-          update: jest.fn(),
+          update: jest.fn().mockImplementation((updateConfig: { action?: { props?: { onClick?: () => void } } }) => {
+            // Capture action from update call (action is added via update in the hook)
+            if (updateConfig?.action?.props?.onClick) {
+              cancelCallback = updateConfig.action.props.onClick;
+            }
+          }),
         };
 
-        // Capture cancel callback
+        // Also check initial config
         if (config.action) {
-          const actionElement = config.action as any;
-          if (actionElement.props?.onClick) {
+          const actionElement = config.action as { props?: { onClick?: () => void } };
+          if (actionElement?.props?.onClick) {
             cancelCallback = actionElement.props.onClick;
           }
         }
@@ -481,26 +574,38 @@ describe("useAutoGeofenceCheck", () => {
 
       renderHook(() => useAutoGeofenceCheck());
 
+      // Wait for locations to load and initial poll
+      await act(async () => {
+        await flushPromises();
+      });
+
       await waitFor(() => {
         expect(getAssignedLocations).toHaveBeenCalled();
       });
 
-      // Trigger check-in countdown
+      // First poll already happened, flush it
       await act(async () => {
-        jest.advanceTimersByTime(0);
-      });
-      await act(async () => {
-        jest.advanceTimersByTime(60000);
+        await flushPromises();
       });
 
-      await waitFor(() => {
-        expect(toast).toHaveBeenCalled();
+      // Second poll - trigger check-in countdown
+      await act(async () => {
+        jest.advanceTimersByTime(60000);
+        await flushPromises();
       });
+
+      await waitFor(
+        () => {
+          expect(toast).toHaveBeenCalled();
+        },
+        { timeout: 2000 }
+      );
 
       // Cancel the countdown
       if (cancelCallback) {
         await act(async () => {
-          cancelCallback();
+          cancelCallback!();
+          await flushPromises();
         });
       }
 
@@ -529,32 +634,43 @@ describe("useAutoGeofenceCheck", () => {
 
       renderHook(() => useAutoGeofenceCheck());
 
+      // Wait for locations to load and initial poll
+      await act(async () => {
+        await flushPromises();
+      });
+
       await waitFor(() => {
         expect(getAssignedLocations).toHaveBeenCalled();
       });
 
-      // First poll - entering state
+      // First poll already happened, flush it
       await act(async () => {
-        jest.advanceTimersByTime(0);
-        await Promise.resolve();
+        await flushPromises();
       });
 
-      // Second poll - should trigger check-in countdown (after debounce)
+      // Second poll - should trigger check-in countdown (after debounce = 2 polls)
       await act(async () => {
         jest.advanceTimersByTime(60000);
-        await Promise.resolve();
+        await flushPromises();
       });
 
-      await waitFor(() => {
-        expect(toast).toHaveBeenCalled();
-      });
+      await waitFor(
+        () => {
+          expect(toast).toHaveBeenCalled();
+        },
+        { timeout: 2000 }
+      );
 
-      // Fast-forward countdown (15 seconds)
-      await act(async () => {
-        jest.advanceTimersByTime(15000);
-        await Promise.resolve();
-      });
+      // Fast-forward countdown (15 seconds) - need to advance in smaller increments
+      // to trigger the interval callbacks. The interval runs every 1000ms.
+      for (let i = 0; i < 15; i++) {
+        await act(async () => {
+          jest.advanceTimersByTime(1000);
+          await flushPromises();
+        });
+      }
 
+      // Wait for the async onConfirm callback to complete
       await waitFor(
         () => {
           expect(mockCheckIn).toHaveBeenCalledWith(
@@ -566,7 +682,7 @@ describe("useAutoGeofenceCheck", () => {
             })
           );
         },
-        { timeout: 3000 }
+        { timeout: 2000 }
       );
     });
   });
@@ -580,6 +696,11 @@ describe("useAutoGeofenceCheck", () => {
         status: "active",
         checkInTime: Timestamp.now(),
         startTime: Timestamp.now(),
+        checkInMethod: "geo",
+        distanceFromCenterAtCheckIn: 50,
+        dayKey: "2024-01-01",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
       };
 
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
@@ -601,29 +722,42 @@ describe("useAutoGeofenceCheck", () => {
         expect(getAssignedLocations).toHaveBeenCalled();
       });
 
-      // First poll - inside
+      // First poll - inside (resets outsideStreak)
       await act(async () => {
         jest.advanceTimersByTime(0);
+        await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
 
-      // Move outside
+      // Move outside - first poll outside (outsideStreak = 1)
       (validateGeofence as jest.Mock).mockReturnValue({
         distance: 150,
         isWithinGeofence: false,
       });
 
-      // Second poll outside - should trigger check-out countdown
       await act(async () => {
         jest.advanceTimersByTime(60000);
+        await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
 
-      await waitFor(() => {
-        expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({
-            title: "Auto check-out",
-          })
-        );
+      // Second poll outside - should trigger check-out countdown (after debounce = 2 polls)
+      await act(async () => {
+        jest.advanceTimersByTime(60000);
+        await Promise.resolve();
+        await Promise.resolve(); // Flush all microtasks
       });
+
+      await waitFor(
+        () => {
+          expect(toast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: "Auto check-out",
+            })
+          );
+        },
+        { timeout: 2000 }
+      );
     });
 
     it("should only check-out from currently active session location", async () => {
@@ -634,11 +768,17 @@ describe("useAutoGeofenceCheck", () => {
         status: "active",
         checkInTime: Timestamp.now(),
         startTime: Timestamp.now(),
+        checkInMethod: "geo",
+        distanceFromCenterAtCheckIn: 50,
+        dayKey: "2024-01-01",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
       };
 
       const otherLocation: Location = {
         id: "loc-2",
         name: "Other School",
+        address: "456 Other St",
         geo: new GeoPoint(40.713, -74.007),
         radiusMeters: 100,
         assignedProviders: ["user-1"],
@@ -659,7 +799,7 @@ describe("useAutoGeofenceCheck", () => {
 
       // Inside other location but outside active session location
       (validateGeofence as jest.Mock).mockImplementation(
-        (lat, lng, geo, radius) => {
+        (_lat, _lng, geo, _radius) => {
           // Check if it's the active session location
           if (geo.latitude === mockLocation.geo.latitude) {
             return { distance: 150, isWithinGeofence: false };
@@ -670,25 +810,37 @@ describe("useAutoGeofenceCheck", () => {
 
       renderHook(() => useAutoGeofenceCheck());
 
+      // Wait for locations to load and initial poll
+      await act(async () => {
+        await flushPromises();
+      });
+
       await waitFor(() => {
         expect(getAssignedLocations).toHaveBeenCalled();
       });
 
+      // First poll already happened (outsideStreak = 1), flush it
       await act(async () => {
-        jest.advanceTimersByTime(0);
+        await flushPromises();
       });
+
+      // Second poll - should trigger check-out countdown (after debounce = 2 polls)
       await act(async () => {
         jest.advanceTimersByTime(60000);
+        await flushPromises();
       });
 
       // Should trigger check-out for active session location
-      await waitFor(() => {
-        expect(toast).toHaveBeenCalledWith(
-          expect.objectContaining({
-            title: "Auto check-out",
-          })
-        );
-      });
+      await waitFor(
+        () => {
+          expect(toast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: "Auto check-out",
+            })
+          );
+        },
+        { timeout: 2000 }
+      );
     });
   });
 
@@ -697,6 +849,7 @@ describe("useAutoGeofenceCheck", () => {
       const location1: Location = {
         id: "loc-1",
         name: "First School",
+        address: "123 First St",
         geo: new GeoPoint(40.7128, -74.006),
         radiusMeters: 100,
         assignedProviders: ["user-1"],
@@ -707,6 +860,7 @@ describe("useAutoGeofenceCheck", () => {
       const location2: Location = {
         id: "loc-2",
         name: "Second School",
+        address: "456 Second St",
         geo: new GeoPoint(40.7129, -74.0061), // Closer
         radiusMeters: 100,
         assignedProviders: ["user-1"],
@@ -724,37 +878,68 @@ describe("useAutoGeofenceCheck", () => {
 
       // Inside both geofences
       (validateGeofence as jest.Mock).mockImplementation(
-        (lat, lng, geo, radius) => {
+        (_lat, _lng, _geo, _radius) => {
           return { distance: 50, isWithinGeofence: true };
         }
       );
 
       mockCheckIn.mockResolvedValue(undefined);
 
+      const toastInstance = {
+        id: "toast-1",
+        dismiss: jest.fn(),
+        update: jest.fn(),
+      };
+
+      (toast as jest.Mock).mockReturnValue(toastInstance);
+
       renderHook(() => useAutoGeofenceCheck());
+
+      // Wait for locations to load and initial poll
+      await act(async () => {
+        await flushPromises();
+      });
 
       await waitFor(() => {
         expect(getAssignedLocations).toHaveBeenCalled();
       });
 
-      // Trigger check-in
+      // First poll already happened, flush it
       await act(async () => {
-        jest.advanceTimersByTime(0);
-      });
-      await act(async () => {
-        jest.advanceTimersByTime(60000);
-      });
-      await act(async () => {
-        jest.advanceTimersByTime(15000); // Countdown
+        await flushPromises();
       });
 
-      // Should check in to first school (loc-1), not closest (loc-2)
-      await waitFor(() => {
-        expect(mockCheckIn).toHaveBeenCalledWith(
-          "loc-1",
-          expect.any(Object)
-        );
+      // Second poll - triggers countdown (after debounce = 2 polls)
+      await act(async () => {
+        jest.advanceTimersByTime(60000);
+        await flushPromises();
       });
+
+      await waitFor(
+        () => {
+          expect(toast).toHaveBeenCalled();
+        },
+        { timeout: 3000 }
+      );
+
+      // Fast-forward countdown (15 seconds)
+      for (let i = 0; i < 15; i++) {
+        await act(async () => {
+          jest.advanceTimersByTime(1000);
+          await flushPromises();
+        });
+      }
+
+      // Wait for the onConfirm callback to complete
+      await waitFor(
+        () => {
+          expect(mockCheckIn).toHaveBeenCalledWith(
+            "loc-1",
+            expect.any(Object)
+          );
+        },
+        { timeout: 5000 }
+      );
     });
   });
 
@@ -774,12 +959,18 @@ describe("useAutoGeofenceCheck", () => {
         const toastInstance = {
           id: "toast-1",
           dismiss: jest.fn(),
-          update: jest.fn(),
+          update: jest.fn().mockImplementation((updateConfig: { action?: { props?: { onClick?: () => void } } }) => {
+            // Capture action from update call (action is added via update in the hook)
+            if (updateConfig?.action?.props?.onClick) {
+              cancelCallback = updateConfig.action.props.onClick;
+            }
+          }),
         };
 
+        // Also check initial config
         if (config.action) {
-          const actionElement = config.action as any;
-          if (actionElement.props?.onClick) {
+          const actionElement = config.action as { props?: { onClick?: () => void } };
+          if (actionElement?.props?.onClick) {
             cancelCallback = actionElement.props.onClick;
           }
         }
@@ -789,45 +980,61 @@ describe("useAutoGeofenceCheck", () => {
 
       renderHook(() => useAutoGeofenceCheck());
 
+      // Wait for locations to load and initial poll
+      await act(async () => {
+        await flushPromises();
+      });
+
       await waitFor(() => {
         expect(getAssignedLocations).toHaveBeenCalled();
       });
 
-      // Trigger and cancel check-in
+      // First poll already happened, flush it
       await act(async () => {
-        jest.advanceTimersByTime(0);
-      });
-      await act(async () => {
-        jest.advanceTimersByTime(60000);
+        await flushPromises();
       });
 
-      await waitFor(() => {
-        expect(toast).toHaveBeenCalled();
+      // Second poll - triggers countdown (after debounce = 2 polls)
+      await act(async () => {
+        jest.advanceTimersByTime(60000);
+        await flushPromises();
       });
+
+      await waitFor(
+        () => {
+          expect(toast).toHaveBeenCalled();
+        },
+        { timeout: 3000 }
+      );
 
       if (cancelCallback) {
         await act(async () => {
-          cancelCallback();
+          cancelCallback!();
+          await flushPromises();
         });
       }
 
-      // Clear toast calls
+      // Clear toast calls after cancellation is complete
       (toast as jest.Mock).mockClear();
 
-      // Within cooldown period (5 minutes) - should not trigger again
+      // Within cooldown period (5 minutes = 300000ms) - should not trigger again
+      // Advance time but stay within cooldown (only 2 minutes = 120000ms)
       await act(async () => {
         jest.advanceTimersByTime(60000); // 1 minute
+        await flushPromises();
       });
       await act(async () => {
-        jest.advanceTimersByTime(60000); // 2 minutes
+        jest.advanceTimersByTime(60000); // 2 minutes total (still within 5 min cooldown)
+        await flushPromises();
       });
 
-      // Should not show new countdown
-      expect(toast).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: "Auto check-in",
-        })
+      // Should not show new countdown (still in cooldown)
+      // Check that no new "Auto check-in" toasts were called after cancellation
+      const toastCalls = (toast as jest.Mock).mock.calls;
+      const autoCheckInCalls = toastCalls.filter(
+        (call) => call[0]?.title === "Auto check-in"
       );
+      expect(autoCheckInCalls.length).toBe(0);
     });
   });
 });

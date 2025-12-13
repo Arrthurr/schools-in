@@ -79,6 +79,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const targetLocationId = useRef<string | null>(null);
   const cancelledCheckIn = useRef<Record<string, number>>({});
   const countdownCleanup = useRef<Record<string, () => void>>({});
+  const activeCountdownRef = useRef<AutoGeofenceState["activeCountdown"]>(null);
 
   const featureEnabled = FEATURE_FLAG && !!user?.uid;
 
@@ -230,6 +231,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     );
   }, [clearCountdown]);
 
+  // Keep ref in sync with state
+  useEffect(() => {
+    activeCountdownRef.current = activeCountdown;
+  }, [activeCountdown]);
+
   // Cancel any active countdowns when session state changes externally
   useEffect(() => {
     if (activeSession && activeCountdown?.type === "checkin") {
@@ -256,10 +262,6 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         return;
       }
 
-      if (pausedReason) {
-        return;
-      }
-
       setIsPolling(true);
       try {
         const current = await locationService.getCurrentLocation();
@@ -274,6 +276,12 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
         handleGoodAccuracy();
         setLastAccuracyMeters(current.accuracy);
+
+        // If paused, only check accuracy and return early
+        if (pausedReason) {
+          setIsPolling(false);
+          return;
+        }
 
         // Determine geofence state
         let firstInside: Location | null = null;
@@ -303,7 +311,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               );
             }
 
-            if (outsideStreak.current >= DEBOUNCE_POLLS && !activeCountdown) {
+            if (outsideStreak.current >= DEBOUNCE_POLLS && !activeCountdownRef.current) {
               const countdownKey = `checkout-${activeLoc.id}`;
               setActiveCountdown({
                 type: "checkout",
@@ -403,7 +411,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
             if (
               insideStreak.current >= DEBOUNCE_POLLS &&
-              !activeCountdown
+              !activeCountdownRef.current
             ) {
               const countdownKey = `checkin-${firstInside.id}`;
               setActiveCountdown({
@@ -490,7 +498,6 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     pausedReason,
     clearTimers,
     startCountdownToast,
-    activeCountdown,
   ]);
 
   return useMemo(
