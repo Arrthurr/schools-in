@@ -13,6 +13,7 @@ import { getAssignedLocations } from "@/lib/services/locationService";
 import { appLogger } from "@/lib/logging/appLogger";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction, type ToastActionElement } from "@/components/ui/toast";
+import { formatDuration } from "@/lib/utils/session";
 
 type GeofenceState = "idle" | "outside" | "entering" | "inside" | "exiting";
 
@@ -78,6 +79,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const targetLocationId = useRef<string | null>(null);
   const cancelledCheckIn = useRef<Record<string, number>>({});
   const countdownCleanup = useRef<Record<string, () => void>>({});
+  const activeCountdownRef = useRef<AutoGeofenceState["activeCountdown"]>(null);
 
   const featureEnabled = FEATURE_FLAG && !!user?.uid;
 
@@ -229,6 +231,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     );
   }, [clearCountdown]);
 
+  // Keep ref in sync with state
+  useEffect(() => {
+    activeCountdownRef.current = activeCountdown;
+  }, [activeCountdown]);
+
   // Cancel any active countdowns when session state changes externally
   useEffect(() => {
     if (activeSession && activeCountdown?.type === "checkin") {
@@ -255,10 +262,6 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         return;
       }
 
-      if (pausedReason) {
-        return;
-      }
-
       setIsPolling(true);
       try {
         const current = await locationService.getCurrentLocation();
@@ -273,6 +276,12 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
         handleGoodAccuracy();
         setLastAccuracyMeters(current.accuracy);
+
+        // If paused, only check accuracy and return early
+        if (pausedReason) {
+          setIsPolling(false);
+          return;
+        }
 
         // Determine geofence state
         let firstInside: Location | null = null;
@@ -302,26 +311,46 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               );
             }
 
-            if (outsideStreak.current >= DEBOUNCE_POLLS && !activeCountdown) {
+            if (outsideStreak.current >= DEBOUNCE_POLLS && !activeCountdownRef.current) {
               const countdownKey = `checkout-${activeLoc.id}`;
               setActiveCountdown({
                 type: "checkout",
                 locationId: activeLoc.id,
               });
+
+              // Calculate session duration
+              const startTime =
+                activeSession.startTime instanceof Date
+                  ? activeSession.startTime
+                  : activeSession.startTime.toDate();
+              const checkInTime = activeSession.checkInTime
+                ? activeSession.checkInTime instanceof Date
+                  ? activeSession.checkInTime
+                  : activeSession.checkInTime.toDate()
+                : null;
+              const sessionStart = checkInTime || startTime;
+              const now = new Date();
+              const durationMinutes = Math.floor(
+                (now.getTime() - sessionStart.getTime()) / (1000 * 60)
+              );
+              const durationText = formatDuration(durationMinutes);
+
               appLogger.info("Auto checkout countdown started", {
                 locationId: activeLoc.id,
                 distance,
+                durationMinutes,
               });
               startCountdownToast({
                 id: countdownKey,
                 title: "Auto check-out",
-                initialDescription: `Leaving ${activeLoc.name}`,
+                initialDescription: `Leaving ${activeLoc.name} • Session: ${durationText}`,
                 ctaLabel: "Stay Checked In",
                 onCancel: () => {
                   outsideStreak.current = 0;
                   clearCountdown(countdownKey);
                   setActiveCountdown(null);
-                  cancelledCheckIn.current[activeLoc.id] = Date.now();
+                  // Note: Checkout cancellations do not affect check-in cooldown
+                  // Only cancelled check-ins should block future auto check-ins
                   appLogger.info("Auto checkout cancelled", {
                     locationId: activeLoc.id,
                   });
@@ -382,22 +411,28 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
             if (
               insideStreak.current >= DEBOUNCE_POLLS &&
-              !activeCountdown
+              !activeCountdownRef.current
             ) {
               const countdownKey = `checkin-${firstInside.id}`;
               setActiveCountdown({
                 type: "checkin",
                 locationId: firstInside.id,
               });
+              const distanceMeters = firstInsideDistance ?? lastDistanceMeters ?? 0;
+              const distanceText =
+                distanceMeters < 1000
+                  ? `${Math.round(distanceMeters)}m`
+                  : `${(distanceMeters / 1000).toFixed(1)}km`;
+
               appLogger.info("Auto check-in countdown started", {
                 locationId: firstInside.id,
-                distance: firstInsideDistance ?? lastDistanceMeters,
+                distance: distanceMeters,
               });
 
               startCountdownToast({
                 id: countdownKey,
                 title: "Auto check-in",
-                initialDescription: `Arrived at ${firstInside.name}`,
+                initialDescription: `Arrived at ${firstInside.name} • ${distanceText} away`,
                 ctaLabel: "Cancel",
                 onCancel: () => {
                   insideStreak.current = 0;
@@ -463,7 +498,6 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     pausedReason,
     clearTimers,
     startCountdownToast,
-    activeCountdown,
   ]);
 
   return useMemo(
