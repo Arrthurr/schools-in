@@ -138,7 +138,7 @@ describe("SchoolList Component", () => {
     expect(distanceBadges.length).toBeGreaterThan(0);
   });
 
-  it("shows check-in buttons when enabled", async () => {
+  it("shows check-in buttons when explicitly enabled", async () => {
     render(<SchoolList showCheckInButtons={true} />);
 
     await waitFor(() => {
@@ -147,6 +147,34 @@ describe("SchoolList Component", () => {
       });
       expect(checkInButtons.length).toBeGreaterThan(0);
     });
+  });
+
+  it("does not show check-in buttons when showCheckInButtons is false (provider auto mode)", async () => {
+    render(<SchoolList showCheckInButtons={false} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Walter Payton HS")).toBeInTheDocument();
+    });
+
+    // Should not find any check-in buttons
+    const checkInButtons = screen.queryAllByRole("button", {
+      name: /check in/i,
+    });
+    expect(checkInButtons.length).toBe(0);
+  });
+
+  it("does not show check-in buttons by default", async () => {
+    render(<SchoolList />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Walter Payton HS")).toBeInTheDocument();
+    });
+
+    // Default behavior should not show check-in buttons (for providers using auto mode)
+    const checkInButtons = screen.queryAllByRole("button", {
+      name: /check in/i,
+    });
+    expect(checkInButtons.length).toBe(0);
   });
 
   it("handles search input", async () => {

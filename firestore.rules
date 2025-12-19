@@ -64,7 +64,7 @@ service cloud.firestore {
       allow update: if (isOwner(userId) && 
                        // Users can only update specific fields
                        request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['displayName', 'photoURL', 'lastActiveAt', 'updatedAt'])) ||
+                         .hasOnly(['displayName', 'photoURL', 'lastActiveAt', 'updatedAt', 'autoGeofenceCheckEnabled'])) ||
                        (isAdmin() && hasValidTimestamp(request.resource.data));
       
       allow delete: if isAdmin();

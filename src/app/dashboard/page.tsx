@@ -117,13 +117,7 @@ export default function DashboardPage() {
     return "Just now";
   };
 
-  const handleEndSession = async (_sessionId: string) => {
-    try {
-      await metrics.endSession();
-    } catch (err) {
-      console.error("Error ending session:", err);
-    }
-  };
+  // Note: Manual end session removed for providers - auto check-out handles this via geofence
 
   const handleSignOut = async () => {
     try {
@@ -289,16 +283,29 @@ export default function DashboardPage() {
                   {autoGeofenceEnabled && (
                     <Badge
                       variant={
-                        autoGeofence.pausedReason ? "destructive" : "secondary"
+                        autoGeofence.locationPermission === "denied" ||
+                        autoGeofence.locationPermission === "unavailable"
+                          ? "destructive"
+                          : autoGeofence.pausedReason
+                            ? "destructive"
+                            : autoGeofence.locationPermission === "granted"
+                              ? "secondary"
+                              : "outline"
                       }
                       className="flex items-center gap-2"
                     >
                       <MapPin className="h-4 w-4" />
-                      {autoGeofence.pausedReason
-                        ? "Auto Check Paused (GPS)"
-                        : autoGeofence.isPolling
-                          ? "Auto Check Active"
-                          : "Auto Check Ready"}
+                      {autoGeofence.locationPermission === "denied"
+                        ? "Location Access Denied"
+                        : autoGeofence.locationPermission === "unavailable"
+                          ? "Location Unavailable"
+                          : autoGeofence.locationPermission !== "granted"
+                            ? "Enable Location"
+                            : autoGeofence.pausedReason
+                              ? "Auto Check Paused (GPS)"
+                              : autoGeofence.isPolling
+                                ? "Auto Check Active"
+                                : "Auto Check Ready"}
                     </Badge>
                   )}
                   <Button variant="ghost" size="sm">
@@ -332,16 +339,17 @@ export default function DashboardPage() {
               {/* Mobile-first: Priority order - Current Session & Assigned Schools first */}
               <div className="space-y-6 mb-8">
                 {/* Current Session Card - Top priority on mobile */}
+                {/* Note: onEndSession removed - providers use automatic check-out via geofence */}
                 <SessionStatus
                   currentSession={
                     metrics.currentSession || metrics.lastCompletedSession
                   }
-                  onEndSession={handleEndSession}
                 />
 
                 {/* Assigned Schools - Second priority on mobile */}
+                {/* Note: showCheckInButtons removed - providers use automatic check-in via geofence */}
                 <SchoolList
-                  showCheckInButtons={true}
+                  showCheckInButtons={false}
                   currentSessionLocationId={metrics.currentSession?.locationId}
                 />
               </div>

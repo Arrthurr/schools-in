@@ -58,6 +58,12 @@ export interface StartSessionData {
   distanceFromCenterAtCheckIn: number;
   dayKey: string;
   notes?: string;
+  /** GPS coordinates at check-in (required for admin manual check-in, recommended for all) */
+  checkInLocation?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  };
 }
 
 export interface EndSessionData {
