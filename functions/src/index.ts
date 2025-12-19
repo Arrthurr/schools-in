@@ -392,7 +392,35 @@ const _PRODUCTION_CONFIG = {
 const sessionLimitInMs =
   _PRODUCTION_CONFIG.sessionTimeoutHours * 60 * 60 * 1000;
 
+/**
+ * Calculate distance between two coordinates using Haversine formula
+ * @returns Distance in meters
+ */
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 // Callable function to start a session with atomic checks
+// Supports role-based check-in methods:
+// - Providers: checkInMethod must be 'geo' or 'offline-sync' (auto check-in)
+// - Admins: checkInMethod must be 'manual' (manual check-in with GPS + in-radius enforcement)
 exports.startSession = onCall(async (request: any) => {
   try {
     const { data, auth } = request;
@@ -408,11 +436,18 @@ exports.startSession = onCall(async (request: any) => {
       !data.locationId ||
       !data.startTime ||
       !data.checkInMethod ||
-      !data.distanceFromCenterAtCheckIn ||
       !data.dayKey
     ) {
       throw new Error(
-        "Missing required session data: locationId, startTime, checkInMethod, distanceFromCenterAtCheckIn, dayKey"
+        "Missing required session data: locationId, startTime, checkInMethod, dayKey"
+      );
+    }
+
+    // Validate checkInMethod
+    const validMethods = ["geo", "manual", "offline-sync"];
+    if (!validMethods.includes(data.checkInMethod)) {
+      throw new Error(
+        `Invalid checkInMethod: ${data.checkInMethod}. Must be one of: ${validMethods.join(", ")}`
       );
     }
 
@@ -430,15 +465,32 @@ exports.startSession = onCall(async (request: any) => {
       }
 
       const userData = userDoc.data();
-      if (userData.role !== "provider") {
-        throw new Error("Only providers can start sessions");
+      const userRole = userData.role as "provider" | "admin";
+
+      // Validate role-based checkInMethod
+      if (userRole === "provider") {
+        // Providers can only use geo or offline-sync (automatic check-in)
+        if (data.checkInMethod === "manual") {
+          throw new Error(
+            "Providers cannot use manual check-in. Automatic check-in is enabled for your account."
+          );
+        }
+      } else if (userRole === "admin") {
+        // Admins can only use manual check-in
+        if (data.checkInMethod !== "manual") {
+          throw new Error(
+            "Admins must use manual check-in method."
+          );
+        }
+      } else {
+        throw new Error("Invalid user role for session creation");
       }
 
       if (userData.isActive === false || userData.disabled === true) {
         throw new Error("User account is not active");
       }
 
-      // Check for existing active or paused sessions for this provider
+      // Check for existing active or paused sessions for this user
       const existingSessionsQuery = db
         .collection("sessions")
         .where("userId", "==", userId)
@@ -451,13 +503,13 @@ exports.startSession = onCall(async (request: any) => {
       if (!existingSessionsSnapshot.empty) {
         const existingSession = existingSessionsSnapshot.docs[0];
         throw new Error(
-          `Provider already has an ${existingSession.data().status} session: ${
+          `User already has an ${existingSession.data().status} session: ${
             existingSession.id
           }`
         );
       }
 
-      // Verify the location exists and provider has access
+      // Verify the location exists
       const locationRef = db.collection("locations").doc(data.locationId);
       const locationDoc = await transaction.get(locationRef);
 
@@ -470,12 +522,55 @@ exports.startSession = onCall(async (request: any) => {
         throw new Error("Location is not active");
       }
 
-      // Check if provider is assigned to this location
+      // Role-based location access check
+      if (userRole === "provider") {
+        // Check if provider is assigned to this location
+        if (
+          !locationData.assignedProviders ||
+          !locationData.assignedProviders.includes(userId)
+        ) {
+          throw new Error("Provider is not assigned to this location");
+        }
+      }
+      // Admins can access any location (no assignment check needed)
+
+      // Calculate distance from center and enforce geofence for both roles
+      let distanceFromCenter = data.distanceFromCenterAtCheckIn || 0;
+      const radiusMeters = locationData.radiusMeters || 100;
+
+      // If checkInLocation is provided, calculate distance server-side
       if (
-        !locationData.assignedProviders ||
-        !locationData.assignedProviders.includes(userId)
+        data.checkInLocation &&
+        typeof data.checkInLocation.latitude === "number" &&
+        typeof data.checkInLocation.longitude === "number" &&
+        locationData.geo
       ) {
-        throw new Error("Provider is not assigned to this location");
+        const locGeo = locationData.geo;
+        distanceFromCenter = calculateDistance(
+          data.checkInLocation.latitude,
+          data.checkInLocation.longitude,
+          locGeo.latitude,
+          locGeo.longitude
+        );
+
+        // Enforce geofence - must be within radius
+        if (distanceFromCenter > radiusMeters) {
+          throw new Error(
+            `You must be within ${radiusMeters}m of the location to check in. Current distance: ${Math.round(distanceFromCenter)}m`
+          );
+        }
+
+        logger.info("Server-side geofence validation passed", {
+          userId,
+          locationId: data.locationId,
+          distance: Math.round(distanceFromCenter),
+          radiusMeters,
+        });
+      } else if (userRole === "admin" && data.checkInMethod === "manual") {
+        // For admin manual check-in, checkInLocation is required
+        throw new Error(
+          "Admin manual check-in requires checkInLocation with latitude and longitude"
+        );
       }
 
       // Create the new session document
@@ -491,12 +586,21 @@ exports.startSession = onCall(async (request: any) => {
         status: "active",
         active: true,
         checkInMethod: data.checkInMethod,
-        distanceFromCenterAtCheckIn: data.distanceFromCenterAtCheckIn,
+        distanceFromCenterAtCheckIn: Math.round(distanceFromCenter),
         dayKey: data.dayKey,
         notes: data.notes || "",
         createdAt: admin.firestore.Timestamp.now(),
         updatedAt: admin.firestore.Timestamp.now(),
       };
+
+      // Store check-in location if provided
+      if (data.checkInLocation) {
+        sessionData.checkInLocation = {
+          latitude: data.checkInLocation.latitude,
+          longitude: data.checkInLocation.longitude,
+          accuracy: data.checkInLocation.accuracy || null,
+        };
+      }
 
       // Add optional fields if provided
       if (data.durationMinutes !== undefined) {
@@ -543,8 +647,14 @@ exports.startSession = onCall(async (request: any) => {
         throw new Error("This location is currently unavailable for check-in.");
       } else if (error.message.includes("User not found")) {
         throw new Error("User account not found. Please contact support.");
-      } else if (error.message.includes("Only providers")) {
-        throw new Error("Only provider accounts can start sessions.");
+      } else if (error.message.includes("must be within")) {
+        throw error; // Preserve geofence error message
+      } else if (error.message.includes("Providers cannot use manual")) {
+        throw error; // Preserve role-based method error
+      } else if (error.message.includes("Admins must use manual")) {
+        throw error; // Preserve role-based method error
+      } else if (error.message.includes("requires checkInLocation")) {
+        throw error; // Preserve location requirement error
       } else if (error.message.includes("Missing required")) {
         throw new Error("Invalid session data provided.");
       }

@@ -16,6 +16,7 @@ import { ToastAction, type ToastActionElement } from "@/components/ui/toast";
 import { formatDuration } from "@/lib/utils/session";
 
 type GeofenceState = "idle" | "outside" | "entering" | "inside" | "exiting";
+type LocationPermission = "unknown" | "granted" | "denied" | "unavailable";
 
 interface AutoGeofenceState {
   enabled: boolean;
@@ -29,6 +30,8 @@ interface AutoGeofenceState {
     type: "checkin" | "checkout";
     locationId: string;
   } | null;
+  /** Geolocation permission status: unknown until first attempt, then granted/denied/unavailable */
+  locationPermission: LocationPermission;
 }
 
 interface CountdownConfig {
@@ -71,6 +74,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const [activeCountdown, setActiveCountdown] = useState<
     AutoGeofenceState["activeCountdown"]
   >(null);
+  const [locationPermission, setLocationPermission] = useState<LocationPermission>("unknown");
 
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const poorAccuracyCount = useRef(0);
@@ -265,6 +269,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       setIsPolling(true);
       try {
         const current = await locationService.getCurrentLocation();
+        
+        // Mark permission as granted on successful location fetch
+        setLocationPermission("granted");
+        
         if (
           typeof current.accuracy === "number" &&
           current.accuracy > ACCURACY_THRESHOLD_METERS
@@ -466,8 +474,17 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
           targetLocationId.current = null;
           setGeofenceState("outside");
         }
-      } catch (error) {
+      } catch (error: any) {
         appLogger.warn("Auto geofence polling error", { error });
+        
+        // Track permission state based on error
+        if (error?.code === 1) {
+          // Permission denied
+          setLocationPermission("denied");
+        } else if (error?.code === 0 || error?.message?.includes("not supported")) {
+          // Geolocation not available
+          setLocationPermission("unavailable");
+        }
       } finally {
         setIsPolling(false);
       }
@@ -510,6 +527,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       lastAccuracyMeters,
       pausedReason,
       activeCountdown,
+      locationPermission,
     }),
     [
       prefEnabled,
@@ -520,6 +538,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       lastAccuracyMeters,
       pausedReason,
       activeCountdown,
+      locationPermission,
     ]
   );
 }

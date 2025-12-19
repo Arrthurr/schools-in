@@ -132,6 +132,84 @@ describe("useAutoGeofenceCheck", () => {
         expect(getAssignedLocations).toHaveBeenCalledWith("user-1");
       });
     });
+
+    it("should have locationPermission state initialized as unknown", () => {
+      const { result } = renderHook(() => useAutoGeofenceCheck());
+
+      expect(result.current.locationPermission).toBe("unknown");
+    });
+  });
+
+  describe("Location permission tracking", () => {
+    it("should set locationPermission to granted after successful location fetch", async () => {
+      (useAutoGeofencePreference as jest.Mock).mockReturnValue({
+        enabled: true,
+      });
+      (locationService.getCurrentLocation as jest.Mock).mockResolvedValue({
+        latitude: 40.7128,
+        longitude: -74.006,
+        accuracy: 10,
+      });
+
+      const { result } = renderHook(() => useAutoGeofenceCheck());
+
+      // Wait for polling to start and complete
+      await act(async () => {
+        await flushPromises();
+        jest.advanceTimersByTime(100);
+        await flushPromises();
+      });
+
+      await waitFor(() => {
+        expect(result.current.locationPermission).toBe("granted");
+      });
+    });
+
+    it("should set locationPermission to denied when geolocation is denied (error code 1)", async () => {
+      (useAutoGeofencePreference as jest.Mock).mockReturnValue({
+        enabled: true,
+      });
+      (locationService.getCurrentLocation as jest.Mock).mockRejectedValue({
+        code: 1,
+        message: "User denied geolocation",
+      });
+
+      const { result } = renderHook(() => useAutoGeofenceCheck());
+
+      // Wait for polling to start and fail
+      await act(async () => {
+        await flushPromises();
+        jest.advanceTimersByTime(100);
+        await flushPromises();
+      });
+
+      await waitFor(() => {
+        expect(result.current.locationPermission).toBe("denied");
+      });
+    });
+
+    it("should set locationPermission to unavailable when geolocation is not supported (error code 0)", async () => {
+      (useAutoGeofencePreference as jest.Mock).mockReturnValue({
+        enabled: true,
+      });
+      (locationService.getCurrentLocation as jest.Mock).mockRejectedValue({
+        code: 0,
+        message: "Geolocation is not supported",
+      });
+
+      const { result } = renderHook(() => useAutoGeofenceCheck());
+
+      // Wait for polling to start and fail
+      await act(async () => {
+        await flushPromises();
+        jest.advanceTimersByTime(100);
+        await flushPromises();
+      });
+
+      await waitFor(() => {
+        expect(result.current.locationPermission).toBe("unavailable");
+      });
+    });
   });
 
   describe("GPS polling behavior", () => {

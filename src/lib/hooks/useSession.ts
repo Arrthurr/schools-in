@@ -77,6 +77,11 @@ export const useSession = (): UseSessionReturn => {
           checkInMethod: "geo",
           distanceFromCenterAtCheckIn: location.accuracy ?? 0,
           dayKey,
+          checkInLocation: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+          },
         };
 
         const result = await startSessionFn(payload);

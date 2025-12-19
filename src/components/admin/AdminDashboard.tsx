@@ -25,6 +25,7 @@ import {
   AlertCallout,
 } from "@/components/dashboard";
 import { ActiveSessionsModal } from "@/components/admin/ActiveSessionsModal";
+import { AdminManualCheckInOut } from "@/components/admin/AdminManualCheckInOut";
 
 interface RecentActivity {
   id: string;
@@ -257,6 +258,9 @@ export function AdminDashboard() {
             emptyMessage="No recent activity to show"
           />
         </SectionCard>
+
+        {/* Admin Manual Check-In/Out */}
+        <AdminManualCheckInOut />
       </div>
 
       {/* Active Sessions Modal */}

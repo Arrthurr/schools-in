@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -7,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { updateProfile } from "firebase/auth";
 import { auth } from "../../../firebase.config";
-import { useAutoGeofencePreference } from "@/lib/hooks/useAutoGeofencePreference";
+import { MapPin, Clock } from "lucide-react";
 
 const formSchema = z.object({
   displayName: z.string().min(2, { message: "Display name must be at least 2 characters." }),
@@ -21,12 +20,6 @@ const formSchema = z.object({
 
 export function UserProfile() {
   const { user } = useAuth();
-  const {
-    enabled: autoGeofenceEnabled,
-    loading: prefLoading,
-    error: prefError,
-    setEnabled: setAutoGeofenceEnabled,
-  } = useAutoGeofencePreference();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -67,29 +60,33 @@ export function UserProfile() {
         </div>
         <div>
           <Label>Role</Label>
-          <p className="text-sm text-muted-foreground">{user.role}</p>
+          <p className="text-sm text-muted-foreground capitalize">{user.role}</p>
         </div>
-        <div className="flex items-start justify-between rounded-lg border p-3">
-          <div className="space-y-1">
-            <Label htmlFor="auto-geofence">
-              Auto Check-In/Out Mode (experimental)
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              When enabled, we’ll monitor location in the foreground and auto check you
-              in/out after a short countdown when entering or leaving an assigned school.
-            </p>
-            {prefError && (
-              <p className="text-sm text-destructive">{prefError}</p>
+
+        {/* Check-in mode info - read-only based on role */}
+        <div className="rounded-lg border p-3 bg-muted/20">
+          <div className="flex items-center gap-2 mb-2">
+            {user.role === "provider" ? (
+              <>
+                <MapPin className="h-4 w-4 text-brand-primary" />
+                <span className="font-medium">Automatic Check-In/Out</span>
+                <Badge variant="secondary" className="ml-auto">Active</Badge>
+              </>
+            ) : (
+              <>
+                <Clock className="h-4 w-4 text-brand-primary" />
+                <span className="font-medium">Manual Check-In/Out</span>
+                <Badge variant="outline" className="ml-auto">Admin</Badge>
+              </>
             )}
           </div>
-          <Switch
-            id="auto-geofence"
-            checked={autoGeofenceEnabled}
-            disabled={prefLoading}
-            onCheckedChange={(value) => setAutoGeofenceEnabled(value)}
-            aria-label="Toggle auto check-in/out mode"
-          />
+          <p className="text-sm text-muted-foreground">
+            {user.role === "provider"
+              ? "Your check-ins and check-outs are handled automatically based on your GPS location when visiting assigned schools."
+              : "As an administrator, you can manually check in and out at any school from the Admin Dashboard."}
+          </p>
         </div>
+
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="displayName">Display Name</Label>

@@ -1,112 +1,38 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo } from "react";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
-import {
-  getAutoGeofencePreference,
-  getAutoGeofencePreferenceFromStorage,
-  setAutoGeofencePreference,
-} from "@/lib/services/userPreferences";
-import { appLogger } from "@/lib/logging/appLogger";
 
 interface AutoGeofencePreferenceState {
+  /** Whether auto geofence check-in/out is enabled (role-derived: providers always on, admins off) */
   enabled: boolean;
+  /** Loading state (always false since role is available immediately from auth) */
   loading: boolean;
+  /** Error state (always null since this is now role-derived) */
   error: string | null;
-  setEnabled: (enabled: boolean) => Promise<void>;
 }
 
+/**
+ * Hook to determine if auto geofence check-in/out is enabled.
+ *
+ * As of the role-based check-in/out update:
+ * - Providers: auto check-in/out is ALWAYS enabled (no opt-out)
+ * - Admins: auto check-in/out is ALWAYS disabled (admins use manual check-in/out)
+ *
+ * This is now derived purely from the user's role rather than a stored preference.
+ */
 export function useAutoGeofencePreference(): AutoGeofencePreferenceState {
-  const { user } = useCachedAuth();
-  const userId = user?.uid;
-  const [enabled, setEnabledState] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading } = useCachedAuth();
 
-  // Load preference on mount / user change
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      if (!userId) {
-        setEnabledState(false);
-        setLoading(false);
-        return;
-      }
-
-      // Use localStorage mirror immediately for snappier UX
-      const localPref = getAutoGeofencePreferenceFromStorage();
-      if (localPref !== null) {
-        setEnabledState(localPref);
-      }
-
-      try {
-        const remotePref = await getAutoGeofencePreference(userId);
-        if (!cancelled) {
-          setEnabledState(remotePref);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          appLogger.warn("Failed to load auto geofence preference", {
-            error: err,
-          });
-          setError(
-            err instanceof Error ? err.message : "Failed to load preference"
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    setLoading(true);
-    setError(null);
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  const setEnabled = useCallback(
-    async (next: boolean) => {
-      if (!userId) {
-        setError("User not authenticated");
-        return;
-      }
-
-      const previous = enabled;
-      setEnabledState(next);
-      setError(null);
-      try {
-        await setAutoGeofencePreference(userId, next);
-        appLogger.info("Auto geofence preference updated", {
-          enabled: next,
-          userId,
-        });
-      } catch (err) {
-        appLogger.warn("Failed to update auto geofence preference", {
-          error: err,
-        });
-        setError(
-          err instanceof Error ? err.message : "Failed to update preference"
-        );
-        // revert optimistic update
-        setEnabledState(previous);
-      }
-    },
-    [userId, enabled]
-  );
+  // Role-based: providers always on, admins always off
+  const enabled = user?.role === "provider";
 
   return useMemo(
     () => ({
       enabled,
-      loading,
-      error,
-      setEnabled,
+      loading: authLoading,
+      error: null,
     }),
-    [enabled, loading, error, setEnabled]
+    [enabled, authLoading]
   );
 }
