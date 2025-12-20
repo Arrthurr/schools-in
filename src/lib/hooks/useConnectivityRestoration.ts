@@ -4,7 +4,6 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { syncManager, type SyncResult } from "../offline/syncManager";
-import { getQueueStats } from "../offline/actionQueue";
 
 export interface ConnectivityRestorationConfig {
   enableAutoSync: boolean;
@@ -281,9 +280,6 @@ export function useConnectivityRestoration(
           restoration.syncResults[restoration.syncResults.length - 1]
         );
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown restoration error";
-
         if (config.debugMode) {
           console.error("Restoration failed:", error);
         }

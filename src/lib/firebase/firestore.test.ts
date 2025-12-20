@@ -8,7 +8,6 @@ import {
   getCollection,
   getUserByEmail,
   getLocationsByProvider,
-  getSessionsByUser,
   getActiveSessions,
   COLLECTIONS,
 } from "./firestore";
@@ -68,17 +67,11 @@ jest.mock("firebase/firestore", () => ({
 }));
 
 import {
-  collection,
-  doc,
   getDocs,
   getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
 } from "firebase/firestore";
 
 describe("Firestore Utilities", () => {

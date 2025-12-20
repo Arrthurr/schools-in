@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SimpleSelect } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -64,38 +63,6 @@ interface ChartFilters {
     | "schools"
     | "status"
     | "trends";
-}
-
-interface SessionVolumeData {
-  date: string;
-  sessions: number;
-  duration: number;
-}
-
-interface ProviderPerformanceData {
-  name: string;
-  sessions: number;
-  duration: number;
-  avgDuration: number;
-}
-
-interface SchoolActivityData {
-  name: string;
-  sessions: number;
-  providers: number;
-  avgDuration: number;
-}
-
-interface StatusDistributionData {
-  status: string;
-  count: number;
-  percentage: number;
-}
-
-interface HourlyTrendData {
-  hour: string;
-  sessions: number;
-  avgDuration: number;
 }
 
 export function SessionAnalytics() {
@@ -433,7 +400,7 @@ export function SessionAnalytics() {
                 fill="#8884d8"
                 dataKey="count"
               >
-                {statusDistributionData.map((entry, index) => (
+                {statusDistributionData.map((_entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={COLORS[index % COLORS.length]}

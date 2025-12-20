@@ -56,7 +56,7 @@ describe("PWAInstallPrompt", () => {
   it("renders install prompt when beforeinstallprompt event is triggered", async () => {
     render(<PWAInstallPrompt />);
 
-    const promptEvent = setupPromptEvent("accepted");
+    setupPromptEvent("accepted");
 
     await waitFor(() => {
       expect(screen.getByText("Install Schools In")).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("PWAInstallPrompt", () => {
   it("handles dismiss button click", async () => {
     render(<PWAInstallPrompt />);
 
-    const promptEvent = setupPromptEvent("dismissed");
+    setupPromptEvent("dismissed");
 
     await waitFor(() => {
       expect(screen.getByText("Not Now")).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("PWAInstallPrompt", () => {
 
     render(<PWAInstallPrompt />);
 
-    const promptEvent = setupPromptEvent("dismissed");
+    setupPromptEvent("dismissed");
 
     expect(screen.queryByText("Install Schools In")).not.toBeInTheDocument();
   });

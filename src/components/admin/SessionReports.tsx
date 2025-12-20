@@ -17,9 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  ErrorState,
   EmptyState,
-  CompactEmptyState,
 } from "@/components/ui/error-empty-states";
 import {
   CalendarDays,
@@ -40,7 +38,6 @@ import {
 } from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
 import { getCollection, COLLECTIONS } from "@/lib/firebase/firestore";
-import { Timestamp } from "firebase/firestore";
 
 interface School {
   id: string;

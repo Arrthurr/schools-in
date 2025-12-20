@@ -194,7 +194,7 @@ export async function measureImageLoadPerformance(src: string): Promise<{
   const startTime = performance.now();
 
   try {
-    const img = await preloadImageWithPromise(src);
+    await preloadImageWithPromise(src);
     const loadTime = performance.now() - startTime;
 
     // Check if loaded from cache (heuristic)

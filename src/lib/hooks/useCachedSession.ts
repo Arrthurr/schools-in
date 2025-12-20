@@ -25,7 +25,6 @@ import { Session } from "@/lib/firebase/types";
 import { FirebaseCache, CacheTracker } from "@/lib/cache/FirebaseCache";
 import {
   getCachedUserSessions,
-  getCachedDocument,
 } from "@/lib/firebase/cachedFirestore";
 
 export interface SessionState {

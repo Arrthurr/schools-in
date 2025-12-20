@@ -85,10 +85,13 @@ export class CachedUserService {
         }
 
         const snapshot = await getDocs(queryRef);
-        let users = snapshot.docs.map(doc => ({
-          uid: doc.id,
-          ...doc.data(),
-        } as User));
+        let users = snapshot.docs.map(doc => {
+          const data = doc.data() as Partial<User>;
+          return {
+            uid: doc.id,
+            ...data,
+          } as User;
+        });
 
         // Apply search filter (client-side for now - consider Algolia for production)
         if (filters.search) {

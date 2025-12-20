@@ -3,16 +3,14 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
-  ErrorState,
   EmptyState,
   CompactErrorState,
-  NetworkStatus,
 } from "../ui/error-empty-states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SimpleSelect } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -76,7 +74,7 @@ export function ReportScheduler() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState<ReportSchedule | null>(
+  const [, setEditingSchedule] = useState<ReportSchedule | null>(
     null
   );
 

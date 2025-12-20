@@ -295,7 +295,7 @@ export class EnvironmentValidator {
         }
       } catch (error) {
         checks.firebase = false;
-        details.firebase = { error: error.message };
+        details.firebase = { error: error instanceof Error ? error.message : String(error) };
       }
 
       // Cache system check
@@ -314,7 +314,7 @@ export class EnvironmentValidator {
         details.cache = { working: checks.cache };
       } catch (error) {
         checks.cache = false;
-        details.cache = { error: error.message };
+        details.cache = { error: error instanceof Error ? error.message : String(error) };
       }
 
       // Determine overall status
@@ -330,7 +330,7 @@ export class EnvironmentValidator {
       return {
         status: 'error',
         checks,
-        details: { error: error.message },
+        details: { error: error instanceof Error ? error.message : String(error) },
       };
     }
   }

@@ -10,7 +10,6 @@ import { auth } from "../../../firebase.config";
 import { getCachedDocument } from "@/lib/firebase/cachedFirestore";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
 import {
-  FirebaseCache,
   FIREBASE_CACHE_CONFIGS,
 } from "@/lib/cache/FirebaseCache";
 import { cacheManager } from "@/lib/cache/CacheManager";

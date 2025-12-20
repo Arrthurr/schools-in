@@ -11,20 +11,17 @@ import {
   getDocs,
   doc,
   getDoc,
-  addDoc,
   updateDoc,
   deleteDoc,
   Timestamp,
-  writeBatch,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db } from "../../../firebase.config";
 import { functions } from "../../../firebase.config";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
-import { Session, User, Location } from "@/lib/firebase/types";
+import { Session, Location } from "@/lib/firebase/types";
 import { FirebaseCache, CacheTracker } from "@/lib/cache/FirebaseCache";
 import {
-  getDayKey,
   getCurrentWeekRange,
   getTodayRange,
   getLastNDaysRange,

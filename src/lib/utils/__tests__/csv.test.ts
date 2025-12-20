@@ -182,6 +182,8 @@ describe("CSV Utilities", () => {
       distanceFromCenterAtCheckIn: 25.5,
       dayKey: "2024-01-15",
       notes: "Great session with students",
+      createdAt: Timestamp.fromDate(new Date("2024-01-15T16:00:00Z")),
+      updatedAt: Timestamp.fromDate(new Date("2024-01-15T18:30:00Z")),
     };
 
     it("should return empty string for empty sessions array", () => {

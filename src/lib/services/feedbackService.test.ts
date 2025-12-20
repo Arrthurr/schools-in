@@ -1,5 +1,5 @@
 import { feedbackService } from "./feedbackService";
-import { collection, addDoc, getDocs, getDoc, updateDoc, Timestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, updateDoc } from "firebase/firestore";
 
 // Mock Firebase
 jest.mock("../../../firebase.config", () => ({

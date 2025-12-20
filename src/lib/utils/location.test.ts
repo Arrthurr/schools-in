@@ -215,7 +215,7 @@ describe('Location Utils', () => {
     it('rejects with error when geolocation fails', async () => {
       const mockError = { code: 1, message: 'Permission denied' };
 
-      mockGeolocation.getCurrentPosition.mockImplementation((success, error) => {
+      mockGeolocation.getCurrentPosition.mockImplementation((_success, error) => {
         error(mockError);
       });
 
@@ -286,7 +286,10 @@ describe('Location Utils', () => {
     it('rejects when geolocation is not supported', async () => {
       // Temporarily remove geolocation
       const originalGeolocation = global.navigator.geolocation;
-      delete (global.navigator as any).geolocation;
+      Object.defineProperty(global.navigator, 'geolocation', {
+        value: undefined,
+        configurable: true,
+      });
 
       await expect(locationService.getCurrentLocation()).rejects.toEqual({
         code: 0,
@@ -294,7 +297,10 @@ describe('Location Utils', () => {
       });
 
       // Restore geolocation
-      global.navigator.geolocation = originalGeolocation;
+      Object.defineProperty(global.navigator, 'geolocation', {
+        value: originalGeolocation,
+        configurable: true,
+      });
     });
 
     it('includes accuracy in result when available', async () => {

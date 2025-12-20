@@ -101,7 +101,7 @@ function SchoolManagementContent() {
         }
       );
 
-      const normalized = (data as School[]).map(mapSchool);
+      const normalized = (data as unknown as School[]).map(mapSchool);
       setSchools(normalized);
       setFilteredSchools(normalized);
       setError(null);
@@ -164,8 +164,8 @@ function SchoolManagementContent() {
       });
 
       if (created) {
-        setSchools((prev) => [...prev, mapSchool(created as School)]);
-        setFilteredSchools((prev) => [...prev, mapSchool(created as School)]);
+        setSchools((prev) => [...prev, mapSchool(created as unknown as School)]);
+        setFilteredSchools((prev) => [...prev, mapSchool(created as unknown as School)]);
       }
 
       setError(null);
@@ -201,7 +201,7 @@ function SchoolManagementContent() {
       );
 
       if (refreshed) {
-        const mapped = mapSchool(refreshed as School);
+        const mapped = mapSchool(refreshed as unknown as School);
         setSchools((prev) =>
           prev.map((school) => (school.id === editingSchool.id ? mapped : school))
         );
@@ -493,7 +493,11 @@ function SchoolManagementContent() {
 
       {/* School Form Modal */}
       <SchoolForm
-        school={editingSchool || undefined}
+        school={editingSchool ? {
+          ...editingSchool,
+          latitude: editingSchool.latitude ?? 0,
+          longitude: editingSchool.longitude ?? 0,
+        } : undefined}
         isOpen={isFormOpen}
         onClose={closeForm}
         onSubmit={editingSchool ? handleUpdateSchool : handleCreateSchool}

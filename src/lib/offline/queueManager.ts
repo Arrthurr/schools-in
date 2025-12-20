@@ -14,14 +14,11 @@ import {
 } from "./actionQueue";
 import { syncManager, type SyncResult } from "./syncManager";
 import {
-  useNetworkStatus,
   type NetworkStatus,
 } from "../hooks/useNetworkStatus";
 import {
-  useConnectivityRestoration,
   type ConnectivityRestorationConfig,
 } from "../hooks/useConnectivityRestoration";
-import { useEffect, useCallback } from "react";
 import {
   createDocument,
   updateDocument,

@@ -12,7 +12,6 @@ type School = Location;
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../ui/card";
@@ -29,7 +28,6 @@ import {
   Mail,
   Globe,
   Calendar,
-  Users,
   Ruler,
   Target,
   X,
@@ -178,12 +176,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
             {getLocationStatusBadge()}
-            {school.isAssigned && (
-              <Badge variant="default" className="bg-primary">
-                <Users className="w-3 h-3 mr-1" />
-                Assigned
-              </Badge>
-            )}
+            
           </div>
 
           <div className="flex items-center gap-3">
@@ -242,7 +235,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
               <div>
                 <p className="font-medium text-foreground">GPS Coordinates</p>
                 <p className="text-muted-foreground font-mono text-sm">
-                  {school.latitude.toFixed(6)}, {school.longitude.toFixed(6)}
+                  {(school.geo?.latitude ?? school.latitude ?? 0).toFixed(6)}, {(school.geo?.longitude ?? school.longitude ?? 0).toFixed(6)}
                 </p>
               </div>
             </div>
@@ -260,8 +253,8 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
                 
                 <NavigationButton
                   destination={{
-                    lat: school.latitude,
-                    lng: school.longitude,
+                    lat: school.geo?.latitude ?? school.latitude ?? 0,
+                    lng: school.geo?.longitude ?? school.longitude ?? 0,
                     address: school.address,
                     name: school.name
                   }}

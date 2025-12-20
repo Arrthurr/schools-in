@@ -1,8 +1,7 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { SessionStatus } from "./SessionStatus";
 import * as useAuthModule from "../../lib/hooks/useAuth";
-import { Timestamp } from "firebase/firestore";
 
 // Mock the modules
 jest.mock("../../lib/hooks/useAuth");
@@ -33,7 +32,7 @@ const mockUser = {
   email: "provider@test.com",
   displayName: "Test Provider",
   role: "provider" as const,
-};
+} as unknown as ReturnType<typeof useAuthModule.useAuth>["user"];
 
 const mockActiveSession = {
   id: "session-123",
@@ -48,11 +47,6 @@ const mockActiveSession = {
   },
 };
 
-const mockPausedSession = {
-  ...mockActiveSession,
-  status: "paused" as const,
-};
-
 const mockCompletedSession = {
   ...mockActiveSession,
   status: "completed" as const,
@@ -61,8 +55,6 @@ const mockCompletedSession = {
 
 describe("SessionStatus Component", () => {
   const mockOnEndSession = jest.fn();
-  const mockOnPauseSession = jest.fn();
-  const mockOnResumeSession = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -71,8 +63,6 @@ describe("SessionStatus Component", () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       loading: false,
-      signIn: jest.fn(),
-      signOut: jest.fn(),
     });
   });
 
@@ -85,8 +75,6 @@ describe("SessionStatus Component", () => {
       <SessionStatus
         currentSession={null}
         onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
       />
     );
 
@@ -104,8 +92,6 @@ describe("SessionStatus Component", () => {
       <SessionStatus
         currentSession={mockActiveSession}
         onEndSession={mockOnEndSession}
-        onPauseSession={mockOnPauseSession}
-        onResumeSession={mockOnResumeSession}
       />
     );
 
@@ -170,7 +156,7 @@ describe("SessionStatus Component", () => {
         currentSession={{
           ...mockActiveSession,
           status: "active",
-          startTime: Timestamp.fromDate(new Date(Date.now() - 90 * 60000)),
+          startTime: new Date(Date.now() - 90 * 60000),
         }}
       />
     );
@@ -184,7 +170,7 @@ describe("SessionStatus Component", () => {
         currentSession={{
           ...mockActiveSession,
           status: "active",
-          startTime: Timestamp.fromDate(new Date(Date.now() - 45 * 60000)),
+          startTime: new Date(Date.now() - 45 * 60000),
         }}
       />
     );

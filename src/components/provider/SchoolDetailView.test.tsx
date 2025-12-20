@@ -1,7 +1,9 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { SchoolDetailView } from "./SchoolDetailView";
 import * as useLocationModule from "../../lib/hooks/useLocation";
 import * as locationServiceModule from "../../lib/services/locationService";
+import { Timestamp, GeoPoint } from "firebase/firestore";
+import { Location } from "@/lib/firebase/types";
 
 // Mock the modules
 jest.mock("../../lib/hooks/useLocation");
@@ -17,19 +19,17 @@ const mockIsWithinRadius =
     typeof locationServiceModule.isWithinRadius
   >;
 
-const mockSchool = {
+const mockSchool: Location = {
   id: "school-1",
   name: "Walter Payton High School",
   latitude: 41.90191443941818,
   longitude: -87.63472443763325,
-  geo: {
-    latitude: 41.90191443941818,
-    longitude: -87.63472443763325,
-  },
+  geo: new GeoPoint(41.90191443941818, -87.63472443763325),
   address: "1034 N Wells St, Chicago, IL 60610",
   radius: 100,
-  isAssigned: true,
-  distance: 50,
+  assignedProviders: [] as string[],
+  createdAt: Timestamp.now(),
+  updatedAt: Timestamp.now(),
 };
 
 const mockLocation = {
@@ -218,14 +218,6 @@ describe("SchoolDetailView Component", () => {
     );
 
     expect(screen.getByText("41.901914, -87.634724")).toBeInTheDocument();
-  });
-
-  it("shows assigned badge when school is assigned", () => {
-    render(
-      <SchoolDetailView school={mockSchool} onBack={mockOnBack} />
-    );
-
-    expect(screen.getByText("Assigned")).toBeInTheDocument();
   });
 
   it("shows location help card when no location", () => {

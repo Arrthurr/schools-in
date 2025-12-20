@@ -64,7 +64,7 @@ describe("useStartupLogging", () => {
   const mockedLogStartupStage = logStartupStage as jest.MockedFunction<typeof logStartupStage>;
   const mockedLogStartupWarning = logStartupWarning as jest.MockedFunction<typeof logStartupWarning>;
 
-  let performanceSpy: jest.SpyInstance<PerformanceEntry[], [type: string]> | null = null;
+  let performanceSpy: jest.SpyInstance | null = null;
 
   beforeEach(() => {
     jest.useFakeTimers();

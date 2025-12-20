@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
-import { Session, User, Location } from "@/lib/firebase/types";
+import { Session } from "@/lib/firebase/types";
 import { getTodayWindow, getYesterdayWindow } from "@/lib/utils/dateTime";
 
 type ActivityType = "check-in" | "check-out";

@@ -2,7 +2,7 @@
 // Integrates queue manager, network status, and sync management for comprehensive offline support
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { queueManager, type QueueManagerConfig } from "../offline/queueManager";
+import { queueManager } from "../offline/queueManager";
 import { useNetworkStatus } from "./useNetworkStatus";
 import {
   useConnectivityRestoration,

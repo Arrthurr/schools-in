@@ -15,7 +15,6 @@ import {
   Clock,
   CheckCircle,
   RefreshCw,
-  Signal,
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

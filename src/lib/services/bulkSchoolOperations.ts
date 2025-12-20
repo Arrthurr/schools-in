@@ -101,7 +101,7 @@ export class BulkSchoolOperationsService {
   // Execute bulk activation/deactivation
   async executeBulkStatusUpdate(
     operationId: string,
-    activate: boolean,
+    _activate: boolean,
     schools: any[]
   ): Promise<BulkOperationResult> {
     const operation = this.operations.get(operationId);

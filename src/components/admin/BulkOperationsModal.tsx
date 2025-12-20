@@ -1,19 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -22,34 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SimpleSelect } from "@/components/ui/select";
 import {
-  Upload,
-  Download,
-  Edit,
-  Users,
-  MapPin,
-  CheckCircle,
   AlertTriangle,
-  Loader2,
-  X,
-  FileText,
   Settings,
 } from "lucide-react";
-import {
-  bulkSchoolOperations,
-  type BulkUpdateData,
-  type BulkProviderAssignmentData,
-  type SchoolImportData,
-  type BulkSchoolOperation,
-  type BulkOperationResult,
-} from "@/lib/services/bulkSchoolOperations";
-
-interface Provider {
-  id: string;
-  name: string;
-  email: string;
-}
 
 interface School {
   id: string;
@@ -78,12 +43,7 @@ export function BulkOperationsModal({
   isOpen,
   onClose,
   selectedSchools,
-  schools,
-  onSchoolsUpdated,
-  onClearSelection,
 }: BulkOperationsModalProps) {
-  const [activeTab, setActiveTab] = useState("update");
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleClose = () => {

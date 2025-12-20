@@ -7,10 +7,6 @@ import {
   Trash2,
   Eye,
   Users,
-  MapPin,
-  Calendar,
-  ToggleLeft,
-  ToggleRight,
   Download,
   Archive,
   Undo2,
@@ -40,12 +36,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  ErrorState,
   EmptyState,
-  CompactErrorState,
-  NetworkStatus,
 } from "../ui/error-empty-states";
 
 interface School {

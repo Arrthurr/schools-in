@@ -19,10 +19,8 @@ import {
   Settings,
   Database,
   RefreshCw,
-  Clock,
   HardDrive,
   Zap,
-  Shield,
   Info,
 } from "lucide-react";
 import { CACHE_CONFIG } from "@/lib/offline/cacheStrategy";

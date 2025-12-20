@@ -37,7 +37,7 @@ export function ActivityList({
 
   return (
     <div className={cn("space-y-3 sm:space-y-4", className)}>
-      {items.map((item, index) => {
+      {items.map((item) => {
         const Icon = item.icon;
         return (
           <div

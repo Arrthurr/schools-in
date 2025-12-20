@@ -49,14 +49,6 @@ export function CsvExportButton({
   const [includeActiveOnly, setIncludeActiveOnly] = useState(false);
   const { toast } = useToast();
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   const handleExport = async () => {
     if (!startDate || !endDate) {
       toast({
@@ -164,7 +156,7 @@ export function CsvExportButton({
 
         const userMap = new Map();
         userPromises.forEach((user) => {
-          if (user) userMap.set(user.uid || user.id, user);
+          if (user) userMap.set(user.uid, user);
         });
 
         const locationMap = new Map();
