@@ -30,8 +30,8 @@ jest.mock("firebase/firestore", () => ({
   getDoc: (...args: any[]) => mockGetDoc(...args),
   doc: (...args: any[]) => mockDoc(...args),
   updateDoc: (...args: any[]) => mockUpdateDoc(...args),
-  arrayUnion: (...args: any[]) => mockArrayUnion(...args),
-  arrayRemove: (...args: any[]) => mockArrayRemove(...args),
+  arrayUnion: (v: unknown) => mockArrayUnion(v),
+  arrayRemove: (v: unknown) => mockArrayRemove(v),
   Timestamp: { now: () => "now" },
   GeoPoint: jest.fn(),
 }));

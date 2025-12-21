@@ -29,6 +29,7 @@ interface CreateScheduleInput {
 }
 
 interface UpdateScheduleInput {
+  locationId?: string;
   serviceId?: string;
   dayOfWeek?: number;
   startTime?: string;

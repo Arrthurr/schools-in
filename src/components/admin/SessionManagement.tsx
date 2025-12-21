@@ -14,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -27,9 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  ErrorState,
   EmptyState,
-  CompactEmptyState,
 } from "@/components/ui/error-empty-states";
 import {
   Edit,
@@ -37,8 +34,6 @@ import {
   Clock,
   AlertTriangle,
   Save,
-  RotateCcw,
-  MapPin,
   User,
   School,
   Calendar,

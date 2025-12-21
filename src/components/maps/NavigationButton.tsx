@@ -15,7 +15,7 @@ interface NavigationButtonProps {
 
 export function NavigationButton({ destination, className }: NavigationButtonProps) {
   const handleNavigation = () => {
-    const { lat, lng, address, name } = destination;
+    const { lat, lng, address } = destination;
     
     // Create Google Maps navigation URL
     const destinationStr = address || `${lat},${lng}`;

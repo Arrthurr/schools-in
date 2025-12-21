@@ -1,17 +1,16 @@
 "use client";
 
 import { useState, useEffect, useId, useMemo, useCallback } from "react";
-import { useAuth } from "../../lib/hooks/useAuth";
-import { useLocation } from "../../lib/hooks/useLocation";
-import { useSession } from "../../lib/hooks/useSession";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useLocation } from "@/lib/hooks/useLocation";
+import { useSession } from "@/lib/hooks/useSession";
 
-import { 
-  getAssignedLocations, 
-  calculateDistance as calcDistance,
+import {
+  getAssignedLocations,
   addDistances,
-  sortByDistance 
-} from "../../lib/services/locationService";
-import { Location } from "@/lib/firebase/types";
+  sortByDistance,
+  LocationWithDistance,
+} from "@/lib/services/locationService";
 import {
   Card,
   CardContent,
@@ -32,7 +31,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import { SkeletonCard, SkeletonList } from "../ui/skeleton";
+import { SkeletonList } from "../ui/skeleton";
 import { LoadingSpinner } from "../ui/loading";
 import { ErrorState, EmptyState } from "../ui/error-empty-states";
 // import {
@@ -41,7 +40,7 @@ import { ErrorState, EmptyState } from "../ui/error-empty-states";
 //   ARIA,
 // } from "../../lib/accessibility";
 
-type School = Location;
+type School = LocationWithDistance;
 
 interface SchoolListProps {
   onSchoolSelect?: (school: School) => void;
@@ -62,7 +61,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 }) => {
   const { user } = useAuth();
   const { location, loading: locationLoading, getLocation } = useLocation();
-  const { checkIn, currentSession, loading: sessionLoading } = useSession();
+  const { checkIn, currentSession } = useSession();
 
   const [schools, setSchools] = useState<School[]>([]);
   const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
@@ -73,7 +72,12 @@ export const SchoolList: React.FC<SchoolListProps> = ({
 
   // Accessibility hooks
   // const { announce } = useAnnouncement();
-  const announce = useCallback(() => {}, []);
+  const announce = useCallback(
+    (_message: string, _politeness: "polite" | "assertive" = "polite") => {
+      // noop placeholder until accessibility announcements are wired up
+    },
+    []
+  );
   const ScreenReaderOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <span className="sr-only">{children}</span>
   );
@@ -85,19 +89,12 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     
     const loadSchools = async () => {
       if (!user?.uid || isCancelled) return;
-      
-      // Only load once when we have a user and no schools yet
-      if (schools.length > 0) {
-        return;
-      }
 
-      const startTime = performance.now();
       setLoading(true);
       setError(null);
 
       try {
         const assignedLocations = await getAssignedLocations(user.uid);
-        const loadTime = performance.now() - startTime;
 
         // Check if component is still mounted before updating state
         if (isCancelled) return;
@@ -108,7 +105,6 @@ export const SchoolList: React.FC<SchoolListProps> = ({
         // Announce results to screen readers
         announce(`${assignedLocations.length} assigned schools loaded`, "polite");
       } catch (err) {
-        const loadTime = performance.now() - startTime;
         console.error("Error loading schools:", err);
         const errorMessage = "Failed to load schools. Please try again.";
 
@@ -131,7 +127,15 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [user?.uid, announce, schools.length]);
+  }, [user?.uid, announce]);
+
+  // Clear any stale school data when the user changes or logs out
+  useEffect(() => {
+    if (!user?.uid) {
+      setSchools([]);
+      setFilteredSchools([]);
+    }
+  }, [user?.uid]);
 
   const displayedSchools = useMemo(() => {
     if (filteredSchools.length === 0) return [] as Array<School & { distance?: number }>;
@@ -372,7 +376,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
               showAction={true}
             />
           ) : (
-            displayedSchools.map((school, index) => (
+            displayedSchools.map((school) => (
               <div
                 key={school.id}
                 className={`p-4 sm:p-5 border rounded-lg transition-colors ${

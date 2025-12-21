@@ -5,7 +5,7 @@
  */
 
 import { CacheTracker } from "./FirebaseCache";
-import { cacheManager, CacheType } from "./CacheManager";
+import { cacheManager } from "./CacheManager";
 
 export interface CacheInitOptions {
   enableMemoryCache?: boolean;

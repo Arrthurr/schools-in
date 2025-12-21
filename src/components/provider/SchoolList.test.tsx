@@ -46,7 +46,7 @@ const mockUser = {
   email: "provider@test.com",
   displayName: "Test Provider",
   role: "provider" as const,
-};
+} as unknown as ReturnType<typeof useAuthModule.useAuth>["user"];
 
 const mockLocation = {
   latitude: 41.90191443941818,
@@ -60,8 +60,6 @@ describe("SchoolList Component", () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       loading: false,
-      signIn: jest.fn(),
-      signOut: jest.fn(),
     });
 
     mockUseLocation.mockReturnValue({

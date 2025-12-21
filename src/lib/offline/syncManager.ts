@@ -4,7 +4,6 @@
 import {
   processQueue,
   getPendingActions,
-  getQueueStats,
   updateActionStatus,
   removeCompletedActions,
   QUEUE_STATUS,
@@ -12,7 +11,6 @@ import {
   type QueuedAction,
 } from "./actionQueue";
 import {
-  useNetworkStatus,
   type NetworkStatus,
 } from "../hooks/useNetworkStatus";
 
@@ -172,7 +170,7 @@ class SyncManager {
 
   // Determine optimal sync strategy based on network conditions
   private determineSyncStrategy(networkStatus: NetworkStatus): SyncStrategy {
-    const { connectivityScore, effectiveType, downlink, rtt, saveData } =
+    const { connectivityScore, downlink, rtt, saveData } =
       networkStatus;
 
     // Critical network conditions - no sync
@@ -391,13 +389,13 @@ class SyncManager {
   }
 
   // Sync a single action (placeholder - actual implementation would call the real sync functions)
-  private async syncSingleAction(action: QueuedAction): Promise<boolean> {
+  private async syncSingleAction(_action: QueuedAction): Promise<boolean> {
     // This would call the actual sync functions from actionQueue.ts
     // For now, we'll simulate the sync
     try {
       const response = await processQueue(); // This processes the entire queue, but we can optimize later
       return response.synced > 0;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -569,7 +567,7 @@ class SyncManager {
     };
   }
 
-  private createSkippedResult(reason: string): SyncResult {
+  private createSkippedResult(_reason: string): SyncResult {
     return {
       success: true,
       processed: 0,

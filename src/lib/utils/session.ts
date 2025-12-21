@@ -7,6 +7,7 @@ export interface SessionData {
   id?: string;
   userId: string;
   schoolId: string;
+  locationId?: string; // newer sessions use locationId as the primary key
   checkInTime: Timestamp;
   checkOutTime?: Timestamp;
   checkInLocation: Coordinates;
@@ -14,6 +15,10 @@ export interface SessionData {
   status: "active" | "completed" | "error" | "paused" | "cancelled";
   duration?: number;
   notes?: string;
+  checkInMethod?: "geo" | "manual" | "offline-sync";
+  distanceFromCenterAtCheckIn?: number;
+  dayKey?: string;
+  active?: boolean;
 }
 
 // Calculate session duration in minutes

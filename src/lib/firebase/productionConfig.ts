@@ -3,7 +3,9 @@
  * Analytics functionality has been removed - this file is kept for future monitoring needs
  */
 
-import { performance } from "../../../firebase.config";
+import { performance as firebasePerformance } from "../../../firebase.config";
+import { trace as performanceTrace } from "firebase/performance";
+import type { FirebasePerformance } from "firebase/performance";
 
 // Custom performance metrics
 export const PERFORMANCE_METRICS = {
@@ -22,10 +24,11 @@ export class ProductionMonitoring {
     value: number,
     attributes: Record<string, string> = {}
   ): void {
-    if (typeof window === "undefined" || !performance) return;
+    const perf = firebasePerformance as FirebasePerformance | null;
+    if (typeof window === "undefined" || !perf) return;
 
     try {
-      const trace = performance.trace(metricName);
+      const trace = performanceTrace(perf, metricName);
 
       // Add custom attributes
       Object.entries(attributes).forEach(([key, val]) => {
@@ -52,7 +55,8 @@ export class ProductionMonitoring {
 
   // Setup performance monitoring
   private static setupPerformanceMonitoring(): void {
-    if (typeof window === "undefined" || !performance) return;
+    const perf = firebasePerformance as FirebasePerformance | null;
+    if (typeof window === "undefined" || !perf) return;
 
     // Monitor page load performance
     window.addEventListener("load", () => {

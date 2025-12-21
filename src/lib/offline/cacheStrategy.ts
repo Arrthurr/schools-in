@@ -74,7 +74,7 @@ export async function initCacheDB() {
   }
 
   dbInstance = await openDB("schools-in-cache", 2, {
-    upgrade(db, oldVersion) {
+    upgrade(db) {
       // Schools cache store
       if (!db.objectStoreNames.contains(CACHE_STORES.SCHOOLS)) {
         const schoolsStore = db.createObjectStore(CACHE_STORES.SCHOOLS, {

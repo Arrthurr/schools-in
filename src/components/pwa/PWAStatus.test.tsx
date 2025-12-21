@@ -1,7 +1,7 @@
 // Unit tests for PWAStatus component
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { PWAStatus } from "./PWAStatus";
 import { useOffline } from "../../lib/hooks/useOffline";
 

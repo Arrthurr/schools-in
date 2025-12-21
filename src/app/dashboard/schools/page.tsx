@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ProtectedRoute } from "../../../components/auth/ProtectedRoute";
 import { SchoolList } from "../../../components/provider/SchoolList";
 import { SchoolDetailView } from "../../../components/provider/SchoolDetailView";
-import { School } from "../../../lib/services/schoolService";
+import { Location } from "../../../lib/firebase/types";
 import {
   Card,
   CardContent,
@@ -16,17 +16,17 @@ import { ArrowLeft, School as SchoolIcon, MapPin, List } from "lucide-react";
 import { appLogger } from "@/lib/logging/appLogger";
 
 export default function SchoolsPage() {
-  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
+  const [selectedSchool, setSelectedSchool] = useState<Location | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
 
   // Handle school selection for check-in
-  const handleSchoolSelect = (school: School) => {
+  const handleSchoolSelect = (school: Location) => {
     appLogger.info("School selected for check-in", { school: school.name });
     // This would trigger check-in flow in a real implementation
   };
 
   // Handle viewing school details
-  const handleSchoolDetail = (school: School) => {
+  const handleSchoolDetail = (school: Location) => {
     setSelectedSchool(school);
     setViewMode("detail");
   };
@@ -38,7 +38,7 @@ export default function SchoolsPage() {
   };
 
   // Handle check-in from detail view
-  const handleCheckInFromDetail = (school: School) => {
+  const handleCheckInFromDetail = (school: Location) => {
     appLogger.info("Check-in initiated from detail view", {
       school: school.name,
     });

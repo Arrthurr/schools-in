@@ -104,12 +104,7 @@ jest.mock("firebase/auth", () => ({
   })),
 }));
 
-import {
-  signInWithPopup,
-  OAuthProvider,
-  signOut,
-  getAuth,
-} from "firebase/auth";
+import { signInWithPopup, signOut } from "firebase/auth";
 import { getDoc } from "firebase/firestore";
 
 describe("Firebase Auth Utilities", () => {

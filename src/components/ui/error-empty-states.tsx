@@ -2,7 +2,6 @@ import * as React from "react";
 import {
   AlertCircle,
   RefreshCw,
-  Wifi,
   WifiOff,
   School,
   Users,
@@ -13,13 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "./button";
 import { Alert, AlertDescription, AlertTitle } from "./alert";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./card";
+import { Card, CardContent } from "./card";
 
 interface ErrorStateProps {
   title?: string;

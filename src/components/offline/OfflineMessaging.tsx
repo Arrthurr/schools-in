@@ -6,14 +6,9 @@ import { useNetworkStatus } from "@/lib/hooks/useNetworkStatus";
 import { useEnhancedOfflineQueue } from "@/lib/hooks/useEnhancedOfflineQueue";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
-  Toast,
   ToastAction,
-  ToastClose,
-  ToastDescription,
   ToastProvider,
-  ToastTitle,
   ToastViewport,
 } from "@/components/ui/toast";
 import { useToast } from "@/components/ui/use-toast";
@@ -21,10 +16,6 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
-  Wifi,
-  WifiOff,
-  Clock,
-  RefreshCw,
   X,
 } from "lucide-react";
 
@@ -59,7 +50,7 @@ export function OfflineMessagingProvider({
   const { state, actions } = useEnhancedOfflineQueue();
   const { toast } = useToast();
 
-  const [messages, setMessages] = useState<OfflineMessage[]>([]);
+  const [, setMessages] = useState<OfflineMessage[]>([]);
   const [previousOnlineStatus, setPreviousOnlineStatus] = useState(
     networkStatus.isOnline
   );
@@ -230,10 +221,6 @@ export function OfflineMessagingProvider({
 
   const removeMessage = (id: string) => {
     setMessages((prev) => prev.filter((msg) => msg.id !== id));
-  };
-
-  const clearAllMessages = () => {
-    setMessages([]);
   };
 
   return (

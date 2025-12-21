@@ -1,7 +1,7 @@
 // Offline action queue for check-in/out operations
 // Handles storing, managing, and syncing actions when offline
 
-import { initCacheDB, CACHE_STORES, CACHE_CONFIG } from "./cacheStrategy";
+import { initCacheDB, CACHE_STORES } from "./cacheStrategy";
 import {
   createDocument,
   updateDocument,

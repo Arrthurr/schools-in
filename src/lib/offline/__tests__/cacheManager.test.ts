@@ -31,7 +31,7 @@ jest.mock("@/lib/offline/cacheStrategy", () => ({
   },
 }));
 
-import CacheManager, { cacheManager } from "@/lib/offline/cacheManager";
+import { cacheManager } from "@/lib/offline/cacheManager";
 import {
   initCacheDB,
   cacheData,

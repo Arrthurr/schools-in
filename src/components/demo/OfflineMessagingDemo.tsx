@@ -28,9 +28,7 @@ import {
   WifiOff,
   Info,
   MessageSquare,
-  Bell,
   Activity,
-  Settings,
   Monitor,
 } from "lucide-react";
 

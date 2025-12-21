@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { OptimizedImage } from './optimized-image';
 import { useLazyLoading } from '@/lib/hooks/useLazyLoading';
 import { Skeleton } from './skeleton';

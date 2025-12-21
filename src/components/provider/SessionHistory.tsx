@@ -7,7 +7,6 @@ import { SchoolService } from "../../lib/services/schoolService";
 import {
   formatDuration,
   formatSessionTime,
-  calculateSessionDuration,
 } from "../../lib/utils/session";
 import { SessionData } from "../../lib/utils/session";
 import {
@@ -17,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import { Badge } from "../ui/badge";
+
 import { StatusBadge } from "../ui/status-badge";
 import {
   Table,
@@ -28,7 +27,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { Button } from "../ui/button";
-import { Select, SelectOption } from "../ui/select";
+import { SimpleSelect, SelectOption } from "../ui/select";
 import { DatePicker } from "../ui/date-picker";
 import { SessionDetailModal } from "./SessionDetailModal";
 import {
@@ -36,7 +35,6 @@ import {
   MapPin,
   RefreshCw,
   AlertCircle,
-  CheckCircle,
   Calendar,
   Filter,
   Eye,
@@ -268,7 +266,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 <label className="block text-sm font-medium text-foreground mb-2">
                   School
                 </label>
-                <Select
+                <SimpleSelect
                   options={schoolOptions}
                   value={selectedSchoolId}
                   onValueChange={setSelectedSchoolId}

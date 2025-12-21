@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { feedbackService } from "@/lib/services/feedbackService";
 import { Button } from "@/components/ui/button";
@@ -31,11 +31,11 @@ import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const feedbackSchema = z.object({
-  category: z.enum(["bug", "feature_request", "general", "other"], {
-    required_error: "Please select a category.",
+  category: z.enum(["bug", "feature_request", "general", "other"] as const, {
+    message: "Please select a category.",
   }),
-  severity: z.enum(["low", "medium", "high", "critical"], {
-    required_error: "Please select a severity level.",
+  severity: z.enum(["low", "medium", "high", "critical"] as const, {
+    message: "Please select a severity level.",
   }),
   description: z.string().min(10, {
     message: "Description must be at least 10 characters.",
@@ -48,7 +48,6 @@ type FeedbackFormValues = z.infer<typeof feedbackSchema>;
 export function FeedbackForm() {
   const { user } = useCachedAuth();
   const router = useRouter();
-  const pathname = usePathname();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -80,7 +79,7 @@ export function FeedbackForm() {
       await feedbackService.submitFeedback({
         providerId: user.uid,
         providerName: user.displayName || "Unknown Provider",
-        providerEmail: data.providerEmail || user.email,
+        providerEmail: data.providerEmail || user.email || undefined,
         category: data.category,
         severity: data.severity,
         description: data.description,

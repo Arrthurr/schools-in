@@ -48,7 +48,7 @@ describe("useProviderMetrics", () => {
     locationId: "location-456",
     status: "active" as const,
     startTime: Timestamp.fromDate(new Date("2024-01-15T10:00:00Z")),
-    endTime: null,
+    endTime: undefined,
     durationMinutes: 0,
     checkInMethod: "geo" as const,
     distanceFromCenterAtCheckIn: 25,
@@ -189,9 +189,23 @@ describe("useProviderMetrics", () => {
           ...mockCompletedSession,
           id: "session-1",
           status: "completed" as const,
+          createdAt: Timestamp.fromDate(new Date("2024-01-15T10:00:00Z")),
+          updatedAt: Timestamp.fromDate(new Date("2024-01-15T10:00:00Z")),
         },
-        { ...mockSession, id: "session-2", status: "active" as const },
-        { ...mockSession, id: "session-3", status: "incomplete" as const },
+        {
+          ...mockSession,
+          id: "session-2",
+          status: "active" as const,
+          createdAt: Timestamp.fromDate(new Date("2024-01-15T10:00:00Z")),
+          updatedAt: Timestamp.fromDate(new Date("2024-01-15T10:00:00Z")),
+        },
+        {
+          ...mockSession,
+          id: "session-3",
+          status: "cancelled" as const,
+          createdAt: Timestamp.fromDate(new Date("2024-01-15T10:00:00Z")),
+          updatedAt: Timestamp.fromDate(new Date("2024-01-15T10:00:00Z")),
+        },
       ];
 
       mockCachedSessionService.getUserWeeklySessions.mockResolvedValue(

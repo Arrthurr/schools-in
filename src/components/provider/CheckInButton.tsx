@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { MapPin, Loader2, AlertCircle, Clock, Navigation } from "lucide-react";
+import { MapPin, Loader2, AlertCircle, Clock } from "lucide-react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useSession } from "../../lib/hooks/useSession";
 
@@ -66,7 +66,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [sessionDuration, setSessionDuration] = useState<number | null>(null);
   // const { announce } = useAnnouncement();
-  const announce = () => {}; // No-op function placeholder
+  const announce = (_message: string, _priority?: string) => {}; // No-op function placeholder
 
   const handleCheckInClick = useCallback(async () => {
     if (!user) {
@@ -74,7 +74,6 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       return;
     }
 
-    const startTime = performance.now();
     setIsGettingLocation(true);
     setLocationError(null);
     announce("Attempting to get your location...");
@@ -85,8 +84,6 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         timeout: 15000,
         maximumAge: 0,
       });
-
-      const locationTime = performance.now() - startTime;
 
       setUserLocation(location);
       onLocationUpdate?.(location);
@@ -127,8 +124,6 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       }
     } catch (error: any) {
       const err = error as CustomLocationError;
-      const locationTime = performance.now() - startTime;
-
       setLocationError({ message: err.message, code: err.code });
       setIsWithinRange(false);
       setUserLocation(null);
@@ -158,16 +153,11 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       return;
     }
 
-    const startTime = performance.now();
     try {
       await checkIn(school.id, userLocation);
-      const checkInDuration = performance.now() - startTime;
-
       setShowConfirmDialog(false);
       announce(`Successfully checked in to ${school.name}`);
     } catch (error) {
-      const checkInDuration = performance.now() - startTime;
-
       setLocationError({ message: "Failed to check in. Please try again." });
       announce("Failed to check in. Please try again.", "assertive");
     }
@@ -192,7 +182,6 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   const handleConfirmCheckOut = async () => {
     if (!user || !currentSessionId) return;
 
-    const startTime = performance.now();
     try {
       const locationForCheckout = userLocation || {
         latitude: school.geo.latitude,
@@ -201,13 +190,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       };
 
       await checkOut(currentSessionId, locationForCheckout);
-      const checkOutDuration = performance.now() - startTime;
-
       setShowCheckOutDialog(false);
       announce(`Successfully checked out from ${school.name}`);
     } catch (error) {
-      const checkOutDuration = performance.now() - startTime;
-
       setLocationError({ message: "Failed to check out. Please try again." });
       announce("Failed to check out. Please try again.", "assertive");
     }
@@ -286,7 +271,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
             </Button>
             <Button 
               onClick={handleConfirmCheckIn} 
-              disabled={sessionLoading || (locationAccuracy && locationAccuracy > 50)}
+              disabled={sessionLoading || (locationAccuracy !== null && locationAccuracy > 50)}
             >
               {sessionLoading ? "Confirming..." : "Confirm"}
             </Button>

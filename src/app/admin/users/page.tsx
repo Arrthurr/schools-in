@@ -32,7 +32,6 @@ import {
   getAllUsers,
   getUserStats,
   updateUserRole,
-  toggleUserStatus,
   bulkUpdateUserStatus,
   bulkDeleteUsers,
   searchUsers,
@@ -147,25 +146,6 @@ function UserManagementContent() {
     }
   };
 
-  const handleUserStatusToggle = async (
-    userId: string,
-    currentStatus: boolean
-  ) => {
-    try {
-      await toggleUserStatus(userId, !currentStatus);
-      await loadUsers(); // Reload to get fresh data
-    } catch (error) {
-      console.error("Error updating user status:", error);
-      setError("Failed to update user status");
-    }
-  };
-
-  const handleCreateUser = () => {
-    setEditingUser(null);
-    setFormMode("create");
-    setShowUserForm(true);
-  };
-
   const handleEditUser = (user: UserRecord) => {
     setEditingUser(user);
     setFormMode("edit");
@@ -242,7 +222,6 @@ function UserManagementContent() {
         "Display Name",
         "Role",
         "Status",
-        "Assigned Schools",
         "Created At",
         "Last Sign In",
       ].join(","),
@@ -252,7 +231,6 @@ function UserManagementContent() {
           user.displayName || "",
           user.role,
           user.isActive ? "Active" : "Inactive",
-          user.assignedSchools?.length || 0,
           user.createdAt?.toDate?.()?.toLocaleDateString() || "",
           user.lastSignIn?.toDate?.()?.toLocaleDateString() || "Never",
         ].join(",")
@@ -505,12 +483,6 @@ function UserManagementContent() {
                         <Mail className="h-3 w-3 mr-1" />
                         {user.email}
                       </p>
-                      {user.assignedSchools &&
-                        user.assignedSchools.length > 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            {user.assignedSchools.length} schools assigned
-                          </p>
-                        )}
                       <p className="text-sm text-muted-foreground flex items-center">
                         <Calendar className="h-3 w-3 mr-1" />
                         Joined{" "}

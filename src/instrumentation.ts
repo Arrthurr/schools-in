@@ -5,12 +5,15 @@ import { logStartupError, logStartupStage } from "@/lib/logging/startupLogger";
 type PackageJson = typeof packageJson;
 
 const getNextVersion = (pkg: PackageJson) => {
-  const fromDependencies = (pkg.dependencies ?? {}).next;
+  const deps = pkg.dependencies as Record<string, string> | undefined;
+  const devDeps = pkg.devDependencies as Record<string, string> | undefined;
+
+  const fromDependencies = deps?.next;
   if (fromDependencies) {
     return fromDependencies;
   }
 
-  return (pkg.devDependencies ?? {}).next ?? "unknown";
+  return devDeps?.next ?? "unknown";
 };
 
 export async function register() {

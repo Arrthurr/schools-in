@@ -3,7 +3,7 @@ jest.mock("idb", () => ({
   openDB: jest.fn(),
 }));
 
-import { CACHE_STORES, CACHE_CONFIG } from "@/lib/offline/cacheStrategy";
+import { CACHE_CONFIG, CACHE_STORES } from "@/lib/offline/cacheStrategy";
 
 describe("CacheStrategy Constants", () => {
   describe("CACHE_CONFIG", () => {
@@ -58,7 +58,6 @@ describe("CacheStrategy Constants", () => {
   describe("Configuration Validation", () => {
     it("should have consistent configuration between stores and expiration", () => {
       // Ensure every store has a corresponding size limit or expiration
-      const storeNames = Object.values(CACHE_STORES);
       const expirationKeys = Object.keys(CACHE_CONFIG.EXPIRATION);
       const sizeLimitKeys = Object.keys(CACHE_CONFIG.SIZE_LIMITS);
 

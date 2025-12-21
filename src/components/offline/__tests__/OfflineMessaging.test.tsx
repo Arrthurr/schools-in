@@ -7,7 +7,6 @@ import "@testing-library/jest-dom";
 import { OfflineStatusIndicator } from "../OfflineStatusIndicator";
 import {
   OfflineMessageList,
-  OfflineMessagingProvider,
   useOfflineMessaging,
 } from "../OfflineMessaging";
 import { OfflineStatusBar } from "../OfflineStatusBar";

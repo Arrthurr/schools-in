@@ -127,7 +127,7 @@ export class CachedSchoolService {
 
         const snapshot = await getDocs(queryRef);
         let schools = snapshot.docs.map((docSnapshot) =>
-          normalizeSnapshot(docSnapshot)
+          normalizeSnapshot(docSnapshot as unknown as FirestoreDocSnapshot)
         );
 
         // Apply search filter (client-side)

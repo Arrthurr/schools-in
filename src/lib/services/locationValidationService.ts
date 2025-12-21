@@ -398,7 +398,7 @@ function getMockCoordinatesForAddress(
   };
 }
 
-function getMockAddressForCoordinates(lat: number, lng: number): string {
+function getMockAddressForCoordinates(_lat: number, _lng: number): string {
   // Mock reverse geocoding
   const streetNumber = Math.floor(Math.random() * 9999) + 1;
   const streets = [

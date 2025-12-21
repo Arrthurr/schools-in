@@ -1,6 +1,5 @@
 import { Timestamp } from "firebase/firestore";
 import {
-  APP_TIMEZONE,
   calculateDurationMinutes,
   convertToTimezone,
   formatDateForDisplay,

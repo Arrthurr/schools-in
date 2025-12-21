@@ -7,22 +7,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Clock,
   MapPin,
   Calendar,
   CheckCircle,
-  AlertCircle,
   User,
   FileText,
   X,
@@ -30,9 +27,7 @@ import {
 import { SessionData } from "@/lib/utils/session";
 import {
   formatSessionTime,
-  formatDuration,
   formatDurationDetailed,
-  calculateSessionDuration,
 } from "@/lib/utils/session";
 
 interface SessionDetailModalProps {

@@ -85,7 +85,6 @@ export function SchoolForm({
     error?: string;
   } | null>(null);
   const [showMap, setShowMap] = useState(false);
-  const [mapLocation, setMapLocation] = useState<{lat: number; lng: number} | null>(null);
 
   const isEditing = !!school?.id;
 
@@ -348,7 +347,6 @@ export function SchoolForm({
       latitude: location.lat,
       longitude: location.lng
     }));
-    setMapLocation(location);
   };
 
   return (

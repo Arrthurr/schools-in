@@ -18,7 +18,6 @@ import {
   QUEUE_CONFIG,
   type QueuedAction,
   type QueueActionType,
-  type QueueStatus,
 } from "@/lib/offline/actionQueue";
 
 // Hook state interface

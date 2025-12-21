@@ -17,7 +17,6 @@ import {
   arrayUnion,
   arrayRemove,
   Timestamp,
-  GeoPoint,
 } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "../firebase/firestore";
