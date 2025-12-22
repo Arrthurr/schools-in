@@ -6,6 +6,21 @@ import {
   ExpirationPlugin,
   type PrecacheEntry,
 } from "serwist";
+import { openDB } from "idb";
+
+// ============================================
+// Background Sync Constants
+// ============================================
+const GEOFENCE_CHECK_TAG = "geofence-check";
+const CHECK_IN_SYNC_TAG = "check-in-sync";
+const CHECK_OUT_SYNC_TAG = "check-out-sync";
+const SESSION_SYNC_TAG = "session-sync";
+
+// IndexedDB constants (duplicated to avoid cross-context imports)
+const DB_NAME = "schools-in-offline";
+const DB_VERSION = 2;
+const PENDING_ACTIONS_STORE = "pending-actions";
+const GEOFENCE_CONFIG_STORE = "geofence-config";
 
 // This declares the value of `injectionPoint` to TypeScript.
 // `injectionPoint` is the string that will be replaced by the
@@ -150,6 +165,204 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+});
+
+// ============================================
+// Periodic Background Sync Handler
+// ============================================
+// Chrome/Edge only - triggers every 15-60 min based on engagement score
+
+self.addEventListener("periodicsync", (event: any) => {
+  if (event.tag === GEOFENCE_CHECK_TAG) {
+    event.waitUntil(handlePeriodicGeofenceCheck());
+  }
+});
+
+async function handlePeriodicGeofenceCheck(): Promise<void> {
+  try {
+    // Check for active clients (open tabs/windows)
+    const clients = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: false,
+    });
+
+    if (clients.length > 0) {
+      // Post message to first client to run geofence check
+      // Client has access to Geolocation API, SW does not
+      clients[0].postMessage({ type: "GEOFENCE_CHECK_REQUESTED" });
+      console.log("[SW] Geofence check requested via client message");
+    } else {
+      // No active client - check if we should show notification
+      const shouldNotify = await checkShouldShowGeofenceNotification();
+      if (shouldNotify.show) {
+        await showGeofenceReminderNotification(
+          shouldNotify.action,
+          shouldNotify.locationName
+        );
+      }
+    }
+  } catch (error) {
+    console.error("[SW] Periodic geofence check failed:", error);
+  }
+}
+
+async function checkShouldShowGeofenceNotification(): Promise<{
+  show: boolean;
+  action: "check-in" | "check-out" | "none";
+  locationName: string | null;
+}> {
+  try {
+    const db = await openDB(DB_NAME, DB_VERSION);
+    const config = await db.get(GEOFENCE_CONFIG_STORE, "current");
+
+    if (!config || !config.autoGeofenceEnabled) {
+      return { show: false, action: "none", locationName: null };
+    }
+
+    // Check if we have a stale location that might need attention
+    if (config.lastCheckAt) {
+      const ageMs = Date.now() - config.lastCheckAt;
+      const staleThresholdMs = 30 * 60 * 1000; // 30 minutes
+
+      if (ageMs > staleThresholdMs) {
+        // Location data is stale, prompt user to open app
+        if (config.activeSessionId) {
+          // Has active session but hasn't checked in a while
+          const location = config.assignedLocations?.find(
+            (loc: any) => loc.id === config.activeSessionLocationId
+          );
+          return {
+            show: true,
+            action: "check-out",
+            locationName: location?.name || null,
+          };
+        }
+      }
+    }
+
+    return { show: false, action: "none", locationName: null };
+  } catch {
+    return { show: false, action: "none", locationName: null };
+  }
+}
+
+async function showGeofenceReminderNotification(
+  action: "check-in" | "check-out" | "none",
+  locationName: string | null
+): Promise<void> {
+  const title =
+    action === "check-in" ? "Check-in Reminder" : "Check-out Reminder";
+
+  const body =
+    action === "check-in"
+      ? "Open Schools In to check in at your location"
+      : locationName
+        ? `Are you still at ${locationName}?`
+        : "Open Schools In to update your session";
+
+  await self.registration.showNotification(title, {
+    body,
+    icon: "/icons/icon-192x192.png",
+    badge: "/icons/icon-72x72.png",
+    tag: "geofence-reminder",
+    requireInteraction: true,
+    data: { action, locationName },
+  });
+}
+
+// ============================================
+// Background Sync Handler (Offline Actions)
+// ============================================
+// Syncs pending check-in/check-out actions when back online
+
+self.addEventListener("sync", (event: any) => {
+  const tag = event.tag;
+
+  if (
+    tag === CHECK_IN_SYNC_TAG ||
+    tag === CHECK_OUT_SYNC_TAG ||
+    tag === SESSION_SYNC_TAG
+  ) {
+    event.waitUntil(syncPendingActions());
+  }
+});
+
+async function syncPendingActions(): Promise<void> {
+  try {
+    const db = await openDB(DB_NAME, DB_VERSION);
+    const actions = await db.getAll(PENDING_ACTIONS_STORE);
+
+    if (actions.length === 0) {
+      console.log("[SW] No pending actions to sync");
+      return;
+    }
+
+    console.log(`[SW] Syncing ${actions.length} pending actions`);
+
+    // Notify clients that sync is starting
+    const clients = await self.clients.matchAll({ type: "window" });
+    clients.forEach((client) => {
+      client.postMessage({
+        type: "BACKGROUND_SYNC_STARTED",
+        count: actions.length,
+      });
+    });
+
+    // Process each action
+    for (const action of actions) {
+      try {
+        // Post to client to handle the actual Firebase operation
+        // SW cannot directly use Firebase SDK due to auth context
+        if (clients.length > 0) {
+          clients[0].postMessage({
+            type: "SYNC_ACTION_REQUESTED",
+            action,
+          });
+        }
+      } catch (error) {
+        console.error("[SW] Failed to sync action:", action.id, error);
+      }
+    }
+
+    // Notify clients that sync completed
+    clients.forEach((client) => {
+      client.postMessage({
+        type: "BACKGROUND_SYNC_COMPLETED",
+        count: actions.length,
+      });
+    });
+  } catch (error) {
+    console.error("[SW] Background sync failed:", error);
+    throw error; // Rethrow to retry sync
+  }
+}
+
+// ============================================
+// Notification Click Handler
+// ============================================
+
+self.addEventListener("notificationclick", (event: NotificationEvent) => {
+  event.notification.close();
+
+  const data = event.notification.data;
+  const urlToOpen = data?.action === "check-in" ? "/provider" : "/provider";
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        // If there's already a window open, focus it
+        for (const client of clientList) {
+          if ("focus" in client) {
+            return client.focus();
+          }
+        }
+        // Otherwise open a new window
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(urlToOpen);
+        }
+      })
+  );
 });
 
 serwist.addEventListeners();

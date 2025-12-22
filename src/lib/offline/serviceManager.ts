@@ -11,6 +11,7 @@ import {
   cacheUserData,
   getCachedUserData,
   clearOfflineData,
+  hasPendingActions,
 } from "./offlineDB";
 import {
   createDocument,
@@ -20,14 +21,51 @@ import {
 import { Timestamp } from "firebase/firestore";
 import { getDayKey } from "@/lib/utils/time";
 
+// Background Sync tags
+const CHECK_IN_SYNC_TAG = "check-in-sync";
+const CHECK_OUT_SYNC_TAG = "check-out-sync";
+const SESSION_SYNC_TAG = "session-sync";
+
+/**
+ * Check if Background Sync API is supported
+ */
+function isBackgroundSyncSupported(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "SyncManager" in window
+  );
+}
+
+/**
+ * Register a background sync event
+ */
+async function registerBackgroundSync(tag: string): Promise<boolean> {
+  if (!isBackgroundSyncSupported()) {
+    return false;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    await (registration as any).sync.register(tag);
+    console.log(`[ServiceManager] Registered background sync: ${tag}`);
+    return true;
+  } catch (error) {
+    console.warn(`[ServiceManager] Failed to register background sync: ${tag}`, error);
+    return false;
+  }
+}
+
 export class ServiceManager {
   private static instance: ServiceManager;
   private isOnline: boolean = true;
   private syncInProgress: boolean = false;
+  private backgroundSyncSupported: boolean = false;
 
   private constructor() {
     if (typeof window !== "undefined") {
       this.isOnline = navigator.onLine;
+      this.backgroundSyncSupported = isBackgroundSyncSupported();
       this.setupEventListeners();
       this.initializeOfflineDB();
     }
@@ -95,8 +133,33 @@ export class ServiceManager {
       case "CACHE_UPDATE":
         this.notifyStatusChange("cache-updated");
         break;
+      case "BACKGROUND_SYNC_STARTED":
+        console.log(`[ServiceManager] Background sync started: ${data.count} actions`);
+        this.notifyStatusChange("sync-started");
+        break;
+      case "BACKGROUND_SYNC_COMPLETED":
+        console.log(`[ServiceManager] Background sync completed: ${data.count} actions`);
+        this.notifyStatusChange("sync-completed");
+        break;
+      case "SYNC_ACTION_REQUESTED":
+        // SW is requesting us to sync a specific action
+        this.handleSyncActionRequest(data.action);
+        break;
       default:
         console.log("Unknown service worker message:", data);
+    }
+  }
+
+  private async handleSyncActionRequest(action: any) {
+    if (!action) return;
+
+    try {
+      // Process the action through the normal sync flow
+      await syncPendingActions();
+      this.notifyStatusChange("sync-completed");
+    } catch (error) {
+      console.error("[ServiceManager] Failed to process sync action:", error);
+      this.notifyStatusChange("sync-failed");
     }
   }
 
@@ -190,6 +253,11 @@ export class ServiceManager {
           timestamp: Date.now(),
         });
 
+        // Register background sync if supported
+        if (this.backgroundSyncSupported) {
+          await registerBackgroundSync(CHECK_IN_SYNC_TAG);
+        }
+
         // Create local session record
         const localSession = {
           id: `offline-${Date.now()}`,
@@ -260,6 +328,11 @@ export class ServiceManager {
           timestamp: Date.now(),
         });
 
+        // Register background sync if supported
+        if (this.backgroundSyncSupported) {
+          await registerBackgroundSync(CHECK_OUT_SYNC_TAG);
+        }
+
         console.log("Check-out queued for offline sync");
         return { status: "pending-sync" };
       }
@@ -319,7 +392,40 @@ export class ServiceManager {
     return {
       isOnline: this.isOnline,
       syncInProgress: this.syncInProgress,
+      backgroundSyncSupported: this.backgroundSyncSupported,
     };
+  }
+
+  /**
+   * Check if Background Sync API is supported
+   */
+  public isBackgroundSyncSupported(): boolean {
+    return this.backgroundSyncSupported;
+  }
+
+  /**
+   * Check if there are pending actions waiting to sync
+   */
+  public async hasPendingActions(): Promise<boolean> {
+    try {
+      return await hasPendingActions();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Manually trigger a background sync registration
+   * Useful for testing or forcing a sync attempt
+   */
+  public async triggerBackgroundSync(): Promise<boolean> {
+    if (!this.backgroundSyncSupported) {
+      // Fall back to manual sync
+      await this.performBackgroundSync();
+      return false;
+    }
+
+    return await registerBackgroundSync(SESSION_SYNC_TAG);
   }
 }
 
