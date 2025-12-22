@@ -28,6 +28,29 @@ jest.mock("@/lib/logging/appLogger", () => ({
   },
 }));
 
+// Mock PWA background sync modules
+jest.mock("@/lib/offline/offlineDB", () => ({
+  saveGeofenceConfig: jest.fn().mockResolvedValue(undefined),
+  updateGeofenceActiveSession: jest.fn().mockResolvedValue(undefined),
+  updateGeofenceUserLocation: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock("@/lib/pwa/periodicBackgroundSync", () => ({
+  registerPeriodicGeofenceSync: jest.fn().mockResolvedValue(false),
+  unregisterPeriodicGeofenceSync: jest.fn().mockResolvedValue(false),
+  setupGeofenceCheckListener: jest.fn().mockReturnValue(() => undefined),
+}));
+
+// Mock Wake Lock API
+Object.defineProperty(navigator, "wakeLock", {
+  writable: true,
+  value: {
+    request: jest.fn().mockResolvedValue({
+      release: jest.fn().mockResolvedValue(undefined),
+      addEventListener: jest.fn(),
+    }),
+  },
+});
+
 // Mock document.visibilityState
 Object.defineProperty(document, "visibilityState", {
   writable: true,

@@ -2,6 +2,7 @@
 // This extends the auto-generated next-pwa service worker
 
 import { openDB } from "idb";
+import { DB_NAME, DB_VERSION, STORES, upgradeOfflineDB } from "./dbSchema";
 
 // Types
 interface OfflineAction {
@@ -17,56 +18,31 @@ interface OfflineAction {
   schoolName?: string;
 }
 
-// Database setup for offline data
-const DB_NAME = "schools-in-offline";
-const DB_VERSION = 1;
+// Geofence configuration types
+export interface GeofenceLocation {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+}
 
-const STORES = {
-  SCHOOLS: "schools",
-  SESSIONS: "sessions",
-  PENDING_ACTIONS: "pending-actions",
-  USER_DATA: "user-data",
-};
+export interface GeofenceConfig {
+  id: "current";
+  userId: string;
+  assignedLocations: GeofenceLocation[];
+  activeSessionId?: string;
+  activeSessionLocationId?: string;
+  lastUserLatitude?: number;
+  lastUserLongitude?: number;
+  lastCheckAt?: number;
+  autoGeofenceEnabled: boolean;
+}
 
-// Initialize IndexedDB
+// Initialize IndexedDB using centralized schema
 export async function initDB() {
   return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      // Schools store
-      if (!db.objectStoreNames.contains(STORES.SCHOOLS)) {
-        const schoolsStore = db.createObjectStore(STORES.SCHOOLS, {
-          keyPath: "id",
-        });
-        schoolsStore.createIndex("name", "name");
-      }
-
-      // Sessions store
-      if (!db.objectStoreNames.contains(STORES.SESSIONS)) {
-        const sessionsStore = db.createObjectStore(STORES.SESSIONS, {
-          keyPath: "id",
-        });
-        sessionsStore.createIndex("userId", "userId");
-        sessionsStore.createIndex("schoolId", "schoolId");
-        sessionsStore.createIndex("startTime", "startTime");
-      }
-
-      // Pending actions store (for offline operations)
-      if (!db.objectStoreNames.contains(STORES.PENDING_ACTIONS)) {
-        const pendingStore = db.createObjectStore(STORES.PENDING_ACTIONS, {
-          keyPath: "id",
-          autoIncrement: true,
-        });
-        pendingStore.createIndex("timestamp", "timestamp");
-        pendingStore.createIndex("type", "type");
-      }
-
-      // User data store
-      if (!db.objectStoreNames.contains(STORES.USER_DATA)) {
-        db.createObjectStore(STORES.USER_DATA, {
-          keyPath: "id",
-        });
-      }
-    },
+    upgrade: upgradeOfflineDB,
   });
 }
 
@@ -276,5 +252,72 @@ export async function clearOfflineData() {
     db.clear(STORES.SESSIONS),
     db.clear(STORES.PENDING_ACTIONS),
     db.clear(STORES.USER_DATA),
+    db.clear(STORES.GEOFENCE_CONFIG),
   ]);
+}
+
+// ============================================
+// Geofence Config Functions
+// ============================================
+
+// Save geofence configuration
+export async function saveGeofenceConfig(
+  config: Omit<GeofenceConfig, "id">
+): Promise<void> {
+  const db = await initDB();
+  await db.put(STORES.GEOFENCE_CONFIG, { id: "current", ...config });
+}
+
+// Get current geofence configuration
+export async function getGeofenceConfig(): Promise<GeofenceConfig | null> {
+  const db = await initDB();
+  return db.get(STORES.GEOFENCE_CONFIG, "current");
+}
+
+// Update user's last known location
+export async function updateGeofenceUserLocation(
+  latitude: number,
+  longitude: number
+): Promise<void> {
+  const db = await initDB();
+  const config = await db.get(STORES.GEOFENCE_CONFIG, "current");
+
+  if (config) {
+    await db.put(STORES.GEOFENCE_CONFIG, {
+      ...config,
+      lastUserLatitude: latitude,
+      lastUserLongitude: longitude,
+      lastCheckAt: Date.now(),
+    });
+  }
+}
+
+// Update active session info in geofence config
+export async function updateGeofenceActiveSession(
+  sessionId: string | undefined,
+  locationId: string | undefined
+): Promise<void> {
+  const db = await initDB();
+  const config = await db.get(STORES.GEOFENCE_CONFIG, "current");
+
+  if (config) {
+    await db.put(STORES.GEOFENCE_CONFIG, {
+      ...config,
+      activeSessionId: sessionId,
+      activeSessionLocationId: locationId,
+    });
+  }
+}
+
+// Clear geofence configuration (on logout)
+export async function clearGeofenceConfig(): Promise<void> {
+  const db = await initDB();
+  await db.delete(STORES.GEOFENCE_CONFIG, "current");
+}
+
+// Check if there are pending actions to sync
+export async function hasPendingActions(): Promise<boolean> {
+  const db = await initDB();
+  const count = await db.count(STORES.PENDING_ACTIONS);
+  return count > 0;
 }

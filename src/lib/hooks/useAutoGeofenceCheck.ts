@@ -14,6 +14,17 @@ import { appLogger } from "@/lib/logging/appLogger";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction, type ToastActionElement } from "@/components/ui/toast";
 import { formatDuration } from "@/lib/utils/session";
+import {
+  saveGeofenceConfig,
+  updateGeofenceActiveSession,
+  updateGeofenceUserLocation,
+  type GeofenceLocation,
+} from "@/lib/offline/offlineDB";
+import {
+  registerPeriodicGeofenceSync,
+  unregisterPeriodicGeofenceSync,
+  setupGeofenceCheckListener,
+} from "@/lib/pwa/periodicBackgroundSync";
 
 type GeofenceState = "idle" | "outside" | "entering" | "inside" | "exiting";
 type LocationPermission = "unknown" | "granted" | "denied" | "unavailable";
@@ -84,8 +95,36 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const cancelledCheckIn = useRef<Record<string, number>>({});
   const countdownCleanup = useRef<Record<string, () => void>>({});
   const activeCountdownRef = useRef<AutoGeofenceState["activeCountdown"]>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const swListenerCleanupRef = useRef<(() => void) | null>(null);
+  const runPollRef = useRef<(() => void) | null>(null);
 
   const featureEnabled = FEATURE_FLAG && !!user?.uid;
+
+  // ============================================
+  // Wake Lock Management
+  // ============================================
+  const requestWakeLock = useCallback(async () => {
+    if (typeof navigator !== "undefined" && "wakeLock" in navigator) {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+        appLogger.info("Wake Lock acquired for countdown");
+
+        wakeLockRef.current.addEventListener("release", () => {
+          appLogger.info("Wake Lock released");
+        });
+      } catch (err) {
+        appLogger.warn("Wake Lock request failed", { error: err });
+      }
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release();
+      wakeLockRef.current = null;
+    }
+  }, []);
 
   const refreshAssignedLocations = useCallback(async () => {
     if (!user?.uid) return;
@@ -104,6 +143,95 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     if (!prefEnabled || !featureEnabled) return;
     refreshAssignedLocations();
   }, [prefEnabled, featureEnabled, refreshAssignedLocations]);
+
+  // ============================================
+  // Sync geofence config to IndexedDB for SW access
+  // ============================================
+  useEffect(() => {
+    if (!user?.uid || !prefEnabled || !featureEnabled) return;
+
+    const syncConfig = async () => {
+      try {
+        // Convert locations to GeofenceLocation format
+        const geofenceLocations: GeofenceLocation[] = assignedLocations.map(
+          (loc) => ({
+            id: loc.id,
+            name: loc.name,
+            latitude: loc.geo.latitude,
+            longitude: loc.geo.longitude,
+            radiusMeters: loc.radiusMeters ?? 100,
+          })
+        );
+
+        await saveGeofenceConfig({
+          userId: user.uid,
+          assignedLocations: geofenceLocations,
+          activeSessionId: activeSession?.id,
+          activeSessionLocationId: activeSession?.locationId,
+          autoGeofenceEnabled: prefEnabled,
+        });
+      } catch (error) {
+        appLogger.warn("Failed to sync geofence config to IndexedDB", {
+          error,
+        });
+      }
+    };
+
+    syncConfig();
+  }, [user?.uid, prefEnabled, featureEnabled, assignedLocations, activeSession]);
+
+  // ============================================
+  // Register/unregister periodic background sync
+  // ============================================
+  useEffect(() => {
+    if (!prefEnabled || !featureEnabled) {
+      unregisterPeriodicGeofenceSync();
+      return;
+    }
+
+    registerPeriodicGeofenceSync().then((registered) => {
+      if (registered) {
+        appLogger.info("Periodic background sync registered");
+      }
+    });
+
+    return () => {
+      unregisterPeriodicGeofenceSync();
+    };
+  }, [prefEnabled, featureEnabled]);
+
+  // ============================================
+  // Listen for SW geofence check requests
+  // ============================================
+  useEffect(() => {
+    if (!prefEnabled || !featureEnabled) return;
+
+    // Define the callback that will run a geofence poll
+    const handleSWRequest = () => {
+      appLogger.info("Running geofence check requested by service worker");
+      // Actually run the poll function - this ensures SW periodic sync
+      // triggers a real geolocation read
+      runPollRef.current?.();
+    };
+
+    swListenerCleanupRef.current = setupGeofenceCheckListener(handleSWRequest);
+
+    return () => {
+      if (swListenerCleanupRef.current) {
+        swListenerCleanupRef.current();
+        swListenerCleanupRef.current = null;
+      }
+    };
+  }, [prefEnabled, featureEnabled]);
+
+  // ============================================
+  // Update active session in IndexedDB when it changes
+  // ============================================
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    updateGeofenceActiveSession(activeSession?.id, activeSession?.locationId);
+  }, [user?.uid, activeSession?.id, activeSession?.locationId]);
 
   const clearCountdown = useCallback(
     (key: string) => {
@@ -130,6 +258,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       onCancel,
     }: CountdownConfig) => {
       const startedAt = Date.now();
+
+      // Request Wake Lock to prevent device sleep during countdown
+      requestWakeLock();
+
       const toastInstance = toast({
         title,
         description: initialDescription,
@@ -143,6 +275,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
           altText: ctaLabel,
           onClick: () => {
             toastInstance.dismiss();
+            releaseWakeLock();
             onCancel?.();
           },
         },
@@ -179,6 +312,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                 variant: "destructive",
               });
             } finally {
+              releaseWakeLock();
               toastInstance.dismiss();
               delete countdownCleanup.current[id];
             }
@@ -188,10 +322,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
       countdownCleanup.current[id] = () => {
         clearInterval(interval);
+        releaseWakeLock();
         toastInstance.dismiss();
       };
     },
-    []
+    [requestWakeLock, releaseWakeLock]
   );
 
   const handlePoorAccuracy = useCallback(() => {
@@ -257,6 +392,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   useEffect(() => {
     if (!prefEnabled || !featureEnabled) {
       clearTimers();
+      runPollRef.current = null;
       setGeofenceState("idle");
       return;
     }
@@ -284,6 +420,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
         handleGoodAccuracy();
         setLastAccuracyMeters(current.accuracy);
+
+        // Update user location in IndexedDB for SW access
+        updateGeofenceUserLocation(current.latitude, current.longitude).catch(
+          () => undefined
+        );
 
         // If paused, only check accuracy and return early
         if (pausedReason) {
@@ -490,6 +631,9 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       }
     };
 
+    // Expose runPoll via ref so SW listener can trigger it
+    runPollRef.current = runPoll;
+
     runPoll(); // immediate
     pollTimerRef.current = setInterval(runPoll, POLL_INTERVAL_MS);
 
@@ -503,6 +647,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
     return () => {
       clearTimers();
+      runPollRef.current = null;
       document.removeEventListener("visibilitychange", visibilityHandler);
     };
   }, [
