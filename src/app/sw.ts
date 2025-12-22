@@ -16,11 +16,49 @@ const CHECK_IN_SYNC_TAG = "check-in-sync";
 const CHECK_OUT_SYNC_TAG = "check-out-sync";
 const SESSION_SYNC_TAG = "session-sync";
 
-// IndexedDB constants (duplicated to avoid cross-context imports)
+// IndexedDB constants - MUST match src/lib/offline/dbSchema.ts
+// These are duplicated here because SW context cannot use module imports
+// from the main app bundle. Keep in sync with dbSchema.ts!
 const DB_NAME = "schools-in-offline";
 const DB_VERSION = 2;
-const PENDING_ACTIONS_STORE = "pending-actions";
-const GEOFENCE_CONFIG_STORE = "geofence-config";
+const STORES = {
+  SCHOOLS: "schools",
+  SESSIONS: "sessions",
+  PENDING_ACTIONS: "pending-actions",
+  USER_DATA: "user-data",
+  GEOFENCE_CONFIG: "geofence-config",
+} as const;
+
+/**
+ * Upgrade callback for IndexedDB in SW context
+ * Must match the schema in src/lib/offline/dbSchema.ts
+ */
+function upgradeOfflineDBForSW(db: import("idb").IDBPDatabase<unknown>): void {
+  if (!db.objectStoreNames.contains(STORES.SCHOOLS)) {
+    const schoolsStore = db.createObjectStore(STORES.SCHOOLS, { keyPath: "id" });
+    schoolsStore.createIndex("name", "name");
+  }
+  if (!db.objectStoreNames.contains(STORES.SESSIONS)) {
+    const sessionsStore = db.createObjectStore(STORES.SESSIONS, { keyPath: "id" });
+    sessionsStore.createIndex("userId", "userId");
+    sessionsStore.createIndex("schoolId", "schoolId");
+    sessionsStore.createIndex("startTime", "startTime");
+  }
+  if (!db.objectStoreNames.contains(STORES.PENDING_ACTIONS)) {
+    const pendingStore = db.createObjectStore(STORES.PENDING_ACTIONS, {
+      keyPath: "id",
+      autoIncrement: true,
+    });
+    pendingStore.createIndex("timestamp", "timestamp");
+    pendingStore.createIndex("type", "type");
+  }
+  if (!db.objectStoreNames.contains(STORES.USER_DATA)) {
+    db.createObjectStore(STORES.USER_DATA, { keyPath: "id" });
+  }
+  if (!db.objectStoreNames.contains(STORES.GEOFENCE_CONFIG)) {
+    db.createObjectStore(STORES.GEOFENCE_CONFIG, { keyPath: "id" });
+  }
+}
 
 // This declares the value of `injectionPoint` to TypeScript.
 // `injectionPoint` is the string that will be replaced by the
@@ -212,8 +250,10 @@ async function checkShouldShowGeofenceNotification(): Promise<{
   locationName: string | null;
 }> {
   try {
-    const db = await openDB(DB_NAME, DB_VERSION);
-    const config = await db.get(GEOFENCE_CONFIG_STORE, "current");
+    const db = await openDB(DB_NAME, DB_VERSION, {
+      upgrade: upgradeOfflineDBForSW,
+    });
+    const config = await db.get(STORES.GEOFENCE_CONFIG, "current");
 
     if (!config || !config.autoGeofenceEnabled) {
       return { show: false, action: "none", locationName: null };
@@ -289,8 +329,10 @@ self.addEventListener("sync", (event: any) => {
 
 async function syncPendingActions(): Promise<void> {
   try {
-    const db = await openDB(DB_NAME, DB_VERSION);
-    const actions = await db.getAll(PENDING_ACTIONS_STORE);
+    const db = await openDB(DB_NAME, DB_VERSION, {
+      upgrade: upgradeOfflineDBForSW,
+    });
+    const actions = await db.getAll(STORES.PENDING_ACTIONS);
 
     if (actions.length === 0) {
       console.log("[SW] No pending actions to sync");
@@ -345,7 +387,8 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
   event.notification.close();
 
   const data = event.notification.data;
-  const urlToOpen = data?.action === "check-in" ? "/provider" : "/provider";
+  // Both check-in and check-out notifications open to the provider dashboard
+  const urlToOpen = "/provider";
 
   event.waitUntil(
     self.clients

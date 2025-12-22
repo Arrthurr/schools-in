@@ -2,6 +2,7 @@
 // This extends the auto-generated next-pwa service worker
 
 import { openDB } from "idb";
+import { DB_NAME, DB_VERSION, STORES, upgradeOfflineDB } from "./dbSchema";
 
 // Types
 interface OfflineAction {
@@ -16,18 +17,6 @@ interface OfflineAction {
   retryCount: number;
   schoolName?: string;
 }
-
-// Database setup for offline data
-const DB_NAME = "schools-in-offline";
-const DB_VERSION = 2;
-
-const STORES = {
-  SCHOOLS: "schools",
-  SESSIONS: "sessions",
-  PENDING_ACTIONS: "pending-actions",
-  USER_DATA: "user-data",
-  GEOFENCE_CONFIG: "geofence-config",
-};
 
 // Geofence configuration types
 export interface GeofenceLocation {
@@ -50,52 +39,10 @@ export interface GeofenceConfig {
   autoGeofenceEnabled: boolean;
 }
 
-// Initialize IndexedDB
+// Initialize IndexedDB using centralized schema
 export async function initDB() {
   return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      // Schools store
-      if (!db.objectStoreNames.contains(STORES.SCHOOLS)) {
-        const schoolsStore = db.createObjectStore(STORES.SCHOOLS, {
-          keyPath: "id",
-        });
-        schoolsStore.createIndex("name", "name");
-      }
-
-      // Sessions store
-      if (!db.objectStoreNames.contains(STORES.SESSIONS)) {
-        const sessionsStore = db.createObjectStore(STORES.SESSIONS, {
-          keyPath: "id",
-        });
-        sessionsStore.createIndex("userId", "userId");
-        sessionsStore.createIndex("schoolId", "schoolId");
-        sessionsStore.createIndex("startTime", "startTime");
-      }
-
-      // Pending actions store (for offline operations)
-      if (!db.objectStoreNames.contains(STORES.PENDING_ACTIONS)) {
-        const pendingStore = db.createObjectStore(STORES.PENDING_ACTIONS, {
-          keyPath: "id",
-          autoIncrement: true,
-        });
-        pendingStore.createIndex("timestamp", "timestamp");
-        pendingStore.createIndex("type", "type");
-      }
-
-      // User data store
-      if (!db.objectStoreNames.contains(STORES.USER_DATA)) {
-        db.createObjectStore(STORES.USER_DATA, {
-          keyPath: "id",
-        });
-      }
-
-      // Geofence config store (v2)
-      if (!db.objectStoreNames.contains(STORES.GEOFENCE_CONFIG)) {
-        db.createObjectStore(STORES.GEOFENCE_CONFIG, {
-          keyPath: "id",
-        });
-      }
-    },
+    upgrade: upgradeOfflineDB,
   });
 }
 

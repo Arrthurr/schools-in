@@ -97,6 +97,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const activeCountdownRef = useRef<AutoGeofenceState["activeCountdown"]>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const swListenerCleanupRef = useRef<(() => void) | null>(null);
+  const runPollRef = useRef<(() => void) | null>(null);
 
   const featureEnabled = FEATURE_FLAG && !!user?.uid;
 
@@ -208,11 +209,9 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     // Define the callback that will run a geofence poll
     const handleSWRequest = () => {
       appLogger.info("Running geofence check requested by service worker");
-      // Trigger an immediate poll by running the same logic
-      // This will be handled by the visibility handler indirectly
-      if (document.visibilityState === "visible") {
-        // The poll will run automatically
-      }
+      // Actually run the poll function - this ensures SW periodic sync
+      // triggers a real geolocation read
+      runPollRef.current?.();
     };
 
     swListenerCleanupRef.current = setupGeofenceCheckListener(handleSWRequest);
@@ -393,6 +392,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   useEffect(() => {
     if (!prefEnabled || !featureEnabled) {
       clearTimers();
+      runPollRef.current = null;
       setGeofenceState("idle");
       return;
     }
@@ -631,6 +631,9 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       }
     };
 
+    // Expose runPoll via ref so SW listener can trigger it
+    runPollRef.current = runPoll;
+
     runPoll(); // immediate
     pollTimerRef.current = setInterval(runPoll, POLL_INTERVAL_MS);
 
@@ -644,6 +647,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
     return () => {
       clearTimers();
+      runPollRef.current = null;
       document.removeEventListener("visibilitychange", visibilityHandler);
     };
   }, [
