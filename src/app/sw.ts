@@ -380,6 +380,46 @@ async function syncPendingActions(): Promise<void> {
 }
 
 // ============================================
+// Push Notification Handler
+// ============================================
+// Handles push events from the server for geofence reminders
+
+self.addEventListener("push", (event: PushEvent) => {
+  if (!event.data) {
+    console.log("[SW] Push event with no data");
+    return;
+  }
+
+  try {
+    const payload = event.data.json();
+
+    const title = payload.title || "Schools In";
+    const options: NotificationOptions = {
+      body: payload.body || "You have a new notification",
+      icon: payload.icon || "/icons/icon-192x192.png",
+      badge: payload.badge || "/icons/icon-72x72.png",
+      tag: payload.tag || "schools-in-notification",
+      requireInteraction: payload.requireInteraction ?? true,
+      data: payload.data || {},
+    };
+
+    // Add actions if this is a geofence reminder
+    if (payload.data?.action === "check-in" || payload.data?.action === "check-out") {
+      options.actions = [
+        { action: "open", title: "Open App" },
+        { action: "dismiss", title: "Dismiss" },
+      ];
+    }
+
+    event.waitUntil(self.registration.showNotification(title, options));
+
+    console.log("[SW] Push notification shown:", title);
+  } catch (error) {
+    console.error("[SW] Error processing push event:", error);
+  }
+});
+
+// ============================================
 // Notification Click Handler
 // ============================================
 
@@ -387,16 +427,32 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
   event.notification.close();
 
   const data = event.notification.data;
-  // Both check-in and check-out notifications open to the provider dashboard
-  const urlToOpen = "/provider";
+  const action = event.action;
+
+  // Handle dismiss action
+  if (action === "dismiss") {
+    return;
+  }
+
+  // Determine URL based on notification type
+  let urlToOpen = "/provider";
+  if (data?.action === "check-in" || data?.action === "check-out") {
+    urlToOpen = "/provider";
+  }
 
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientList) => {
-        // If there's already a window open, focus it
+        // If there's already a window open, focus it and navigate
         for (const client of clientList) {
           if ("focus" in client) {
+            // Send message to client about the notification action
+            client.postMessage({
+              type: "NOTIFICATION_CLICKED",
+              action: data?.action,
+              data,
+            });
             return client.focus();
           }
         }
@@ -406,6 +462,15 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
         }
       })
   );
+});
+
+// ============================================
+// Notification Close Handler
+// ============================================
+
+self.addEventListener("notificationclose", (event: NotificationEvent) => {
+  const data = event.notification.data;
+  console.log("[SW] Notification closed:", data?.action || "unknown");
 });
 
 serwist.addEventListeners();

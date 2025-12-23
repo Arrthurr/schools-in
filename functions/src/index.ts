@@ -4,6 +4,7 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as nodemailer from "nodemailer";
+import * as webpush from "web-push";
 
 admin.initializeApp();
 
@@ -1170,5 +1171,375 @@ View in Admin Console: ${feedbackUrl}
       // Don't throw - we don't want to fail the feedback creation if email fails
       // The feedback is already saved, email is just a notification
     }
+  }
+);
+
+// ============================================================================
+// Push Notification Functions for Geofence Reminders
+// ============================================================================
+// These functions send push notifications to users who have subscribed
+// for geofence check-in/out reminders (for platforms without background sync)
+// ============================================================================
+
+interface PushSubscription {
+  endpoint: string;
+  expirationTime: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  platform: string;
+  userAgent: string;
+}
+
+/**
+ * Initialize web-push with VAPID keys
+ */
+function initializeWebPush() {
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+  const vapidEmail = process.env.VAPID_EMAIL || "mailto:admin@schools-in-check.web.app";
+
+  if (!vapidPublicKey || !vapidPrivateKey) {
+    logger.warn("VAPID keys not configured. Push notifications will not work.");
+    return false;
+  }
+
+  webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+  return true;
+}
+
+/**
+ * Send a push notification to a specific subscription
+ */
+async function sendPushNotification(
+  subscription: PushSubscription,
+  payload: { title: string; body: string; data?: Record<string, any> }
+): Promise<boolean> {
+  try {
+    const pushSubscription = {
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+      },
+    };
+
+    await webpush.sendNotification(
+      pushSubscription,
+      JSON.stringify({
+        title: payload.title,
+        body: payload.body,
+        icon: "/icons/icon-192x192.png",
+        badge: "/icons/icon-72x72.png",
+        tag: "geofence-reminder",
+        requireInteraction: true,
+        data: payload.data || {},
+      })
+    );
+
+    return true;
+  } catch (error: any) {
+    // Handle expired or invalid subscriptions
+    if (error.statusCode === 410 || error.statusCode === 404) {
+      logger.info("Push subscription expired or invalid", {
+        endpoint: subscription.endpoint,
+      });
+      return false;
+    }
+    logger.error("Failed to send push notification", { error });
+    return false;
+  }
+}
+
+/**
+ * Scheduled function to send morning geofence check-in reminders
+ * Runs at 8 AM every weekday
+ */
+exports.sendMorningGeofenceReminders = onSchedule(
+  {
+    schedule: "0 8 * * 1-5", // 8 AM, Monday-Friday
+    timeZone: "America/New_York", // Adjust to your timezone
+    secrets: ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL"],
+  },
+  async (_event: any) => {
+    if (!initializeWebPush()) {
+      logger.warn("Skipping push notifications - VAPID not configured");
+      return;
+    }
+
+    const db = admin.firestore();
+
+    try {
+      // Get all users with active geofence preferences and push subscriptions
+      const usersSnapshot = await db
+        .collection("users")
+        .where("autoGeofenceCheckEnabled", "==", true)
+        .where("role", "==", "provider")
+        .get();
+
+      if (usersSnapshot.empty) {
+        logger.info("No users with auto-geofence enabled");
+        return;
+      }
+
+      let successCount = 0;
+      let failedCount = 0;
+      let noSubscriptionCount = 0;
+
+      for (const userDoc of usersSnapshot.docs) {
+        const userId = userDoc.id;
+
+        // Check if user has an active session (don't remind if already checked in)
+        const activeSessionQuery = await db
+          .collection("sessions")
+          .where("userId", "==", userId)
+          .where("status", "in", ["active", "paused"])
+          .limit(1)
+          .get();
+
+        if (!activeSessionQuery.empty) {
+          continue; // User is already checked in
+        }
+
+        // Get user's push subscription
+        const subscriptionDoc = await db
+          .collection("users")
+          .doc(userId)
+          .collection("pushSubscriptions")
+          .doc("geofence")
+          .get();
+
+        if (!subscriptionDoc.exists) {
+          noSubscriptionCount++;
+          continue;
+        }
+
+        const subscription = subscriptionDoc.data() as PushSubscription;
+
+        // Send the reminder
+        const success = await sendPushNotification(subscription, {
+          title: "Check-in Reminder",
+          body: "Don't forget to check in when you arrive at your location",
+          data: { action: "check-in", type: "morning-reminder" },
+        });
+
+        if (success) {
+          successCount++;
+        } else {
+          failedCount++;
+          // Remove invalid subscription
+          await subscriptionDoc.ref.delete();
+        }
+      }
+
+      logger.info("Morning geofence reminders sent", {
+        success: successCount,
+        failed: failedCount,
+        noSubscription: noSubscriptionCount,
+      });
+    } catch (error) {
+      logger.error("Error sending morning geofence reminders", { error });
+      throw error;
+    }
+  }
+);
+
+/**
+ * Scheduled function to send evening geofence check-out reminders
+ * Runs at 5 PM every weekday
+ */
+exports.sendEveningGeofenceReminders = onSchedule(
+  {
+    schedule: "0 17 * * 1-5", // 5 PM, Monday-Friday
+    timeZone: "America/New_York", // Adjust to your timezone
+    secrets: ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL"],
+  },
+  async (_event: any) => {
+    if (!initializeWebPush()) {
+      logger.warn("Skipping push notifications - VAPID not configured");
+      return;
+    }
+
+    const db = admin.firestore();
+
+    try {
+      // Get all active sessions
+      const activeSessionsSnapshot = await db
+        .collection("sessions")
+        .where("status", "in", ["active", "paused"])
+        .get();
+
+      if (activeSessionsSnapshot.empty) {
+        logger.info("No active sessions for evening reminders");
+        return;
+      }
+
+      let successCount = 0;
+      let failedCount = 0;
+      let noSubscriptionCount = 0;
+
+      for (const sessionDoc of activeSessionsSnapshot.docs) {
+        const session = sessionDoc.data();
+        const userId = session.userId;
+
+        // Get user's push subscription
+        const subscriptionDoc = await db
+          .collection("users")
+          .doc(userId)
+          .collection("pushSubscriptions")
+          .doc("geofence")
+          .get();
+
+        if (!subscriptionDoc.exists) {
+          noSubscriptionCount++;
+          continue;
+        }
+
+        const subscription = subscriptionDoc.data() as PushSubscription;
+
+        // Get location name if available
+        let locationName = "your location";
+        if (session.locationId) {
+          const locationDoc = await db
+            .collection("locations")
+            .doc(session.locationId)
+            .get();
+
+          if (locationDoc.exists) {
+            locationName = locationDoc.data()?.name || locationName;
+          }
+        }
+
+        // Calculate session duration
+        const startTime = session.startTime?.toDate() || new Date();
+        const durationMs = Date.now() - startTime.getTime();
+        const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
+        const durationMinutes = Math.floor(
+          (durationMs % (1000 * 60 * 60)) / (1000 * 60)
+        );
+        const durationText =
+          durationHours > 0
+            ? `${durationHours}h ${durationMinutes}m`
+            : `${durationMinutes}m`;
+
+        // Send the reminder
+        const success = await sendPushNotification(subscription, {
+          title: "Check-out Reminder",
+          body: `Still at ${locationName}? Session: ${durationText}`,
+          data: {
+            action: "check-out",
+            type: "evening-reminder",
+            sessionId: sessionDoc.id,
+            locationName,
+          },
+        });
+
+        if (success) {
+          successCount++;
+        } else {
+          failedCount++;
+          // Remove invalid subscription
+          await subscriptionDoc.ref.delete();
+        }
+      }
+
+      logger.info("Evening geofence reminders sent", {
+        success: successCount,
+        failed: failedCount,
+        noSubscription: noSubscriptionCount,
+      });
+    } catch (error) {
+      logger.error("Error sending evening geofence reminders", { error });
+      throw error;
+    }
+  }
+);
+
+/**
+ * Callable function to send an immediate push notification to a user
+ * Used for testing or ad-hoc notifications
+ */
+exports.sendGeofenceReminder = onCall(
+  {
+    secrets: ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL"],
+  },
+  async (request: any) => {
+    const { uid: userId } = requireAuth(request);
+
+    if (!initializeWebPush()) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Push notifications not configured"
+      );
+    }
+
+    const db = admin.firestore();
+    const { type = "check-in", locationName } = request.data || {};
+
+    // Get user's push subscription
+    const subscriptionDoc = await db
+      .collection("users")
+      .doc(userId)
+      .collection("pushSubscriptions")
+      .doc("geofence")
+      .get();
+
+    if (!subscriptionDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "No push subscription found for this user"
+      );
+    }
+
+    const subscription = subscriptionDoc.data() as PushSubscription;
+
+    const payload =
+      type === "check-out"
+        ? {
+            title: "Check-out Reminder",
+            body: locationName
+              ? `Don't forget to check out from ${locationName}`
+              : "Don't forget to check out when you leave",
+            data: { action: "check-out", type: "manual-reminder" },
+          }
+        : {
+            title: "Check-in Reminder",
+            body: locationName
+              ? `Are you at ${locationName}? Don't forget to check in`
+              : "Don't forget to check in at your location",
+            data: { action: "check-in", type: "manual-reminder" },
+          };
+
+    const success = await sendPushNotification(subscription, payload);
+
+    if (!success) {
+      // Remove invalid subscription
+      await subscriptionDoc.ref.delete();
+      throw new HttpsError("unavailable", "Push notification failed - subscription may have expired");
+    }
+
+    return { success: true };
+  }
+);
+
+/**
+ * Callable function to register VAPID public key (for client to fetch)
+ */
+exports.getVapidPublicKey = onCall(
+  {
+    secrets: ["VAPID_PUBLIC_KEY"],
+  },
+  async (_request: any) => {
+    const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+
+    if (!vapidPublicKey) {
+      throw new HttpsError(
+        "failed-precondition",
+        "VAPID public key not configured"
+      );
+    }
+
+    return { vapidPublicKey };
   }
 );

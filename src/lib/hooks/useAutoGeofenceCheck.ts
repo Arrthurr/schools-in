@@ -7,6 +7,7 @@ import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useCachedSession } from "@/lib/hooks/useCachedSession";
 import { useSession } from "@/lib/hooks/useSession";
 import { useAutoGeofencePreference } from "@/lib/hooks/useAutoGeofencePreference";
+import { useGeofenceStrategy } from "@/lib/hooks/useGeofenceStrategy";
 import { locationService } from "@/lib/utils/location";
 import { validateGeofence } from "@/lib/utils/geo";
 import { getAssignedLocations } from "@/lib/services/locationService";
@@ -25,6 +26,14 @@ import {
   unregisterPeriodicGeofenceSync,
   setupGeofenceCheckListener,
 } from "@/lib/pwa/periodicBackgroundSync";
+import {
+  initializePushReminders,
+  cleanupPushReminders,
+  showCheckInReminder,
+  showCheckOutReminder,
+  isReminderTime,
+} from "@/lib/pwa/pushReminders";
+import type { GeofenceStrategy } from "@/lib/pwa/capabilities";
 
 type GeofenceState = "idle" | "outside" | "entering" | "inside" | "exiting";
 type LocationPermission = "unknown" | "granted" | "denied" | "unavailable";
@@ -43,6 +52,10 @@ interface AutoGeofenceState {
   } | null;
   /** Geolocation permission status: unknown until first attempt, then granted/denied/unavailable */
   locationPermission: LocationPermission;
+  /** Current geofence strategy being used */
+  strategy: GeofenceStrategy;
+  /** Limitations of the current platform */
+  limitations: string[];
 }
 
 interface CountdownConfig {
@@ -55,20 +68,27 @@ interface CountdownConfig {
   onCancel?: () => void;
 }
 
-const POLL_INTERVAL_MS = 60_000;
 const ACCURACY_THRESHOLD_METERS = 50;
 const POOR_ACCURACY_LIMIT = 3;
-const DEBOUNCE_POLLS = 2;
 const COUNTDOWN_MS = 15_000;
 const CANCEL_COOLDOWN_MS = 5 * 60_000;
 const FEATURE_FLAG =
   process.env.NEXT_PUBLIC_FEATURE_AUTO_GEOFENCE !== "false";
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
 export function useAutoGeofenceCheck(): AutoGeofenceState {
   const { user } = useCachedAuth();
   const { enabled: prefEnabled } = useAutoGeofencePreference();
   const { activeSession } = useCachedSession(user?.uid);
   const { checkIn, checkOut } = useSession();
+  
+  // Get strategy based on platform capabilities
+  const {
+    strategy,
+    config: strategyConfig,
+    limitations,
+    switchToFallback,
+  } = useGeofenceStrategy();
 
   const [assignedLocations, setAssignedLocations] = useState<Location[]>([]);
   const [geofenceState, setGeofenceState] = useState<GeofenceState>("idle");
@@ -86,6 +106,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     AutoGeofenceState["activeCountdown"]
   >(null);
   const [locationPermission, setLocationPermission] = useState<LocationPermission>("unknown");
+  const [pushRemindersInitialized, setPushRemindersInitialized] = useState(false);
 
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const poorAccuracyCount = useRef(0);
@@ -100,6 +121,9 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const runPollRef = useRef<(() => void) | null>(null);
 
   const featureEnabled = FEATURE_FLAG && !!user?.uid;
+  
+  // Derive debounce from strategy config
+  const DEBOUNCE_POLLS = strategyConfig.debouncePolls;
 
   // ============================================
   // Wake Lock Management
@@ -181,7 +205,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   }, [user?.uid, prefEnabled, featureEnabled, assignedLocations, activeSession]);
 
   // ============================================
-  // Register/unregister periodic background sync
+  // Register/unregister periodic background sync (strategy-aware)
   // ============================================
   useEffect(() => {
     if (!prefEnabled || !featureEnabled) {
@@ -189,16 +213,68 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       return;
     }
 
-    registerPeriodicGeofenceSync().then((registered) => {
-      if (registered) {
-        appLogger.info("Periodic background sync registered");
-      }
-    });
+    // Only register periodic sync for the periodic-sync strategy
+    if (strategy === "periodic-sync") {
+      registerPeriodicGeofenceSync().then((registered) => {
+        if (registered) {
+          appLogger.info("Periodic background sync registered", { strategy });
+        } else {
+          // Registration failed, switch to fallback strategy
+          appLogger.warn("Periodic sync registration failed, switching to fallback");
+          switchToFallback();
+        }
+      });
+    } else {
+      // Unregister if we're using a different strategy
+      unregisterPeriodicGeofenceSync();
+    }
 
     return () => {
       unregisterPeriodicGeofenceSync();
     };
-  }, [prefEnabled, featureEnabled]);
+  }, [prefEnabled, featureEnabled, strategy, switchToFallback]);
+
+  // ============================================
+  // Initialize push reminders for fallback strategies
+  // ============================================
+  useEffect(() => {
+    if (!prefEnabled || !featureEnabled || !user?.uid) {
+      return;
+    }
+
+    // Only initialize push reminders for strategies that need them
+    if (!strategyConfig.usePushReminders || !VAPID_PUBLIC_KEY) {
+      return;
+    }
+
+    if (pushRemindersInitialized) {
+      return;
+    }
+
+    initializePushReminders({
+      userId: user.uid,
+      vapidPublicKey: VAPID_PUBLIC_KEY,
+      onPermissionDenied: () => {
+        appLogger.warn("Push permission denied for geofence reminders");
+      },
+      onSubscriptionFailed: (error) => {
+        appLogger.error("Push subscription failed", { error });
+      },
+    }).then((success) => {
+      if (success) {
+        setPushRemindersInitialized(true);
+        appLogger.info("Push reminders initialized for geofence", { strategy });
+      }
+    });
+
+    return () => {
+      // Only cleanup if we're disabling the feature
+      if (!prefEnabled && user?.uid) {
+        cleanupPushReminders(user.uid);
+        setPushRemindersInitialized(false);
+      }
+    };
+  }, [prefEnabled, featureEnabled, user?.uid, strategy, strategyConfig.usePushReminders, pushRemindersInitialized]);
 
   // ============================================
   // Listen for SW geofence check requests
@@ -634,12 +710,33 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     // Expose runPoll via ref so SW listener can trigger it
     runPollRef.current = runPoll;
 
+    // Use strategy-based poll interval
+    const pollInterval = strategyConfig.pollIntervalMs;
+
     runPoll(); // immediate
-    pollTimerRef.current = setInterval(runPoll, POLL_INTERVAL_MS);
+    
+    // Only set up interval polling if strategy supports it
+    if (pollInterval > 0) {
+      pollTimerRef.current = setInterval(runPoll, pollInterval);
+    }
 
     const visibilityHandler = () => {
       if (document.visibilityState === "visible") {
         runPoll();
+        
+        // For strategies with push reminders, show reminder on return if appropriate
+        if (strategyConfig.usePushReminders && isReminderTime()) {
+          if (activeSession) {
+            const activeLoc = assignedLocations.find(
+              (loc) => loc.id === activeSession.locationId
+            );
+            // Don't show reminder if user is inside geofence (checked in runPoll)
+            // This is just a gentle nudge for when they return to the app
+          } else if (assignedLocations.length > 0) {
+            // No active session - could show check-in reminder
+            // But we don't want to be annoying, so only at reminder times
+          }
+        }
       }
     };
 
@@ -660,6 +757,8 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     pausedReason,
     clearTimers,
     startCountdownToast,
+    strategyConfig.pollIntervalMs,
+    strategyConfig.usePushReminders,
   ]);
 
   return useMemo(
@@ -673,6 +772,8 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       pausedReason,
       activeCountdown,
       locationPermission,
+      strategy,
+      limitations,
     }),
     [
       prefEnabled,
@@ -684,6 +785,8 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       pausedReason,
       activeCountdown,
       locationPermission,
+      strategy,
+      limitations,
     ]
   );
 }
