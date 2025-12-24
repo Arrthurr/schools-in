@@ -18,9 +18,7 @@ import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
 import type { Location } from "@/lib/firebase/types";
 import { FirebaseCache, CacheTracker } from "@/lib/cache/FirebaseCache";
-import {
-  getCachedLocationsByProvider,
-} from "@/lib/firebase/cachedFirestore";
+import { getCachedLocationsByProvider } from "@/lib/firebase/cachedFirestore";
 import {
   normalizeLocationData,
   NormalizedLocation,
@@ -97,7 +95,7 @@ export class CachedSchoolService {
         if (filters.status) {
           queryRef = query(
             queryRef,
-            where("isActive", "==", filters.status === "active")
+            where("active", "==", filters.status === "active")
           );
         }
 
@@ -170,7 +168,10 @@ export class CachedSchoolService {
       `school_${schoolId}`,
       async () => {
         const { getDocument } = await import("@/lib/firebase/firestore");
-        const raw = await getDocument<Record<string, any>>(COLLECTIONS.LOCATIONS, schoolId);
+        const raw = await getDocument<Record<string, any>>(
+          COLLECTIONS.LOCATIONS,
+          schoolId
+        );
         if (!raw) return null;
         return normalizeLocationData(schoolId, raw);
       },
@@ -242,7 +243,7 @@ export class CachedSchoolService {
 
         const totalSchools = allSchools.length;
         const activeSchools = allSchools.filter(
-          (school) => school.isActive !== false
+          (school) => school.active !== false
         ).length;
         const schoolsWithProviders = allSchools.filter(
           (school) =>
