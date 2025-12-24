@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useId, useMemo, useCallback } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useLocation } from "@/lib/hooks/useLocation";
 import { useSession } from "@/lib/hooks/useSession";
 
 import {
@@ -32,7 +31,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { SkeletonList } from "../ui/skeleton";
-import { LoadingSpinner } from "../ui/loading";
 import { ErrorState, EmptyState } from "../ui/error-empty-states";
 // import {
 //   useAnnouncement,
@@ -60,7 +58,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   currentSessionLocationId,
 }) => {
   const { user } = useAuth();
-  const { location, loading: locationLoading, getLocation } = useLocation();
+  const { location } = useLocation();
   const { checkIn, currentSession } = useSession();
 
   const [schools, setSchools] = useState<School[]>([]);
@@ -306,32 +304,6 @@ export const SchoolList: React.FC<SchoolListProps> = ({
               )}
             </CardDescription>
           </div>
-          {!location && (
-            <Button
-              onClick={getLocation}
-              disabled={locationLoading}
-              size="sm"
-              variant="outline"
-              className="touch-target flex-shrink-0 w-full sm:w-auto micro-scale"
-              aria-label={
-                locationLoading
-                  ? "Getting your location..."
-                  : "Enable location services to see distances to schools"
-              }
-            >
-              {locationLoading ? (
-                <LoadingSpinner size="sm" variant="secondary" />
-              ) : (
-                <Navigation className="h-4 w-4 mr-2" aria-hidden="true" />
-              )}
-              <span className="sm:hidden">
-                {locationLoading ? "Getting Location..." : "Enable Location"}
-              </span>
-              <span className="hidden sm:inline">
-                {locationLoading ? "Getting..." : "Get Location"}
-              </span>
-            </Button>
-          )}
         </div>
 
         {/* Search bar with better mobile UX */}
