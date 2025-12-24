@@ -6,7 +6,7 @@ import { appLogger } from "@/lib/logging/appLogger";
 
 import { Button } from "@/components/ui/button";
 import { logOut } from "@/lib/firebase/auth";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
@@ -24,16 +24,22 @@ interface ClientLayoutProps {
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
   useStartupLogging();
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith("/admin");
 
   return (
     <OfflineMessagingProvider enableToasts={true} enableNotifications={true}>
       <div className="flex flex-col min-h-screen">
-        <Header />
+        {!isAdminRoute && <Header />}
         <OfflineStatusBar variant="compact" position="top" />
         <PWAUpdatePrompt />
         <main
           id="main-content"
-          className="flex-1 container-responsive py-4 sm:py-6 lg:py-8"
+          className={
+            isAdminRoute
+              ? "flex-1" // Remove container constraints for admin dashboard
+              : "flex-1 container-responsive py-4 sm:py-6 lg:py-8"
+          }
           tabIndex={-1}
         >
           <PWAInstallPrompt />
@@ -80,7 +86,7 @@ function Header() {
                   className="hidden sm:flex"
                 />
                 <div className="hidden md:flex">
-                <PWAStatus />
+                  <PWAStatus />
                 </div>
                 <ThemeToggle />
                 <Link

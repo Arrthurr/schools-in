@@ -5,11 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   LayoutDashboard,
   School,
@@ -133,7 +129,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
               key={item.href}
               href={item.href as any}
               className={`
-                flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
                 ${
                   isActive
                     ? "bg-primary text-primary-foreground"
