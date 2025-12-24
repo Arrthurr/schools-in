@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { SkeletonList } from "../ui/skeleton";
 import { ErrorState, EmptyState } from "../ui/error-empty-states";
+import { SchoolDetailSheet } from "./SchoolDetailSheet";
 // import {
 //   useAnnouncement,
 //   ScreenReaderOnly,
@@ -68,6 +69,8 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [checkingInSchoolId, setCheckingInSchoolId] = useState<string | null>(null);
+  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
   // Accessibility hooks
   // const { announce } = useAnnouncement();
@@ -233,6 +236,8 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   // Handle school detail view
   const handleSchoolDetail = (school: School, event: React.MouseEvent) => {
     event.stopPropagation();
+    setSelectedSchool(school);
+    setDetailSheetOpen(true);
     if (onSchoolDetail) {
       onSchoolDetail(school);
     }
@@ -479,6 +484,13 @@ export const SchoolList: React.FC<SchoolListProps> = ({
           </div>
         )}
       </CardContent>
+
+      <SchoolDetailSheet
+        school={selectedSchool}
+        open={detailSheetOpen}
+        onOpenChange={setDetailSheetOpen}
+        userLocation={location}
+      />
     </Card>
   );
 };
