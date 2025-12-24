@@ -58,6 +58,31 @@ jest.mock("@/lib/services/cachedSessionService", () => ({
   },
 }));
 
+jest.mock("@/lib/hooks/useAutoGeofencePreference", () => ({
+  useAutoGeofencePreference: () => ({
+    enabled: false,
+    loading: false,
+    error: null,
+    setEnabled: jest.fn(),
+  }),
+}));
+
+jest.mock("@/lib/hooks/useAutoGeofenceCheck", () => ({
+  useAutoGeofenceCheck: () => ({
+    geofenceState: "idle",
+    gpsStatus: "idle",
+    isPolling: false,
+    currentLocation: null,
+    nearbyLocations: [],
+    checkInCountdown: null,
+    checkOutCountdown: null,
+    cancelCheckIn: jest.fn(),
+    cancelCheckOut: jest.fn(),
+    pausePolling: jest.fn(),
+    resumePolling: jest.fn(),
+  }),
+}));
+
 describe("DashboardPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
