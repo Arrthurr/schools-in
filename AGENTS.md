@@ -27,10 +27,11 @@
 
 ## Architecture
 
-- **Framework**: Next.js 14 with TypeScript, App Router, PWA support, Static Export
+- **Architecture**: Next.js 14 with TypeScript, App Router, PWA support, Static Export
 - **Hosting**: Firebase Hosting with static site deployment
 - **Database**: Firebase Firestore with collections: users, system, sessions, locations
 - **Caching**: Multi-layer caching (Memory → Session → Local → IndexedDB) with SSR-safe initialization
+- **Geofencing**: Adaptive strategy detection (Periodic Sync, Wake Lock, Polling) with background support
 - **Images**: Next.js Image optimization with lazy loading and WebP/AVIF support
 - **UI**: Radix UI components with Tailwind CSS, shadcn/ui components
 - **Auth**: Microsoft Authentication only with cached user data and role-based access
@@ -47,6 +48,8 @@
 - **Lazy Loading**: `src/lib/hooks/useLazyLoading.ts` - Intersection Observer-based loading
 - **Bundle Optimization**: Code splitting, tree shaking, static asset caching
 - **Offline Support**: IndexedDB persistence, service worker caching, PWA features with client-side initialization
+- **Background Sync**: `src/lib/pwa/periodicBackgroundSync.ts` - Background geofence checks for Chrome/Edge
+- **Wake Lock**: Prevents device sleep during auto check-in/out countdowns
 - **Static Export**: All pages pre-rendered for optimal performance and CDN distribution
 
 ## PWA Meta Tags
@@ -79,14 +82,21 @@
 - **Hooks**:
   - `src/lib/hooks/useCachedAuth.ts` - Enhanced auth with user data caching
   - `src/lib/hooks/useCachedSession.ts` - Session management with real-time sync
+  - `src/lib/hooks/useAutoGeofenceCheck.ts` - Main geofence detection loop with adaptive strategy
+  - `src/lib/hooks/useGeofenceStrategy.ts` - Capability-based strategy selector
+  - `src/lib/hooks/useAutoCheckoutReminder.ts` - Countdown and toast notifications for auto-actions
+  - `src/lib/hooks/useConnectivityRestoration.ts` - Handles syncing when coming back online
+  - `src/lib/hooks/useEnhancedOfflineQueue.ts` - Prioritized offline action queue
   - `src/lib/hooks/useLazyLoading.ts` - Lazy loading with Intersection Observer
-  - `src/lib/hooks/useOfflineQueue.ts` - Offline action queue management
   - `src/lib/hooks/useLocation.ts` - Geolocation and location services
 - **Google Maps Components**:
   - `src/components/maps/GoogleMap.tsx` - Main Google Maps component
   - `src/components/maps/LocationPicker.tsx` - Interactive location selection
   - `src/components/maps/NavigationButton.tsx` - "Get Directions" functionality
-- **PWA Components**:
+- **PWA Capabilities**:
+  - `src/lib/pwa/capabilities.ts` - Browser feature detection and strategy assignment
+  - `src/lib/pwa/periodicBackgroundSync.ts` - Chrome/Android background geofence registration
+  - `src/lib/pwa/pushReminders.ts` - VAPID-based push notifications for Safari iOS fallback
   - `src/components/pwa/PWAStatus.tsx` - PWA installation and status indicators
   - `src/components/pwa/PWAInstallPrompt.tsx` - Custom install prompt
   - `src/components/pwa/PWAUpdatePrompt.tsx` - Service worker update notifications
@@ -114,16 +124,18 @@
 - **Testing**: Write tests for all new components and utilities
 - **Accessibility**: Include proper ARIA labels and semantic HTML (see `src/AGENTS.md` for detailed UI/UX rules)
 
-## Recent Updates (as of October 2025)
+## Recent Updates (as of December 2025)
 
-- **Data Model Fix**: Migrated to `Location.assignedProviders` as single source of truth; removed `User.assignedSchools`; created `locationService.ts` with Firestore queries
-- **UI Migration**: All provider components now use real Firestore data via `locationService` instead of mock `schoolService`
-- **Auth Fix**: Registration and Google sign-in now automatically create Firestore user documents with default `provider` role
-- **Security Rules**: Simplified to use only `Location.assignedProviders` for access control; removed assignments collection fallback
-- **School Import**: 22 schools imported to Firestore with proper GeoPoint fields and metadata
-- **Google Maps Integration**: Added comprehensive Google Maps support with `@vis.gl/react-google-maps` for geolocation, navigation, and interactive location selection
-- **Enhanced Testing Infrastructure**: Expanded test suite with Cypress E2E testing, Lighthouse CI performance auditing, and comprehensive accessibility testing with axe-core
-- **PWA Features**: Complete Progressive Web App implementation with service worker, offline support, install prompts, and update notifications
+- **Adaptive Geofencing Strategy**: Implemented 4-tier detection strategy in `useGeofenceStrategy.ts`:
+  1. `periodic-sync`: Best (Chrome/Android) - uses Service Worker Periodic Background Sync.
+  2. `visibility-wakelock`: Good (Safari iOS) - uses Page Visibility + Wake Lock API.
+  3. `visibility-polling`: Fallback (Firefox) - uses visibility-based foreground polling.
+  4. `manual-only`: Last resort - uses Push Notification reminders.
+- **Advanced PWA Capabilities**: Added `capabilities.ts` for fine-grained browser detection (Wake Lock, Periodic Sync, Push, etc.).
+- **Reliability Enhancements**: Added `useAutoCheckoutReminder` for visual countdowns and `useConnectivityRestoration` for robust offline-to-online syncing.
+- **Data Model Fix**: Migrated to `Location.assignedProviders` as single source of truth; removed `User.assignedSchools`.
+- **Google Maps Integration**: Enhanced with `@vis.gl/react-google-maps` for better performance and native-like mapping experiences.
+- **Enhanced Testing Infrastructure**: Expanded test suite with Cypress E2E testing and comprehensive accessibility testing.
 
 ## Key Dependencies
 
@@ -189,4 +201,3 @@
 - **Github CLI**: `gh`
 - **Firebase CLI**: `firebase`
 - **Homebrew**: `brew`
-

@@ -93,10 +93,10 @@ export function normalizeLocationData(
     : createdAt;
 
   const isActive =
-    baseData.isActive !== undefined
-      ? baseData.isActive
-      : baseData.active !== undefined
+    baseData.active !== undefined
       ? baseData.active
+      : baseData.isActive !== undefined
+      ? baseData.isActive
       : true;
 
   const fallbackLat = typeof latitude === "number" ? latitude : 0;
@@ -108,13 +108,14 @@ export function normalizeLocationData(
     name: baseData.name ?? "",
     address: baseData.address ?? "",
     radiusMeters,
-    radius: typeof baseData.radius === "number" ? baseData.radius : radiusMeters,
+    radius:
+      typeof baseData.radius === "number" ? baseData.radius : radiusMeters,
     timezone: baseData.timezone ?? "America/Chicago",
     assignedProviders,
     createdAt,
     updatedAt,
     isActive,
-    active: baseData.active,
+    active: isActive,
     region: baseData.region,
     latitude,
     longitude,
@@ -157,10 +158,11 @@ export function buildLocationWriteData(
     gpsCoordinates: { ...geoPoint },
     radiusMeters: data.radiusMeters,
     radius: data.radiusMeters,
-    assignedProviders: data.assignedProviders ?? existing?.assignedProviders ?? [],
+    assignedProviders:
+      data.assignedProviders ?? existing?.assignedProviders ?? [],
     timezone: data.timezone ?? existing?.timezone ?? "America/Chicago",
-    isActive: data.isActive ?? (existing?.isActive ?? true),
-    active: data.isActive ?? (existing?.active ?? true),
+    isActive: data.isActive ?? existing?.isActive ?? true,
+    active: data.isActive ?? existing?.active ?? true,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
     ...((data.metadata as object) || {}),
@@ -202,4 +204,3 @@ export function buildLocationUpdateData(
 
   return updates;
 }
-
