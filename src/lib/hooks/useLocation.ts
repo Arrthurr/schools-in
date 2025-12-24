@@ -1,7 +1,8 @@
 // Custom React hook for GPS location handling
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { locationService, Coordinates, LocationError } from "../utils/location";
+import { useAutoGeofencePreference } from "./useAutoGeofencePreference";
 
 interface UseLocationReturn {
   location: Coordinates | null;
@@ -15,8 +16,9 @@ export const useLocation = (): UseLocationReturn => {
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<LocationError | null>(null);
+  const { enabled: autoGeofenceEnabled } = useAutoGeofencePreference();
 
-  const getLocation = async () => {
+  const getLocation = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -29,7 +31,14 @@ export const useLocation = (): UseLocationReturn => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Auto-fetch location when geofence is enabled
+  useEffect(() => {
+    if (autoGeofenceEnabled && !location) {
+      getLocation();
+    }
+  }, [autoGeofenceEnabled, location, getLocation]);
 
   const clearError = useCallback(() => {
     setError(null);
