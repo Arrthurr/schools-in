@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useId, useMemo, useCallback } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useLocation } from "@/lib/hooks/useLocation";
 import { useSession } from "@/lib/hooks/useSession";
 
 import {
