@@ -41,10 +41,12 @@ jest.mock("firebase/firestore", () => ({
   addDoc: jest.fn(),
   updateDoc: jest.fn(),
   deleteDoc: jest.fn(),
+  setDoc: jest.fn(),
   query: jest.fn(),
   where: jest.fn(),
   orderBy: jest.fn(),
   limit: jest.fn(),
+  onSnapshot: jest.fn(() => jest.fn()),
   Timestamp: {
     now: jest.fn(() => ({
       seconds: Date.now() / 1000,
@@ -131,3 +133,30 @@ global.ResizeObserver = class ResizeObserver {
 
 // Note: window.location mock removed due to JSDOM conflicts
 // If needed, mock location in individual tests
+
+// Mock IndexedDB (idb library)
+jest.mock("idb", () => ({
+  openDB: jest.fn(() =>
+    Promise.resolve({
+      get: jest.fn(),
+      put: jest.fn(),
+      delete: jest.fn(),
+      getAll: jest.fn(() => Promise.resolve([])),
+      getAllFromIndex: jest.fn(() => Promise.resolve([])),
+      transaction: jest.fn(() => ({
+        store: {
+          get: jest.fn(),
+          put: jest.fn(),
+          delete: jest.fn(),
+          getAll: jest.fn(() => Promise.resolve([])),
+          index: jest.fn(() => ({
+            getAll: jest.fn(() => Promise.resolve([])),
+          })),
+        },
+        done: Promise.resolve(),
+      })),
+      close: jest.fn(),
+    })
+  ),
+  deleteDB: jest.fn(() => Promise.resolve()),
+}))

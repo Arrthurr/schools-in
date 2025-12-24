@@ -4,6 +4,7 @@ import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useAutoGeofencePreference } from "@/lib/hooks/useAutoGeofencePreference";
 import { useCachedSession } from "@/lib/hooks/useCachedSession";
 import { useSession } from "@/lib/hooks/useSession";
+import { useGeofenceStrategy } from "@/lib/hooks/useGeofenceStrategy";
 import { locationService } from "@/lib/utils/location";
 import { validateGeofence } from "@/lib/utils/geo";
 import { getAssignedLocations } from "@/lib/services/locationService";
@@ -16,6 +17,7 @@ jest.mock("@/lib/hooks/useCachedAuth");
 jest.mock("@/lib/hooks/useAutoGeofencePreference");
 jest.mock("@/lib/hooks/useCachedSession");
 jest.mock("@/lib/hooks/useSession");
+jest.mock("@/lib/hooks/useGeofenceStrategy");
 jest.mock("@/lib/utils/location");
 jest.mock("@/lib/utils/geo");
 jest.mock("@/lib/services/locationService");
@@ -98,6 +100,17 @@ describe("useAutoGeofenceCheck", () => {
     (useSession as jest.Mock).mockReturnValue({
       checkIn: mockCheckIn,
       checkOut: mockCheckOut,
+    });
+    (useGeofenceStrategy as jest.Mock).mockReturnValue({
+      strategy: "visibility-polling",
+      config: {
+        pollIntervalMs: 60000,
+        debouncePolls: 2,
+        usePushReminders: false,
+        useWakeLock: false,
+      },
+      limitations: [],
+      switchToFallback: jest.fn(),
     });
     (toast as jest.Mock).mockImplementation(mockToast);
     (locationService.getCurrentLocation as jest.Mock).mockResolvedValue({

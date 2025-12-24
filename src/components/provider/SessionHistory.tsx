@@ -57,7 +57,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   const [pageSize] = useState(10);
 
   // Filtering state
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string>("");
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>("all");
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [showFilters, setShowFilters] = useState(false);
@@ -81,7 +81,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
       }
     });
 
-    const options: SelectOption[] = [{ value: "", label: "All Schools" }];
+    const options: SelectOption[] = [{ value: "all", label: "All Schools" }];
     uniqueSchools.forEach((name, id) => {
       options.push({ value: id, label: name });
     });
@@ -121,7 +121,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   useEffect(() => {
     if (user?.uid) {
       const filters = {
-        ...(selectedSchoolId && { schoolId: selectedSchoolId }),
+        ...(selectedSchoolId && selectedSchoolId !== "all" && { schoolId: selectedSchoolId }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate }),
       };
@@ -244,7 +244,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             <Button
               onClick={() => {
                 setCurrentPage(1);
-                setSelectedSchoolId("");
+                setSelectedSchoolId("all");
                 setStartDate(undefined);
                 setEndDate(undefined);
                 user?.uid && loadSessions(user.uid, 1, pageSize);
@@ -294,16 +294,16 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 />
               </div>
             </div>
-            {(selectedSchoolId || startDate || endDate) && (
+            {((selectedSchoolId && selectedSchoolId !== "all") || startDate || endDate) && (
               <div className="mt-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Filters applied: {selectedSchoolId && "School, "}
+                  Filters applied: {selectedSchoolId && selectedSchoolId !== "all" && "School, "}
                   {startDate && "Start Date, "}
                   {endDate && "End Date"}
                 </div>
                 <Button
                   onClick={() => {
-                    setSelectedSchoolId("");
+                    setSelectedSchoolId("all");
                     setStartDate(undefined);
                     setEndDate(undefined);
                     setCurrentPage(1);
