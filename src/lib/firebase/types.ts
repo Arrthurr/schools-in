@@ -174,3 +174,25 @@ export interface ExportDateRange {
   startDate: string; // YYYY-MM-DD in America/Chicago
   endDate: string; // YYYY-MM-DD in America/Chicago
 }
+
+export interface ReportSchedule {
+  id: string;
+  name: string;
+  description: string;
+  reportType: "sessions" | "attendance" | "analytics" | "management";
+  frequency: "daily" | "weekly" | "monthly" | "quarterly";
+  deliveryTime: string;
+  recipients: string[];
+  filters: {
+    dateRange?: string;
+    providers?: string[];
+    schools?: string[];
+    status?: string[];
+  };
+  format: "pdf" | "csv" | "excel";
+  isActive: boolean;
+  lastRun?: Timestamp;
+  nextRun?: Timestamp;
+  createdAt: Timestamp;
+  createdBy: string;
+}

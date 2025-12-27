@@ -232,5 +232,25 @@ service cloud.firestore {
     match /rate_limits/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
     }
+
+    // Report schedules collection (Admin only)
+    match /reportSchedules/{scheduleId} {
+      allow read, list: if isAdmin();
+      
+      allow create: if isAdmin() &&
+        hasValidTimestamp(request.resource.data) &&
+        request.resource.data.name is string &&
+        request.resource.data.reportType in ['sessions', 'attendance', 'analytics', 'management'] &&
+        request.resource.data.frequency in ['daily', 'weekly', 'monthly', 'quarterly'] &&
+        request.resource.data.deliveryTime is string &&
+        request.resource.data.recipients is list &&
+        request.resource.data.format in ['pdf', 'csv', 'excel'] &&
+        request.resource.data.isActive is bool &&
+        request.resource.data.createdBy is string;
+      
+      allow update: if isAdmin();
+      
+      allow delete: if isAdmin();
+    }
   }
 }
