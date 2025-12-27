@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { Timestamp } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   EmptyState,
@@ -35,29 +36,11 @@ import {
   Users,
   FileText,
   Settings,
+  Loader2,
 } from "lucide-react";
-
-interface ReportSchedule {
-  id: string;
-  name: string;
-  description: string;
-  reportType: "sessions" | "attendance" | "analytics" | "management";
-  frequency: "daily" | "weekly" | "monthly" | "quarterly";
-  deliveryTime: string;
-  recipients: string[];
-  filters: {
-    dateRange?: string;
-    providers?: string[];
-    schools?: string[];
-    status?: string[];
-  };
-  format: "pdf" | "csv" | "excel";
-  isActive: boolean;
-  lastRun?: Date;
-  nextRun?: Date;
-  createdAt: Date;
-  createdBy: string;
-}
+import { ReportSchedule } from "@/lib/firebase/types";
+import { reportScheduleService } from "@/lib/services/reportScheduleService";
+import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 
 interface NewScheduleForm {
   name: string;
@@ -70,13 +53,13 @@ interface NewScheduleForm {
 }
 
 export function ReportScheduler() {
+  const { user } = useCachedAuth();
   const [schedules, setSchedules] = useState<ReportSchedule[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [, setEditingSchedule] = useState<ReportSchedule | null>(
-    null
-  );
+  const [, setEditingSchedule] = useState<ReportSchedule | null>(null);
 
   const [newSchedule, setNewSchedule] = useState<NewScheduleForm>({
     name: "",
@@ -88,60 +71,24 @@ export function ReportScheduler() {
     format: "pdf",
   });
 
-  // Mock data for demonstration
-  useEffect(() => {
-    const mockSchedules: ReportSchedule[] = [
-      {
-        id: "sched-1",
-        name: "Weekly Session Summary",
-        description: "Weekly overview of all session activities",
-        reportType: "sessions",
-        frequency: "weekly",
-        deliveryTime: "09:00",
-        recipients: ["admin@schoolsin.com", "manager@schoolsin.com"],
-        filters: { dateRange: "week" },
-        format: "pdf",
-        isActive: true,
-        lastRun: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        nextRun: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        createdBy: "admin@schoolsin.com",
-      },
-      {
-        id: "sched-2",
-        name: "Monthly Analytics Report",
-        description: "Comprehensive monthly analytics and insights",
-        reportType: "analytics",
-        frequency: "monthly",
-        deliveryTime: "08:00",
-        recipients: ["analytics@schoolsin.com", "director@schoolsin.com"],
-        filters: { dateRange: "month" },
-        format: "excel",
-        isActive: true,
-        lastRun: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        nextRun: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-        createdBy: "admin@schoolsin.com",
-      },
-      {
-        id: "sched-3",
-        name: "Daily Attendance Check",
-        description: "Daily attendance summary for operational review",
-        reportType: "attendance",
-        frequency: "daily",
-        deliveryTime: "17:00",
-        recipients: ["operations@schoolsin.com"],
-        filters: { dateRange: "day" },
-        format: "csv",
-        isActive: false,
-        lastRun: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-        nextRun: undefined,
-        createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-        createdBy: "operations@schoolsin.com",
-      },
-    ];
-    setSchedules(mockSchedules);
+  // Fetch schedules from Firestore
+  const fetchSchedules = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await reportScheduleService.getAll();
+      setSchedules(data);
+    } catch (err) {
+      console.error("Error fetching report schedules:", err);
+      setError("Failed to load report schedules. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchSchedules();
+  }, [fetchSchedules]);
 
   // Calculate next run date based on frequency
   const calculateNextRun = (frequency: string, deliveryTime: string): Date => {
@@ -172,96 +119,120 @@ export function ReportScheduler() {
   };
 
   // Handle form submission
-  const handleCreateSchedule = () => {
+  const handleCreateSchedule = async () => {
     if (!newSchedule.name || !newSchedule.recipients) {
       setError("Please fill in all required fields");
       return;
     }
 
-    const schedule: ReportSchedule = {
-      id: `sched-${Date.now()}`,
-      name: newSchedule.name,
-      description: newSchedule.description,
-      reportType: newSchedule.reportType,
-      frequency: newSchedule.frequency,
-      deliveryTime: newSchedule.deliveryTime,
-      recipients: newSchedule.recipients
-        .split(",")
-        .map((email) => email.trim()),
-      filters: {
-        dateRange:
-          newSchedule.frequency === "daily"
-            ? "day"
-            : newSchedule.frequency === "weekly"
-            ? "week"
-            : "month",
-      },
-      format: newSchedule.format,
-      isActive: true,
-      nextRun: calculateNextRun(
+    if (!user?.email) {
+      setError("You must be logged in to create a schedule");
+      return;
+    }
+
+    try {
+      setActionLoading("create");
+      setError(null);
+
+      const nextRunDate = calculateNextRun(
         newSchedule.frequency,
         newSchedule.deliveryTime
-      ),
-      createdAt: new Date(),
-      createdBy: "current-user@schoolsin.com", // Would be from auth context
-    };
+      );
 
-    setSchedules((prev) => [...prev, schedule]);
-    setShowCreateDialog(false);
-    setNewSchedule({
-      name: "",
-      description: "",
-      reportType: "sessions",
-      frequency: "weekly",
-      deliveryTime: "09:00",
-      recipients: "",
-      format: "pdf",
-    });
-    setError(null);
+      await reportScheduleService.create({
+        name: newSchedule.name,
+        description: newSchedule.description,
+        reportType: newSchedule.reportType,
+        frequency: newSchedule.frequency,
+        deliveryTime: newSchedule.deliveryTime,
+        recipients: newSchedule.recipients
+          .split(",")
+          .map((email) => email.trim())
+          .filter(Boolean),
+        filters: {
+          dateRange:
+            newSchedule.frequency === "daily"
+              ? "day"
+              : newSchedule.frequency === "weekly"
+              ? "week"
+              : "month",
+        },
+        format: newSchedule.format,
+        isActive: true,
+        nextRun: Timestamp.fromDate(nextRunDate),
+        createdBy: user.email,
+      });
+
+      setShowCreateDialog(false);
+      setNewSchedule({
+        name: "",
+        description: "",
+        reportType: "sessions",
+        frequency: "weekly",
+        deliveryTime: "09:00",
+        recipients: "",
+        format: "pdf",
+      });
+
+      await fetchSchedules();
+    } catch (err) {
+      console.error("Error creating schedule:", err);
+      setError("Failed to create schedule. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // Toggle schedule active state
-  const toggleScheduleActive = (id: string) => {
-    setSchedules((prev) =>
-      prev.map((schedule) =>
-        schedule.id === id
-          ? {
-              ...schedule,
-              isActive: !schedule.isActive,
-              nextRun: !schedule.isActive
-                ? calculateNextRun(schedule.frequency, schedule.deliveryTime)
-                : undefined,
-            }
-          : schedule
-      )
-    );
+  const toggleScheduleActive = async (schedule: ReportSchedule) => {
+    try {
+      setActionLoading(schedule.id);
+      const newIsActive = !schedule.isActive;
+      const nextRun = newIsActive
+        ? Timestamp.fromDate(
+            calculateNextRun(schedule.frequency, schedule.deliveryTime)
+          )
+        : undefined;
+
+      await reportScheduleService.toggleActive(schedule.id, newIsActive, nextRun);
+      await fetchSchedules();
+    } catch (err) {
+      console.error("Error toggling schedule:", err);
+      setError("Failed to update schedule. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // Delete schedule
-  const deleteSchedule = (id: string) => {
-    setSchedules((prev) => prev.filter((schedule) => schedule.id !== id));
+  const deleteSchedule = async (id: string) => {
+    try {
+      setActionLoading(id);
+      await reportScheduleService.delete(id);
+      await fetchSchedules();
+    } catch (err) {
+      console.error("Error deleting schedule:", err);
+      setError("Failed to delete schedule. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
-  // Simulate running a report
-  const runScheduleNow = (id: string) => {
-    setLoading(true);
-    setTimeout(() => {
-      setSchedules((prev) =>
-        prev.map((schedule) =>
-          schedule.id === id
-            ? {
-                ...schedule,
-                lastRun: new Date(),
-                nextRun: calculateNextRun(
-                  schedule.frequency,
-                  schedule.deliveryTime
-                ),
-              }
-            : schedule
-        )
+  // Run a schedule now
+  const runScheduleNow = async (schedule: ReportSchedule) => {
+    try {
+      setActionLoading(schedule.id);
+      const nextRun = Timestamp.fromDate(
+        calculateNextRun(schedule.frequency, schedule.deliveryTime)
       );
-      setLoading(false);
-    }, 2000);
+      await reportScheduleService.recordRun(schedule.id, nextRun);
+      await fetchSchedules();
+    } catch (err) {
+      console.error("Error running schedule:", err);
+      setError("Failed to run schedule. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // Get report type display info
@@ -315,6 +286,20 @@ export function ReportScheduler() {
         return "bg-gray-100 text-gray-800";
     }
   };
+
+  // Helper to format Timestamp to date string
+  const formatDate = (timestamp?: Timestamp): string => {
+    if (!timestamp) return "N/A";
+    return timestamp.toDate().toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -387,7 +372,7 @@ export function ReportScheduler() {
                       onValueChange={(value) =>
                         setNewSchedule((prev) => ({
                           ...prev,
-                          reportType: value as any,
+                          reportType: value as NewScheduleForm["reportType"],
                         }))
                       }
                     />
@@ -425,7 +410,7 @@ export function ReportScheduler() {
                       onValueChange={(value) =>
                         setNewSchedule((prev) => ({
                           ...prev,
-                          frequency: value as any,
+                          frequency: value as NewScheduleForm["frequency"],
                         }))
                       }
                     />
@@ -457,7 +442,7 @@ export function ReportScheduler() {
                       onValueChange={(value) =>
                         setNewSchedule((prev) => ({
                           ...prev,
-                          format: value as any,
+                          format: value as NewScheduleForm["format"],
                         }))
                       }
                     />
@@ -488,10 +473,17 @@ export function ReportScheduler() {
                   <Button
                     variant="outline"
                     onClick={() => setShowCreateDialog(false)}
+                    disabled={actionLoading === "create"}
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateSchedule}>
+                  <Button
+                    onClick={handleCreateSchedule}
+                    disabled={actionLoading === "create"}
+                  >
+                    {actionLoading === "create" && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     Create Schedule
                   </Button>
                 </div>
@@ -523,6 +515,7 @@ export function ReportScheduler() {
           schedules.map((schedule) => {
             const typeInfo = getReportTypeInfo(schedule.reportType);
             const TypeIcon = typeInfo.icon;
+            const isActionLoading = actionLoading === schedule.id;
 
             return (
               <Card
@@ -596,13 +589,13 @@ export function ReportScheduler() {
                         {schedule.lastRun && (
                           <div className="flex items-center gap-2">
                             <CheckCircle className="h-3 w-3 text-green-600" />
-                            Last: {schedule.lastRun.toLocaleDateString()}
+                            Last: {formatDate(schedule.lastRun)}
                           </div>
                         )}
                         {schedule.nextRun && (
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3 w-3 text-brand-primary" />
-                            Next: {schedule.nextRun.toLocaleDateString()}
+                            Next: {formatDate(schedule.nextRun)}
                           </div>
                         )}
                       </div>
@@ -614,17 +607,22 @@ export function ReportScheduler() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => runScheduleNow(schedule.id)}
-                      disabled={loading}
+                      onClick={() => runScheduleNow(schedule)}
+                      disabled={isActionLoading}
                       className="flex items-center gap-2"
                     >
-                      <Play className="h-3 w-3" />
+                      {isActionLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
                       Run Now
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => toggleScheduleActive(schedule.id)}
+                      onClick={() => toggleScheduleActive(schedule)}
+                      disabled={isActionLoading}
                       className="flex items-center gap-2"
                     >
                       {schedule.isActive ? (
@@ -643,6 +641,7 @@ export function ReportScheduler() {
                       size="sm"
                       variant="outline"
                       onClick={() => setEditingSchedule(schedule)}
+                      disabled={isActionLoading}
                       className="flex items-center gap-2"
                     >
                       <Edit className="h-3 w-3" />
@@ -652,9 +651,14 @@ export function ReportScheduler() {
                       size="sm"
                       variant="destructive"
                       onClick={() => deleteSchedule(schedule.id)}
+                      disabled={isActionLoading}
                       className="flex items-center gap-2"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      {isActionLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
                       Delete
                     </Button>
                   </div>
