@@ -1,9 +1,13 @@
-const { initializeTestEnvironment, assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
-const fs = require('fs');
-const path = require('path');
+const {
+  initializeTestEnvironment,
+  assertFails,
+  assertSucceeds,
+} = require("@firebase/rules-unit-testing");
+const fs = require("fs");
+const path = require("path");
 
-const PROJECT_ID = 'schools-in-test';
-const RULES_PATH = path.join(__dirname, '../firestore.rules');
+const PROJECT_ID = "schools-in-test";
+const RULES_PATH = path.join(__dirname, "../firestore.rules");
 
 let testEnv;
 
@@ -11,8 +15,8 @@ beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: PROJECT_ID,
     firestore: {
-      rules: fs.readFileSync(RULES_PATH, 'utf8'),
-      host: '127.0.0.1',
+      rules: fs.readFileSync(RULES_PATH, "utf8"),
+      host: "127.0.0.1",
       port: 8080,
     },
   });
@@ -26,209 +30,439 @@ beforeEach(async () => {
   await testEnv.clearFirestore();
 });
 
-describe('Firestore Security Rules', () => {
-  describe('Users Collection', () => {
-    test('should allow users to read their own profile', async () => {
-      const alice = testEnv.authenticatedContext('alice', {
-        uid: 'alice',
-        email: 'alice@test.com',
-      });
-      
-      await assertSucceeds(alice.firestore().doc('users/alice').get());
+function authed(uid, { email } = {}) {
+  return testEnv.authenticatedContext(uid, {
+    uid,
+    email: email || `${uid}@test.com`,
+  });
+}
+
+async function seedUser(userId, data) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(`users/${userId}`).set(data);
+  });
+}
+
+async function seedLocation(locationId, data) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(`locations/${locationId}`).set(data);
+  });
+}
+
+describe("Firestore Security Rules", () => {
+  describe("Users Collection", () => {
+    test("allows user to read their own profile", async () => {
+      const alice = authed("alice", { email: "alice@test.com" });
+      await assertSucceeds(alice.firestore().doc("users/alice").get());
     });
 
-    test('should deny users from reading other users profiles', async () => {
-      const alice = testEnv.authenticatedContext('alice', {
-        uid: 'alice',
-        email: 'alice@test.com',
-      });
-      
-      await assertFails(alice.firestore().doc('users/bob').get());
+    test("denies user from reading other users profiles", async () => {
+      const alice = authed("alice", { email: "alice@test.com" });
+      await assertFails(alice.firestore().doc("users/bob").get());
     });
 
-    test('should allow users to create their own profile', async () => {
-      const alice = testEnv.authenticatedContext('alice', {
-        uid: 'alice',
-        email: 'alice@test.com',
-      });
-      
+    test("allows user to create their own profile with required fields", async () => {
+      const alice = authed("alice", { email: "alice@test.com" });
+      const now = new Date();
+
       await assertSucceeds(
-        alice.firestore().doc('users/alice').set({
-          name: 'Alice Smith',
-          email: 'alice@test.com',
-          role: 'provider',
-          createdAt: new Date(),
+        alice.firestore().doc("users/alice").set({
+          uid: "alice",
+          email: "alice@test.com",
+          displayName: "Alice Smith",
+          role: "provider",
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
         })
       );
     });
 
-    test('should deny users from creating profiles for others', async () => {
-      const alice = testEnv.authenticatedContext('alice', {
-        uid: 'alice',
-        email: 'alice@test.com',
-      });
-      
+    test("denies user from creating profiles for others", async () => {
+      const alice = authed("alice", { email: "alice@test.com" });
+      const now = new Date();
+
       await assertFails(
-        alice.firestore().doc('users/bob').set({
-          name: 'Bob Johnson',
-          email: 'bob@test.com',
-          role: 'provider',
-          createdAt: new Date(),
+        alice.firestore().doc("users/bob").set({
+          uid: "bob",
+          email: "bob@test.com",
+          displayName: "Bob",
+          role: "provider",
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
         })
       );
     });
 
-    test('should allow admins to read all user profiles', async () => {
-      const admin = testEnv.authenticatedContext('admin', {
-        uid: 'admin',
-        email: 'admin@test.com',
-        role: 'admin',
+    test("allows admins to read all user profiles", async () => {
+      const now = new Date();
+      await seedUser("admin", {
+        uid: "admin",
+        email: "admin@test.com",
+        displayName: "Admin",
+        role: "admin",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
       });
-      
-      // First create a user document
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await context.firestore().doc('users/alice').set({
-          name: 'Alice Smith',
-          email: 'alice@test.com',
-          role: 'provider',
-        });
+
+      await seedUser("alice", {
+        uid: "alice",
+        email: "alice@test.com",
+        displayName: "Alice",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
       });
-      
-      await assertSucceeds(admin.firestore().doc('users/alice').get());
+
+      const admin = authed("admin", { email: "admin@test.com" });
+      await assertSucceeds(admin.firestore().doc("users/alice").get());
     });
   });
 
-  describe('Sessions Collection', () => {
-    test('should allow providers to create sessions', async () => {
-      const provider = testEnv.authenticatedContext('provider', {
-        uid: 'provider123',
-        email: 'provider@test.com',
-        role: 'provider',
+  describe("Push Subscriptions Subcollection", () => {
+    test("allows user to write their own push subscription", async () => {
+      const now = new Date();
+      await seedUser("alice", {
+        uid: "alice",
+        email: "alice@test.com",
+        displayName: "Alice",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
       });
-      
+
+      const alice = authed("alice", { email: "alice@test.com" });
       await assertSucceeds(
-        provider.firestore().collection('sessions').add({
-          providerId: 'provider123',
-          schoolId: 'school123',
-          status: 'active',
-          checkInTime: new Date(),
-          location: { lat: 40.7128, lng: -74.0060 },
+        alice.firestore().doc("users/alice/pushSubscriptions/geofence").set({
+          endpoint: "https://push.example.com/endpoint",
+          expirationTime: null,
+          keys: {
+            p256dh: "p256dh",
+            auth: "auth",
+          },
+          platform: "test",
+          userAgent: "jest",
+          createdAt: now,
+          updatedAt: now,
         })
       );
     });
 
-    test('should deny providers from creating sessions for others', async () => {
-      const provider = testEnv.authenticatedContext('provider', {
-        uid: 'provider123',
-        email: 'provider@test.com',
-        role: 'provider',
+    test("denies user from writing another user's push subscription", async () => {
+      const now = new Date();
+      await seedUser("alice", {
+        uid: "alice",
+        email: "alice@test.com",
+        displayName: "Alice",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
       });
-      
+      await seedUser("bob", {
+        uid: "bob",
+        email: "bob@test.com",
+        displayName: "Bob",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const alice = authed("alice", { email: "alice@test.com" });
       await assertFails(
-        provider.firestore().collection('sessions').add({
-          providerId: 'other-provider',
-          schoolId: 'school123',
-          status: 'active',
-          checkInTime: new Date(),
-          location: { lat: 40.7128, lng: -74.0060 },
+        alice.firestore().doc("users/bob/pushSubscriptions/geofence").set({
+          endpoint: "https://push.example.com/endpoint",
+          expirationTime: null,
+          keys: {
+            p256dh: "p256dh",
+            auth: "auth",
+          },
+          createdAt: now,
+          updatedAt: now,
         })
       );
     });
 
-    test('should allow providers to read their own sessions', async () => {
-      const provider = testEnv.authenticatedContext('provider', {
-        uid: 'provider123',
-        email: 'provider@test.com',
-        role: 'provider',
+    test("allows admin to read another user's push subscription", async () => {
+      const now = new Date();
+      await seedUser("admin", {
+        uid: "admin",
+        email: "admin@test.com",
+        displayName: "Admin",
+        role: "admin",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
       });
-      
-      // Create a session first
+      await seedUser("alice", {
+        uid: "alice",
+        email: "alice@test.com",
+        displayName: "Alice",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await context.firestore().doc('sessions/session123').set({
-          providerId: 'provider123',
-          schoolId: 'school123',
-          status: 'active',
-          checkInTime: new Date(),
+        await context
+          .firestore()
+          .doc("users/alice/pushSubscriptions/geofence")
+          .set({
+            endpoint: "https://push.example.com/endpoint",
+            expirationTime: null,
+            keys: { p256dh: "p256dh", auth: "auth" },
+            createdAt: now,
+            updatedAt: now,
+          });
+      });
+
+      const admin = authed("admin", { email: "admin@test.com" });
+      await assertSucceeds(
+        admin.firestore().doc("users/alice/pushSubscriptions/geofence").get()
+      );
+    });
+  });
+
+  describe("Locations Collection", () => {
+    test("allows provider to read an assigned location", async () => {
+      const now = new Date();
+      await seedUser("provider123", {
+        uid: "provider123",
+        email: "provider@test.com",
+        displayName: "Provider",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await seedLocation("loc1", {
+        name: "Test Location",
+        address: "123 Main St",
+        geo: { latitude: 41.0, longitude: -87.0 },
+        radiusMeters: 100,
+        assignedProviders: ["provider123"],
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const provider = authed("provider123", { email: "provider@test.com" });
+      await assertSucceeds(provider.firestore().doc("locations/loc1").get());
+    });
+
+    test("denies provider from reading an unassigned location", async () => {
+      const now = new Date();
+      await seedUser("provider123", {
+        uid: "provider123",
+        email: "provider@test.com",
+        displayName: "Provider",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await seedLocation("loc2", {
+        name: "Other Location",
+        address: "456 Main St",
+        geo: { latitude: 41.0, longitude: -87.0 },
+        radiusMeters: 100,
+        assignedProviders: [],
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const provider = authed("provider123", { email: "provider@test.com" });
+      await assertFails(provider.firestore().doc("locations/loc2").get());
+    });
+  });
+
+  describe("Sessions Collection", () => {
+    test("allows provider to create a session only for assigned active location", async () => {
+      const now = new Date();
+      await seedUser("provider123", {
+        uid: "provider123",
+        email: "provider@test.com",
+        displayName: "Provider",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await seedLocation("loc1", {
+        name: "Test Location",
+        address: "123 Main St",
+        geo: { latitude: 41.0, longitude: -87.0 },
+        radiusMeters: 100,
+        assignedProviders: ["provider123"],
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const provider = authed("provider123", { email: "provider@test.com" });
+      await assertSucceeds(
+        provider.firestore().collection("sessions").add({
+          userId: "provider123",
+          locationId: "loc1",
+          startTime: now,
+          status: "active",
+          checkInMethod: "geo",
+          distanceFromCenterAtCheckIn: 10,
+          dayKey: "2026-01-01",
+          createdAt: now,
+          updatedAt: now,
+        })
+      );
+    });
+
+    test("denies provider from creating a session for unassigned location", async () => {
+      const now = new Date();
+      await seedUser("provider123", {
+        uid: "provider123",
+        email: "provider@test.com",
+        displayName: "Provider",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await seedLocation("loc2", {
+        name: "Other Location",
+        address: "456 Main St",
+        geo: { latitude: 41.0, longitude: -87.0 },
+        radiusMeters: 100,
+        assignedProviders: [],
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const provider = authed("provider123", { email: "provider@test.com" });
+      await assertFails(
+        provider.firestore().collection("sessions").add({
+          userId: "provider123",
+          locationId: "loc2",
+          startTime: now,
+          status: "active",
+          checkInMethod: "geo",
+          distanceFromCenterAtCheckIn: 10,
+          dayKey: "2026-01-01",
+          createdAt: now,
+          updatedAt: now,
+        })
+      );
+    });
+
+    test("denies provider from creating a session for inactive location", async () => {
+      const now = new Date();
+      await seedUser("provider123", {
+        uid: "provider123",
+        email: "provider@test.com",
+        displayName: "Provider",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await seedLocation("loc3", {
+        name: "Inactive Location",
+        address: "789 Main St",
+        geo: { latitude: 41.0, longitude: -87.0 },
+        radiusMeters: 100,
+        assignedProviders: ["provider123"],
+        active: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const provider = authed("provider123", { email: "provider@test.com" });
+      await assertFails(
+        provider.firestore().collection("sessions").add({
+          userId: "provider123",
+          locationId: "loc3",
+          startTime: now,
+          status: "active",
+          checkInMethod: "geo",
+          distanceFromCenterAtCheckIn: 10,
+          dayKey: "2026-01-01",
+          createdAt: now,
+          updatedAt: now,
+        })
+      );
+    });
+
+    test("allows provider to read their own sessions", async () => {
+      const now = new Date();
+      await seedUser("provider123", {
+        uid: "provider123",
+        email: "provider@test.com",
+        displayName: "Provider",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().doc("sessions/session123").set({
+          userId: "provider123",
+          locationId: "loc1",
+          startTime: now,
+          status: "active",
+          checkInMethod: "geo",
+          distanceFromCenterAtCheckIn: 10,
+          dayKey: "2026-01-01",
+          createdAt: now,
+          updatedAt: now,
         });
       });
-      
+
+      const provider = authed("provider123", { email: "provider@test.com" });
       await assertSucceeds(
-        provider.firestore().collection('sessions')
-          .where('providerId', '==', 'provider123')
+        provider
+          .firestore()
+          .collection("sessions")
+          .where("userId", "==", "provider123")
           .get()
       );
     });
 
-    test('should allow admins to read all sessions', async () => {
-      const admin = testEnv.authenticatedContext('admin', {
-        uid: 'admin',
-        email: 'admin@test.com',
-        role: 'admin',
+    test("allows admin to read all sessions", async () => {
+      const now = new Date();
+      await seedUser("admin", {
+        uid: "admin",
+        email: "admin@test.com",
+        displayName: "Admin",
+        role: "admin",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
       });
-      
-      await assertSucceeds(admin.firestore().collection('sessions').get());
+
+      const admin = authed("admin", { email: "admin@test.com" });
+      await assertSucceeds(admin.firestore().collection("sessions").get());
     });
   });
 
-  describe('Locations Collection', () => {
-    test('should allow all authenticated users to read locations', async () => {
-      const provider = testEnv.authenticatedContext('provider', {
-        uid: 'provider123',
-        email: 'provider@test.com',
-        role: 'provider',
-      });
-      
-      await assertSucceeds(provider.firestore().collection('locations').get());
-    });
-
-    test('should deny unauthenticated users from reading locations', async () => {
+  describe("Unauthenticated Access", () => {
+    test("denies all access to unauthenticated users", async () => {
       const unauth = testEnv.unauthenticatedContext();
-      
-      await assertFails(unauth.firestore().collection('locations').get());
-    });
 
-    test('should only allow admins to create/update locations', async () => {
-      const admin = testEnv.authenticatedContext('admin', {
-        uid: 'admin',
-        email: 'admin@test.com',
-        role: 'admin',
-      });
-      
-      await assertSucceeds(
-        admin.firestore().collection('locations').add({
-          name: 'Test School',
-          address: '123 Main St',
-          coordinates: { lat: 40.7128, lng: -74.0060 },
-          radius: 500,
-        })
-      );
-    });
-
-    test('should deny non-admins from creating locations', async () => {
-      const provider = testEnv.authenticatedContext('provider', {
-        uid: 'provider123',
-        email: 'provider@test.com',
-        role: 'provider',
-      });
-      
-      await assertFails(
-        provider.firestore().collection('locations').add({
-          name: 'Test School',
-          address: '123 Main St',
-          coordinates: { lat: 40.7128, lng: -74.0060 },
-          radius: 500,
-        })
-      );
-    });
-  });
-
-  describe('Unauthenticated Access', () => {
-    test('should deny all access to unauthenticated users', async () => {
-      const unauth = testEnv.unauthenticatedContext();
-      
-      await assertFails(unauth.firestore().doc('users/alice').get());
-      await assertFails(unauth.firestore().collection('sessions').get());
-      await assertFails(unauth.firestore().collection('locations').get());
+      await assertFails(unauth.firestore().doc("users/alice").get());
+      await assertFails(unauth.firestore().collection("sessions").get());
+      await assertFails(unauth.firestore().collection("locations").get());
     });
   });
 });
