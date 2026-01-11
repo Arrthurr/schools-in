@@ -121,19 +121,27 @@ service cloud.firestore {
 
     // Sessions collection rules - Enhanced validation per PRD
     match /sessions/{sessionId} {
-      allow create: if isAuthenticated() && 
-                       isProvider() &&
-                       isActiveUser() &&
-                       request.auth.uid == request.resource.data.userId &&
-                       isProviderAssignedToLocation(request.auth.uid, request.resource.data.locationId) &&
-                       isActiveLocation(request.resource.data.locationId) &&
-                       hasValidTimestamp(request.resource.data) &&
-                       request.resource.data.status in ['active'] && // Only allow creating active sessions
-                       request.resource.data.locationId is string &&
-                       request.resource.data.startTime is timestamp &&
-                       request.resource.data.checkInMethod in ['geo', 'offline-sync'] &&
-                       request.resource.data.distanceFromCenterAtCheckIn is number &&
-                       request.resource.data.dayKey is string;
+      allow create: if isAuthenticated() &&
+        isActiveUser() &&
+        request.auth.uid == request.resource.data.userId &&
+        isActiveLocation(request.resource.data.locationId) &&
+        hasValidTimestamp(request.resource.data) &&
+        request.resource.data.status in ['active'] && // Only allow creating active sessions
+        request.resource.data.locationId is string &&
+        request.resource.data.startTime is timestamp &&
+        request.resource.data.distanceFromCenterAtCheckIn is number &&
+        request.resource.data.dayKey is string &&
+        (
+          // Providers: allow only automatic/queued methods, and only for assigned locations
+          (isProvider() &&
+            isProviderAssignedToLocation(request.auth.uid, request.resource.data.locationId) &&
+            request.resource.data.checkInMethod in ['geo', 'offline-sync']
+          ) ||
+          // Admins: allow manual check-in method (used by admin manual check-in flow)
+          (isAdmin() &&
+            request.resource.data.checkInMethod == 'manual'
+          )
+        );
       
       allow read: if isAuthenticated() &&
                      (isOwner(resource.data.userId) || isAdmin());

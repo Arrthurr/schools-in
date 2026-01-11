@@ -32,7 +32,9 @@ beforeEach(async () => {
 
 function authed(uid, { email } = {}) {
   return testEnv.authenticatedContext(uid, {
-    uid,
+    // Firebase Auth UID is carried in the JWT "sub" claim.
+    // (The "uid" claim is no longer supported by mockUserToken.)
+    sub: uid,
     email: email || `${uid}@test.com`,
   });
 }
@@ -317,6 +319,84 @@ describe("Firestore Security Rules", () => {
           startTime: now,
           status: "active",
           checkInMethod: "geo",
+          distanceFromCenterAtCheckIn: 10,
+          dayKey: "2026-01-01",
+          createdAt: now,
+          updatedAt: now,
+        })
+      );
+    });
+
+    test("allows admin to create a manual session for an active location", async () => {
+      const now = new Date();
+      await seedUser("admin", {
+        uid: "admin",
+        email: "admin@test.com",
+        displayName: "Admin",
+        role: "admin",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await seedLocation("loc1", {
+        name: "Test Location",
+        address: "123 Main St",
+        geo: { latitude: 41.0, longitude: -87.0 },
+        radiusMeters: 100,
+        assignedProviders: [],
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const admin = authed("admin", { email: "admin@test.com" });
+      await assertSucceeds(
+        admin.firestore().collection("sessions").add({
+          userId: "admin",
+          locationId: "loc1",
+          startTime: now,
+          status: "active",
+          checkInMethod: "manual",
+          distanceFromCenterAtCheckIn: 10,
+          dayKey: "2026-01-01",
+          createdAt: now,
+          updatedAt: now,
+        })
+      );
+    });
+
+    test("denies provider from creating a manual session (manual is admin-only)", async () => {
+      const now = new Date();
+      await seedUser("provider123", {
+        uid: "provider123",
+        email: "provider@test.com",
+        displayName: "Provider",
+        role: "provider",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await seedLocation("loc1", {
+        name: "Test Location",
+        address: "123 Main St",
+        geo: { latitude: 41.0, longitude: -87.0 },
+        radiusMeters: 100,
+        assignedProviders: ["provider123"],
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const provider = authed("provider123", { email: "provider@test.com" });
+      await assertFails(
+        provider.firestore().collection("sessions").add({
+          userId: "provider123",
+          locationId: "loc1",
+          startTime: now,
+          status: "active",
+          checkInMethod: "manual",
           distanceFromCenterAtCheckIn: 10,
           dayKey: "2026-01-01",
           createdAt: now,
