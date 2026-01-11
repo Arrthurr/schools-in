@@ -248,7 +248,10 @@ export function saveReminderSettings(settings: Partial<ReminderSettings>): void 
   };
 
   localStorage.setItem(REMINDER_SETTINGS_KEY, JSON.stringify(updated));
-  appLogger.info("Reminder settings saved", updated);
+  appLogger.info(
+    "Reminder settings saved",
+    updated as unknown as Record<string, unknown>
+  );
 }
 
 /**
@@ -256,7 +259,9 @@ export function saveReminderSettings(settings: Partial<ReminderSettings>): void 
  */
 export async function showLocalNotification(
   title: string,
-  options: NotificationOptions = {}
+  options: (NotificationOptions & {
+    actions?: Array<{ action: string; title: string }>;
+  }) = {}
 ): Promise<void> {
   if (!isPushSupported()) {
     appLogger.warn("Notifications not supported");
@@ -271,13 +276,16 @@ export async function showLocalNotification(
   try {
     const registration = await navigator.serviceWorker.ready;
 
-    await registration.showNotification(title, {
+    await registration.showNotification(
+      title,
+      ({
       icon: "/icons/icon-192x192.png",
       badge: "/icons/icon-72x72.png",
       tag: "geofence-reminder",
       requireInteraction: true,
       ...options,
-    });
+      } as any)
+    );
 
     appLogger.info("Local notification shown", { title });
   } catch (error) {
@@ -422,12 +430,15 @@ export function getNextReminderTime(): Date | null {
 // Helper Functions
 // ============================================
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 
   const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
+  // Use ArrayBuffer explicitly to avoid ArrayBufferLike/SharedArrayBuffer typing issues
+  const outputArray = new Uint8Array(
+    new ArrayBuffer(rawData.length)
+  ) as Uint8Array<ArrayBuffer>;
 
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);

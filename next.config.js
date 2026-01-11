@@ -17,9 +17,9 @@ const nextConfig = {
     instrumentationHook: true,
   },
 
-  // Disable type checking for build
+  // Enforce type checking during build (CI/prod safety)
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   // Force dynamic rendering for problematic pages

@@ -176,7 +176,10 @@ export async function detectCapabilities(): Promise<PWACapabilities> {
     notifications,
   };
 
-  appLogger.info("PWA capabilities detected", cachedCapabilities);
+  appLogger.info(
+    "PWA capabilities detected",
+    cachedCapabilities as unknown as Record<string, unknown>
+  );
 
   return cachedCapabilities;
 }
@@ -227,7 +230,7 @@ export function determineGeofenceStrategy(
 export function determineFallbackStrategy(
   primaryStrategy: GeofenceStrategy,
   capabilities: PWACapabilities,
-  platform: PlatformInfo
+  _platform: PlatformInfo
 ): GeofenceStrategy | null {
   switch (primaryStrategy) {
     case "periodic-sync":

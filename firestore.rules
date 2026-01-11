@@ -49,6 +49,19 @@ service cloud.firestore {
       return serviceExists(serviceId) && get(/databases/$(database)/documents/services/$(serviceId)).data.isActive != false;
     }
 
+    function isActiveLocation(locationId) {
+      return get(/databases/$(database)/documents/locations/$(locationId)).data.active != false;
+    }
+
+    function isValidPushSubscription(data) {
+      return data.endpoint is string &&
+        data.keys is map &&
+        data.keys.p256dh is string &&
+        data.keys.auth is string &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
     // Users collection rules - Enhanced security per PRD
     match /users/{userId} {
       allow create: if isOwner(userId) && 
@@ -71,6 +84,12 @@ service cloud.firestore {
       
       // List operations for admins only
       allow list: if isAdmin();
+    }
+
+    // Push subscriptions (per-user subcollection)
+    match /users/{userId}/pushSubscriptions/{subscriptionId} {
+      allow create, update, delete: if isOwner(userId) && isValidPushSubscription(request.resource.data);
+      allow get, list, read: if isOwner(userId) || isAdmin();
     }
 
     // Locations collection rules - Simplified to use only assignedProviders
@@ -102,17 +121,27 @@ service cloud.firestore {
 
     // Sessions collection rules - Enhanced validation per PRD
     match /sessions/{sessionId} {
-      allow create: if isAuthenticated() && 
-                       isProvider() &&
-                       isActiveUser() &&
-                       request.auth.uid == request.resource.data.userId &&
-                       hasValidTimestamp(request.resource.data) &&
-                       request.resource.data.status in ['active'] && // Only allow creating active sessions
-                       request.resource.data.locationId is string &&
-                       request.resource.data.startTime is timestamp &&
-                       request.resource.data.checkInMethod in ['geo', 'manual', 'offline-sync'] &&
-                       request.resource.data.distanceFromCenterAtCheckIn is number &&
-                       request.resource.data.dayKey is string;
+      allow create: if isAuthenticated() &&
+        isActiveUser() &&
+        request.auth.uid == request.resource.data.userId &&
+        isActiveLocation(request.resource.data.locationId) &&
+        hasValidTimestamp(request.resource.data) &&
+        request.resource.data.status in ['active'] && // Only allow creating active sessions
+        request.resource.data.locationId is string &&
+        request.resource.data.startTime is timestamp &&
+        request.resource.data.distanceFromCenterAtCheckIn is number &&
+        request.resource.data.dayKey is string &&
+        (
+          // Providers: allow only automatic/queued methods, and only for assigned locations
+          (isProvider() &&
+            isProviderAssignedToLocation(request.auth.uid, request.resource.data.locationId) &&
+            request.resource.data.checkInMethod in ['geo', 'offline-sync']
+          ) ||
+          // Admins: allow manual check-in method (used by admin manual check-in flow)
+          (isAdmin() &&
+            request.resource.data.checkInMethod == 'manual'
+          )
+        );
       
       allow read: if isAuthenticated() &&
                      (isOwner(resource.data.userId) || isAdmin());
