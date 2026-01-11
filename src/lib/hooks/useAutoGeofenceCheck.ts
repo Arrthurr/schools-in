@@ -29,6 +29,8 @@ import {
 import {
   initializePushReminders,
   cleanupPushReminders,
+  showCheckInReminder,
+  showCheckOutReminder,
   isReminderTime,
 } from "@/lib/pwa/pushReminders";
 import type { GeofenceStrategy } from "@/lib/pwa/capabilities";
@@ -725,12 +727,29 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         // For strategies with push reminders, show reminder on return if appropriate
         if (strategyConfig.usePushReminders && isReminderTime()) {
           if (activeSession) {
-            // If user has an active session, a reminder may be relevant.
-            // Don't show reminder if user is inside geofence (checked in runPoll)
-            // This is just a gentle nudge for when they return to the app
+            const activeLoc = assignedLocations.find(
+              (loc) => loc.id === activeSession.locationId
+            );
+
+            const startTime =
+              activeSession.startTime?.toDate?.() ??
+              activeSession.checkInTime?.toDate?.();
+
+            const durationMinutes =
+              startTime instanceof Date
+                ? Math.max(
+                    1,
+                    Math.round((Date.now() - startTime.getTime()) / 60_000)
+                  )
+                : undefined;
+
+            void showCheckOutReminder(
+              activeLoc?.name,
+              durationMinutes ? formatDuration(durationMinutes) : undefined
+            );
           } else if (assignedLocations.length > 0) {
-            // No active session - could show check-in reminder
-            // But we don't want to be annoying, so only at reminder times
+            const nextLocation = assignedLocations[0];
+            void showCheckInReminder(nextLocation.name);
           }
         }
       }
