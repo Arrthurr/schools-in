@@ -212,7 +212,9 @@ export class FirebaseCache {
     
     if (result !== null && result !== undefined) {
       await cacheManager.setMultiLayer(cacheKey, result, configs);
-      this.registerTags(cacheKey, tags);
+      // Always tag by cacheKey for backward-compat invalidation, plus caller-provided tags
+      const combinedTags = Array.from(new Set([cacheKey, ...(tags ?? [])]));
+      this.registerTags(cacheKey, combinedTags);
     }
 
     return result;
@@ -345,7 +347,22 @@ export class FirebaseCache {
 
   // Invalidate cache for specific patterns
   static async invalidateCache(patterns: string[]): Promise<void> {
+    // First try tag-based invalidation (new system)
     await this.invalidateTags(patterns);
+
+    // Backward compatibility: also attempt direct key deletes using legacy behavior
+    const allConfigs = this.allConfigs();
+    await Promise.all(
+      patterns.map((pattern) =>
+        Promise.all(
+          allConfigs.map((config) =>
+            cacheManager.delete(pattern, config).catch(() => {
+              // Ignore errors for non-existent keys
+            })
+          )
+        )
+      )
+    );
   }
 
   // Clear all Firebase cache
