@@ -7,7 +7,7 @@ import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Admin Dashboard | DMDL CampusAccess",
+  title: "Admin Dashboard | CampusAccess",
   description: "Admin dashboard for school and provider management",
 };
 

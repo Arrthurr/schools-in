@@ -71,7 +71,7 @@ function Header() {
     >
       <div className="container-responsive py-3 sm:py-4">
         <div className="flex justify-between items-center">
-          <Link href="/" className="focus-ring" aria-label="DMDL CampusAccess Home">
+          <Link href="/" className="focus-ring" aria-label="CampusAccess Home">
             <Logo size="sm" priority />
           </Link>
           <nav
