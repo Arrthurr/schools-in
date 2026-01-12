@@ -127,9 +127,61 @@ export interface CacheOptions {
   ttl?: number;
   onCacheHit?: () => void;
   onCacheMiss?: () => void;
+  tags?: string[];
 }
 
 export class FirebaseCache {
+  private static tagIndex: Map<string, Set<string>> = new Map();
+
+  private static allConfigs(): CacheConfig[] {
+    return Object.values(FIREBASE_CACHE_CONFIGS).flatMap((config) =>
+      Object.values(config)
+    );
+  }
+
+  private static registerTags(cacheKey: string, tags?: string[]): void {
+    if (!tags || tags.length === 0) return;
+
+    tags.forEach((tag) => {
+      const existing = this.tagIndex.get(tag) ?? new Set<string>();
+      existing.add(cacheKey);
+      this.tagIndex.set(tag, existing);
+    });
+  }
+
+  private static async deleteKeys(keys: Set<string>): Promise<void> {
+    const allConfigs = this.allConfigs();
+    await Promise.all(
+      Array.from(keys).map((key) =>
+        Promise.all(
+          allConfigs.map((config) =>
+            cacheManager.delete(key, config).catch(() => {
+              // Ignore errors for non-existent keys
+            })
+          )
+        )
+      )
+    );
+  }
+
+  static async invalidateTags(tags: string[]): Promise<void> {
+    if (!tags || tags.length === 0) return;
+
+    const keysToDelete = new Set<string>();
+
+    tags.forEach((tag) => {
+      const keys = this.tagIndex.get(tag);
+      if (keys) {
+        keys.forEach((key) => keysToDelete.add(key));
+        this.tagIndex.delete(tag);
+      }
+    });
+
+    if (keysToDelete.size > 0) {
+      await this.deleteKeys(keysToDelete);
+    }
+  }
+
   // Cache a Firestore query result
   static async cacheQuery<T>(
     key: string,
@@ -137,7 +189,13 @@ export class FirebaseCache {
     configs: CacheConfig[],
     options: CacheOptions = {}
   ): Promise<T> {
-    const { forceRefresh = false, cacheKey = key, onCacheHit, onCacheMiss } = options;
+    const {
+      forceRefresh = false,
+      cacheKey = key,
+      onCacheHit,
+      onCacheMiss,
+      tags,
+    } = options;
 
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
@@ -154,6 +212,7 @@ export class FirebaseCache {
     
     if (result !== null && result !== undefined) {
       await cacheManager.setMultiLayer(cacheKey, result, configs);
+      this.registerTags(cacheKey, tags);
     }
 
     return result;
@@ -174,7 +233,10 @@ export class FirebaseCache {
       userId,
       dataFn,
       configs,
-      options
+      {
+        ...options,
+        tags: options.tags ?? ["users", `user:${userId}`],
+      }
     );
   }
 
@@ -194,7 +256,10 @@ export class FirebaseCache {
       key,
       dataFn,
       configs,
-      options
+      {
+        ...options,
+        tags: options.tags ?? ["locations"],
+      }
     );
   }
 
@@ -213,7 +278,10 @@ export class FirebaseCache {
       key,
       dataFn,
       configs,
-      options
+      {
+        ...options,
+        tags: options.tags ?? ["sessions", `session:${key}`],
+      }
     );
   }
 
@@ -232,7 +300,10 @@ export class FirebaseCache {
       key,
       dataFn,
       configs,
-      options
+      {
+        ...options,
+        tags: options.tags ?? ["assignments"],
+      }
     );
   }
 
@@ -249,7 +320,7 @@ export class FirebaseCache {
       cacheKey,
       searchFn,
       configs,
-      { ...options, cacheKey }
+      { ...options, cacheKey, tags: options.tags ?? [`search:${cacheKey}`] }
     );
   }
 
@@ -274,28 +345,13 @@ export class FirebaseCache {
 
   // Invalidate cache for specific patterns
   static async invalidateCache(patterns: string[]): Promise<void> {
-    const allConfigs = Object.values(FIREBASE_CACHE_CONFIGS).flatMap(
-      config => Object.values(config)
-    );
-
-    // Note: This is a simplified implementation
-    // In a full implementation, you'd need to track keys or implement pattern matching
-    await Promise.all(
-      patterns.map(pattern =>
-        Promise.all(
-          allConfigs.map(config =>
-            cacheManager.delete(pattern, config).catch(() => {
-              // Ignore errors for non-existent keys
-            })
-          )
-        )
-      )
-    );
+    await this.invalidateTags(patterns);
   }
 
   // Clear all Firebase cache
   static async clearAll(): Promise<void> {
     await cacheManager.clear();
+    this.tagIndex.clear();
   }
 
   // Clear cache by type

@@ -5,19 +5,15 @@ import { initCacheDB, CACHE_STORES } from "./cacheStrategy";
 import { httpsCallable } from "firebase/functions";
 import { Timestamp } from "firebase/firestore";
 import { getDayKey } from "@/lib/utils/time";
-import { updateDocument, COLLECTIONS } from "@/lib/firebase/firestore";
 import { functions } from "../../../firebase.config";
 
 // Action types for the offline queue
 export const QUEUE_ACTIONS = {
   CHECK_IN: "check_in",
   CHECK_OUT: "check_out",
-  SESSION_UPDATE: "session_update",
-  LOCATION_UPDATE: "location_update",
 } as const;
 
-export type QueueActionType =
-  (typeof QUEUE_ACTIONS)[keyof typeof QUEUE_ACTIONS];
+export type QueueActionType = typeof QUEUE_ACTIONS[keyof typeof QUEUE_ACTIONS];
 
 // Status of queued actions
 export const QUEUE_STATUS = {
@@ -90,6 +86,10 @@ export async function queueAction(
   metadata?: Partial<QueuedAction>
 ): Promise<string> {
   try {
+    if (![QUEUE_ACTIONS.CHECK_IN, QUEUE_ACTIONS.CHECK_OUT].includes(type)) {
+      throw new Error(`Unsupported action type: ${type}`);
+    }
+
     const db = await initCacheDB();
     const actionId = generateActionId();
     const now = Date.now();
@@ -376,10 +376,6 @@ async function syncActionByType(action: QueuedAction): Promise<boolean> {
       return syncCheckIn(action);
     case QUEUE_ACTIONS.CHECK_OUT:
       return syncCheckOut(action);
-    case QUEUE_ACTIONS.SESSION_UPDATE:
-      return syncSessionUpdate(action);
-    case QUEUE_ACTIONS.LOCATION_UPDATE:
-      return syncLocationUpdate(action);
     default:
       console.warn(`Unknown action type: ${action.type}`);
       return false;
@@ -473,63 +469,6 @@ async function syncCheckOut(action: QueuedAction): Promise<boolean> {
     return true;
   } catch (error) {
     console.error("Failed to sync check-out:", error);
-    return false;
-  }
-}
-
-// Sync session update action with Firebase
-async function syncSessionUpdate(action: QueuedAction): Promise<boolean> {
-  try {
-    const sessionId = action.sessionId || action.payload.sessionId;
-
-    if (!sessionId) {
-      throw new Error("Session ID is required for session update");
-    }
-
-    const updateData = {
-      ...action.payload,
-      updatedAt: Timestamp.now(),
-      // Store metadata about the queued action
-      queuedActionId: action.id,
-      originalTimestamp: Timestamp.fromMillis(action.timestamp),
-    };
-
-    await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
-    console.log("Session update synced successfully:", {
-      sessionId,
-      actionId: action.id,
-    });
-    return true;
-  } catch (error) {
-    console.error("Failed to sync session update:", error);
-    return false;
-  }
-}
-
-// Sync location update action with Firebase
-async function syncLocationUpdate(action: QueuedAction): Promise<boolean> {
-  try {
-    const locationId = action.payload.locationId || action.schoolId;
-
-    if (!locationId) {
-      throw new Error("Location ID is required for location update");
-    }
-
-    const updateData = {
-      ...action.payload,
-      updatedAt: Timestamp.now(),
-      queuedActionId: action.id,
-      originalTimestamp: Timestamp.fromMillis(action.timestamp),
-    };
-
-    await updateDocument(COLLECTIONS.LOCATIONS, locationId, updateData);
-    console.log("Location update synced successfully:", {
-      locationId,
-      actionId: action.id,
-    });
-    return true;
-  } catch (error) {
-    console.error("Failed to sync location update:", error);
     return false;
   }
 }

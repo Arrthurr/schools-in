@@ -9,7 +9,6 @@ import {
   cacheUserData,
   getCachedUserData,
   clearOfflineData,
-  hasPendingActions,
 } from "./offlineDB";
 import { queueManager } from "./queueManager";
 
@@ -122,6 +121,9 @@ export class ServiceManager {
       case "BACKGROUND_SYNC":
         this.performBackgroundSync();
         break;
+      case "PROCESS_ACTION_QUEUE":
+        this.performBackgroundSync();
+        break;
       case "CACHE_UPDATE":
         this.notifyStatusChange("cache-updated");
         break;
@@ -133,25 +135,8 @@ export class ServiceManager {
         console.log(`[ServiceManager] Background sync completed: ${data.count} actions`);
         this.notifyStatusChange("sync-completed");
         break;
-      case "SYNC_ACTION_REQUESTED":
-        // SW is requesting us to sync a specific action
-        this.handleSyncActionRequest(data.action);
-        break;
       default:
         console.log("Unknown service worker message:", data);
-    }
-  }
-
-  private async handleSyncActionRequest(action: any) {
-    if (!action) return;
-
-    try {
-      // Process the action through the normal sync flow
-      await queueManager.syncNow(true);
-      this.notifyStatusChange("sync-completed");
-    } catch (error) {
-      console.error("[ServiceManager] Failed to process sync action:", error);
-      this.notifyStatusChange("sync-failed");
     }
   }
 
@@ -340,11 +325,7 @@ export class ServiceManager {
    * Check if there are pending actions waiting to sync
    */
   public async hasPendingActions(): Promise<boolean> {
-    try {
-      return await hasPendingActions();
-    } catch {
-      return false;
-    }
+    return queueManager.hasPendingActions();
   }
 
   /**

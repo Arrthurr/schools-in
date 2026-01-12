@@ -27,8 +27,7 @@ describe("ActionQueue Constants", () => {
     it("should have all required action types", () => {
       expect(QUEUE_ACTIONS.CHECK_IN).toBe("check_in");
       expect(QUEUE_ACTIONS.CHECK_OUT).toBe("check_out");
-      expect(QUEUE_ACTIONS.SESSION_UPDATE).toBe("session_update");
-      expect(QUEUE_ACTIONS.LOCATION_UPDATE).toBe("location_update");
+      expect(Object.values(QUEUE_ACTIONS)).toHaveLength(2);
     });
 
     it("should have unique action type values", () => {

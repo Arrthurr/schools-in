@@ -4,20 +4,6 @@
 import { openDB } from "idb";
 import { DB_NAME, DB_VERSION, STORES, upgradeOfflineDB } from "./dbSchema";
 
-// Types
-interface OfflineAction {
-  id: string;
-  type: "checkIn" | "checkOut";
-  data: any;
-  timestamp: number;
-  endpoint: string;
-  method: string;
-  headers: Record<string, string>;
-  body: string;
-  retryCount: number;
-  schoolName?: string;
-}
-
 // Geofence configuration types
 export interface GeofenceLocation {
   id: string;
@@ -97,32 +83,6 @@ export async function getCachedSessions(userId?: string) {
 }
 
 // Queue offline actions
-export async function queueOfflineAction(action: {
-  type: "check-in" | "check-out" | "session-update";
-  data: any;
-  timestamp: number;
-  retry?: number;
-}) {
-  const db = await initDB();
-  await db.add(STORES.PENDING_ACTIONS, {
-    ...action,
-    timestamp: action.timestamp || Date.now(),
-    retry: action.retry || 0,
-  });
-}
-
-// Get pending offline actions
-export async function getPendingActions() {
-  const db = await initDB();
-  return await db.getAll(STORES.PENDING_ACTIONS);
-}
-
-// Remove completed action
-export async function removePendingAction(id: number) {
-  const db = await initDB();
-  await db.delete(STORES.PENDING_ACTIONS, id);
-}
-
 // Cache user data
 export async function cacheUserData(userData: any) {
   const db = await initDB();
@@ -136,113 +96,6 @@ export async function getCachedUserData() {
 }
 
 // Get all queued actions
-export async function getQueuedActions(): Promise<OfflineAction[]> {
-  const db = await initDB();
-  return db.getAll(STORES.PENDING_ACTIONS);
-}
-
-// Sync pending actions when online
-export async function syncPendingActions(): Promise<void> {
-  const db = await initDB();
-  const actions = await db.getAll(STORES.PENDING_ACTIONS);
-
-  const {
-    createDocument,
-    updateDocument,
-    getDocument,
-    COLLECTIONS,
-  } = await import("@/lib/firebase/firestore");
-  const { Timestamp } = await import("firebase/firestore");
-  const { getDayKey } = await import("@/lib/utils/time");
-
-  for (const action of actions) {
-    try {
-      let success = false;
-
-      if (action.type === "check-in") {
-        // Sync check-in using Firebase SDK
-        const payload = action.data;
-        const now = Timestamp.now();
-        const dayKey = getDayKey(now);
-
-        const sessionData = {
-          userId: payload.userId,
-          locationId: payload.schoolId || payload.locationId,
-          startTime: now,
-          checkInTime: now, // Legacy field
-          status: "active" as const,
-          checkInMethod: "offline-sync" as const,
-          distanceFromCenterAtCheckIn: payload.location?.accuracy ?? payload.distanceFromCenterAtCheckIn ?? 0,
-          dayKey,
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        await createDocument(COLLECTIONS.SESSIONS, sessionData);
-        success = true;
-      } else if (action.type === "check-out") {
-        // Sync check-out using Firebase SDK
-        const sessionId = action.data.sessionId;
-        
-        if (!sessionId) {
-          throw new Error("Session ID is required for check-out");
-        }
-
-        const session = await getDocument(COLLECTIONS.SESSIONS, sessionId);
-
-        if (!session) {
-          throw new Error("Session not found");
-        }
-
-        const sessionData = session as any;
-        const startTime = sessionData.startTime || sessionData.checkInTime;
-        
-        if (!startTime) {
-          throw new Error("Session missing start time");
-        }
-
-        const now = Timestamp.now();
-        const startMs = startTime.toMillis ? startTime.toMillis() : startTime.seconds * 1000;
-        const endMs = now.toMillis();
-        const durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
-
-        const updateData = {
-          endTime: now,
-          checkOutTime: now, // Legacy field
-          status: "completed" as const,
-          durationMinutes,
-          updatedAt: now,
-        };
-
-        await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
-        success = true;
-      } else {
-        continue; // Skip unknown action types
-      }
-
-      if (success) {
-        // Remove from queue on success
-        await db.delete(STORES.PENDING_ACTIONS, action.id);
-      } else {
-        // Increment retry count
-        action.retry = (action.retry || 0) + 1;
-        await db.put(STORES.PENDING_ACTIONS, action);
-      }
-    } catch (error) {
-      console.error("Failed to sync action:", error);
-      // Increment retry count
-      action.retry = (action.retry || 0) + 1;
-      await db.put(STORES.PENDING_ACTIONS, action);
-    }
-  }
-}
-
-// Clear all queued actions
-export async function clearQueue(): Promise<void> {
-  const db = await initDB();
-  await db.clear(STORES.PENDING_ACTIONS);
-}
-
 // Clear all cached data (for logout/reset)
 export async function clearOfflineData() {
   const db = await initDB();
@@ -313,11 +166,4 @@ export async function updateGeofenceActiveSession(
 export async function clearGeofenceConfig(): Promise<void> {
   const db = await initDB();
   await db.delete(STORES.GEOFENCE_CONFIG, "current");
-}
-
-// Check if there are pending actions to sync
-export async function hasPendingActions(): Promise<boolean> {
-  const db = await initDB();
-  const count = await db.count(STORES.PENDING_ACTIONS);
-  return count > 0;
 }
