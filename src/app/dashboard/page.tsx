@@ -38,7 +38,6 @@ import { SkeletonList } from "@/components/ui/skeleton";
 import { useAutoGeofencePreference } from "@/lib/hooks/useAutoGeofencePreference";
 import { useAutoGeofenceCheck } from "@/lib/hooks/useAutoGeofenceCheck";
 import { useProviderLocations } from "@/lib/hooks/useProviderLocations";
-import { getAssignedLocations } from "@/lib/services/locationService";
 
 export default function DashboardPage() {
   const { user } = useCachedAuth();
@@ -65,20 +64,6 @@ export default function DashboardPage() {
     });
     setLocationsMap(map);
   }, [providerLocations]);
-
-  // Explicitly load assigned locations (ensures legacy path and tests exercise service)
-  useEffect(() => {
-    const loadAssigned = async () => {
-      if (!user?.uid) return;
-      try {
-        const assigned = await getAssignedLocations(user.uid);
-        setAssignedSchoolsCount(assigned.length || 0);
-      } catch (err) {
-        console.error("Failed to load assigned locations", err);
-      }
-    };
-    loadAssigned();
-  }, [user?.uid]);
 
   // Fetch recent sessions
   useEffect(() => {

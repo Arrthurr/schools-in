@@ -43,36 +43,58 @@ export function useProviderLocations(
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Force refresh locations (bypasses cache) and update state
-  const refreshLocations = useCallback(async (skipRefreshingState = false) => {
-    if (!userId || !enabled) return;
-    if (!skipRefreshingState) {
-      setRefreshing(true);
-    }
-    try {
-      const fresh = await getCachedLocationsByProvider(userId, {
-        forceRefresh: true,
-      });
-      setLocations(fresh);
-      setError(null);
-    } catch (err: any) {
-      setError(err?.message || "Failed to refresh locations");
-      throw err;
-    } finally {
+  const refreshLocations = useCallback(
+    async (
+      options?: boolean | { skipRefreshingState?: boolean; manageLoadingState?: boolean }
+    ) => {
+      if (!userId || !enabled) return;
+
+      const { skipRefreshingState, manageLoadingState } =
+        typeof options === "boolean"
+          ? { skipRefreshingState: options, manageLoadingState: !options }
+          : {
+              skipRefreshingState: options?.skipRefreshingState ?? false,
+              manageLoadingState: options?.manageLoadingState ?? true,
+            };
+
       if (!skipRefreshingState) {
-        setRefreshing(false);
+        setRefreshing(true);
       }
-      setLoading(false);
-    }
-  }, [userId, enabled]);
+      if (manageLoadingState) {
+        setLoading(true);
+      }
+
+      setError(null);
+
+      try {
+        const fresh = await getCachedLocationsByProvider(userId, {
+          forceRefresh: true,
+        });
+        setLocations(fresh);
+      } catch (err: any) {
+        setError(err?.message || "Failed to refresh locations");
+        throw err;
+      } finally {
+        if (!skipRefreshingState) {
+          setRefreshing(false);
+        }
+        if (manageLoadingState) {
+          setLoading(false);
+        }
+      }
+    },
+    [userId, enabled]
+  );
 
   // Refresh assignments via M365 sync, then force-refresh locations
   const refreshAssignments = useCallback(async () => {
     if (!userId || !enabled) return;
     setRefreshing(true);
+    setError(null);
     try {
       await syncUserFromM365();
       // Pass true to skip refreshing state management since we're managing it here
-      await refreshLocations(true);
+      await refreshLocations({ skipRefreshingState: true, manageLoadingState: false });
     } catch (err: any) {
       setError(err?.message || "Failed to refresh assignments");
       throw err;
@@ -100,6 +122,11 @@ export function useProviderLocations(
         const cached = await getCachedLocationsByProvider(userId);
         if (isMounted && cached) {
           setLocations(cached);
+        }
+
+        // Component may have unmounted while awaiting cache; avoid subscribing
+        if (!isMounted) {
+          return;
         }
 
         // Live subscription keeps cache warm + updates UI

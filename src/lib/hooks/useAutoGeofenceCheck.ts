@@ -163,16 +163,16 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       geofenceState === "exiting" ||
       (distance !== null && distance <= nearBoundary)
     ) {
-    // Allow faster polling near boundaries/active transitions (cap by strategy baseline)
-    return Math.min(baseInterval, GEOFENCE_TUNING.nearPollIntervalMs);
+      // Allow faster polling near boundaries/active transitions (cap by strategy baseline)
+      return Math.min(baseInterval, GEOFENCE_TUNING.nearPollIntervalMs);
     }
 
     if (
       distance !== null &&
       distance >= Math.max(GEOFENCE_TUNING.farDistanceMeters, activeRadius * 4)
     ) {
-    // Allow faster polling if strategy baseline is slower; otherwise keep baseline
-    return Math.min(baseInterval, GEOFENCE_TUNING.farPollIntervalMs);
+      // Extend interval when far away to save battery; keep baseline if already slower
+      return Math.max(baseInterval, GEOFENCE_TUNING.farPollIntervalMs);
     }
 
     return baseInterval;
@@ -489,6 +489,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       };
 
       const timeout = setTimeout(() => {
+        if (interval) {
+          clearInterval(interval);
+          interval = undefined;
+        }
         finishCountdown();
       }, durationMs);
 
@@ -505,6 +509,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         });
 
         if (remaining <= 0) {
+          clearTimeout(timeout);
           finishCountdown();
         }
       }, 1000);

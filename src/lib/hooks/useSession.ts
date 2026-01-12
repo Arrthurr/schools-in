@@ -79,10 +79,6 @@ export const useSession = (): UseSessionReturn => {
           },
         };
 
-        if (!navigator.onLine) {
-          throw new Error("Offline - queue check-in");
-        }
-
         const result = await startSessionFn(payload);
         const data = result.data as any;
 
@@ -142,9 +138,6 @@ export const useSession = (): UseSessionReturn => {
 
       try {
         const checkOutDate = new Date();
-        if (!navigator.onLine) {
-          throw new Error("Offline - queue check-out");
-        }
 
         const endSessionFn = httpsCallable(functions, "endSession");
         const response = await endSessionFn({
