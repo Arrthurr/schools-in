@@ -361,67 +361,70 @@ async function notifyClientsToProcessActionQueue(
     self.addEventListener("message", messageHandler);
 
     try {
-      const clients = await self.clients.matchAll({ type: "window" });
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
 
       if (clients.length === 0) {
         console.log("[SW] No clients available to process action queue");
         return;
       }
 
-      const acknowledgements = clients.map(
-        (client) =>
-          new Promise<void>((resolve) => {
-            const requestId = generateRequestId();
-            const channel = new MessageChannel();
-            let finished = false;
-            const timeout = setTimeout(() => {
-              console.warn("[SW] PROCESS_ACTION_QUEUE timeout, continuing");
-              finish();
-            }, 15000);
+      // IMPORTANT: Only notify a single client to avoid multi-tab races.
+      // (Queue processing is additionally protected with a cross-tab lock.)
+      const bestClient =
+        clients.find((c) => (c as WindowClient).focused) ||
+        clients.find((c) => (c as WindowClient).visibilityState === "visible") ||
+        clients[0];
 
-            const finish = (error?: unknown) => {
-              if (finished) return;
-              finished = true;
-              clearTimeout(timeout);
-              channel.port1.onmessage = null;
-              try {
-                channel.port1.close();
-              } catch {
-                // ignore
-              }
-              pendingAcks.delete(requestId);
-              resolve();
-              if (error) {
-                console.warn("[SW] PROCESS_ACTION_QUEUE error from client", {
-                  error,
-                });
-              }
-            };
+      await new Promise<void>((resolve) => {
+        const requestId = generateRequestId();
+        const channel = new MessageChannel();
+        let finished = false;
+        const timeout = setTimeout(() => {
+          console.warn("[SW] PROCESS_ACTION_QUEUE timeout, continuing");
+          finish();
+        }, 15000);
 
-            pendingAcks.set(requestId, finish);
+        const finish = (error?: unknown) => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timeout);
+          channel.port1.onmessage = null;
+          try {
+            channel.port1.close();
+          } catch {
+            // ignore
+          }
+          pendingAcks.delete(requestId);
+          resolve();
+          if (error) {
+            console.warn("[SW] PROCESS_ACTION_QUEUE error from client", { error });
+          }
+        };
 
-            channel.port1.onmessage = (event) => {
-              const { type, error } = event.data || {};
-              if (type === "PROCESS_ACTION_QUEUE_COMPLETE") {
-                finish();
-              } else if (type === "PROCESS_ACTION_QUEUE_ERROR") {
-                finish(error);
-              }
-            };
+        pendingAcks.set(requestId, finish);
 
-            client.postMessage(
-              {
-                type: "PROCESS_ACTION_QUEUE",
-                source: "service-worker",
-                tag,
-                requestId,
-              },
-              [channel.port2]
-            );
-          })
-      );
+        channel.port1.onmessage = (event) => {
+          const { type, error } = event.data || {};
+          if (type === "PROCESS_ACTION_QUEUE_COMPLETE") {
+            finish();
+          } else if (type === "PROCESS_ACTION_QUEUE_ERROR") {
+            finish(error);
+          }
+        };
 
-      await Promise.all(acknowledgements);
+        bestClient.postMessage(
+          {
+            type: "PROCESS_ACTION_QUEUE",
+            source: "service-worker",
+            tag,
+            requestId,
+          },
+          [channel.port2]
+        );
+      });
     } finally {
       self.removeEventListener("message", messageHandler);
       pendingAcks.clear();

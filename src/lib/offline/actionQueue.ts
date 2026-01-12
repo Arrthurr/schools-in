@@ -7,6 +7,116 @@ import { Timestamp } from "firebase/firestore";
 import { getDayKey } from "@/lib/utils/time";
 import { functions } from "../../../firebase.config";
 
+type ActionQueueLockRecord = {
+  id: string;
+  ownerId: string;
+  createdAt: number;
+  expiresAt: number;
+};
+
+const ACTION_QUEUE_LOCK_ID = "action_queue_processing_lock";
+const ACTION_QUEUE_LOCK_TTL_MS = 2 * 60 * 1000; // 2 minutes
+const ACTION_QUEUE_LOCK_HEARTBEAT_MS = 15 * 1000; // 15 seconds
+const TAB_ID_SESSION_KEY = "__schools_in_tab_id";
+
+function getTabId(): string {
+  if (typeof window === "undefined") {
+    // Should not happen for this module in normal app usage, but keep it safe.
+    return `nonwindow-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  try {
+    const existing = window.sessionStorage.getItem(TAB_ID_SESSION_KEY);
+    if (existing) return existing;
+    const created = `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    window.sessionStorage.setItem(TAB_ID_SESSION_KEY, created);
+    return created;
+  } catch {
+    // sessionStorage can be blocked; fall back to per-load id
+    return `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+async function tryAcquireActionQueueLock(): Promise<{
+  acquired: boolean;
+  ownerId: string;
+}> {
+  const ownerId = getTabId();
+  const now = Date.now();
+  const expiresAt = now + ACTION_QUEUE_LOCK_TTL_MS;
+
+  const db = await initCacheDB();
+  const tx = db.transaction(CACHE_STORES.LOCKS, "readwrite");
+  const store = tx.objectStore(CACHE_STORES.LOCKS);
+
+  const existing = (await store.get(ACTION_QUEUE_LOCK_ID)) as
+    | ActionQueueLockRecord
+    | undefined;
+
+  if (existing && existing.expiresAt > now && existing.ownerId !== ownerId) {
+    await tx.done;
+    return { acquired: false, ownerId };
+  }
+
+  const record: ActionQueueLockRecord = {
+    id: ACTION_QUEUE_LOCK_ID,
+    ownerId,
+    createdAt: existing?.createdAt ?? now,
+    expiresAt,
+  };
+
+  await store.put(record);
+  await tx.done;
+
+  // Verify we still own it (in case of ultra-tight races).
+  const verify = (await db.get(CACHE_STORES.LOCKS, ACTION_QUEUE_LOCK_ID)) as
+    | ActionQueueLockRecord
+    | undefined;
+
+  return { acquired: verify?.ownerId === ownerId, ownerId };
+}
+
+async function refreshActionQueueLock(ownerId: string): Promise<void> {
+  try {
+    const db = await initCacheDB();
+    const now = Date.now();
+    const tx = db.transaction(CACHE_STORES.LOCKS, "readwrite");
+    const store = tx.objectStore(CACHE_STORES.LOCKS);
+    const existing = (await store.get(ACTION_QUEUE_LOCK_ID)) as
+      | ActionQueueLockRecord
+      | undefined;
+
+    if (!existing || existing.ownerId !== ownerId) {
+      await tx.done;
+      return;
+    }
+
+    existing.expiresAt = now + ACTION_QUEUE_LOCK_TTL_MS;
+    await store.put(existing);
+    await tx.done;
+  } catch {
+    // ignore best-effort heartbeat failures
+  }
+}
+
+async function releaseActionQueueLock(ownerId: string): Promise<void> {
+  try {
+    const db = await initCacheDB();
+    const tx = db.transaction(CACHE_STORES.LOCKS, "readwrite");
+    const store = tx.objectStore(CACHE_STORES.LOCKS);
+    const existing = (await store.get(ACTION_QUEUE_LOCK_ID)) as
+      | ActionQueueLockRecord
+      | undefined;
+
+    if (existing?.ownerId === ownerId) {
+      await store.delete(ACTION_QUEUE_LOCK_ID);
+    }
+    await tx.done;
+  } catch {
+    // ignore release failures; TTL will expire
+  }
+}
+
 // Action types for the offline queue
 export const QUEUE_ACTIONS = {
   CHECK_IN: "check_in",
@@ -288,6 +398,18 @@ export async function processQueue(): Promise<{
   failed: number;
 }> {
   try {
+    const lock = await tryAcquireActionQueueLock();
+    if (!lock.acquired) {
+      // Another tab is already processing the shared IndexedDB queue.
+      return { processed: 0, synced: 0, failed: 0 };
+    }
+
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
+    try {
+      heartbeat = setInterval(() => {
+        refreshActionQueueLock(lock.ownerId).catch(() => undefined);
+      }, ACTION_QUEUE_LOCK_HEARTBEAT_MS);
+
     const pendingActions = await getPendingActions();
 
     if (pendingActions.length === 0) {
@@ -335,6 +457,10 @@ export async function processQueue(): Promise<{
     );
 
     return { processed, synced, failed };
+    } finally {
+      if (heartbeat) clearInterval(heartbeat);
+      await releaseActionQueueLock(lock.ownerId);
+    }
   } catch (error) {
     console.error("Failed to process queue:", error);
     return { processed: 0, synced: 0, failed: 0 };
