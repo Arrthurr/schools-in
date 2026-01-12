@@ -65,7 +65,7 @@ describe("CacheStrategy", () => {
 
       expect(mockOpenDB).toHaveBeenCalledWith(
         "schools-in-cache",
-        2,
+        3,
         expect.any(Object)
       );
     });

@@ -7,7 +7,7 @@ import { useSession } from "@/lib/hooks/useSession";
 import { useGeofenceStrategy } from "@/lib/hooks/useGeofenceStrategy";
 import { locationService } from "@/lib/utils/location";
 import { validateGeofence } from "@/lib/utils/geo";
-import { getAssignedLocations } from "@/lib/services/locationService";
+import { getCachedLocationsByProvider } from "@/lib/firebase/cachedFirestore";
 import { toast } from "@/components/ui/use-toast";
 import { GeoPoint, Timestamp } from "firebase/firestore";
 import type { Location, Session } from "@/lib/firebase/types";
@@ -20,7 +20,7 @@ jest.mock("@/lib/hooks/useSession");
 jest.mock("@/lib/hooks/useGeofenceStrategy");
 jest.mock("@/lib/utils/location");
 jest.mock("@/lib/utils/geo");
-jest.mock("@/lib/services/locationService");
+jest.mock("@/lib/firebase/cachedFirestore");
 jest.mock("@/components/ui/use-toast");
 jest.mock("@/lib/logging/appLogger", () => ({
   appLogger: {
@@ -122,7 +122,7 @@ describe("useAutoGeofenceCheck", () => {
       distance: 50,
       isWithinGeofence: false,
     });
-    (getAssignedLocations as jest.Mock).mockResolvedValue([mockLocation]);
+    (getCachedLocationsByProvider as jest.Mock).mockResolvedValue([mockLocation]);
   });
 
   afterEach(async () => {
@@ -165,7 +165,9 @@ describe("useAutoGeofenceCheck", () => {
       renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalledWith("user-1");
+        expect(getCachedLocationsByProvider).toHaveBeenCalledWith("user-1", {
+          forceRefresh: true,
+        });
       });
     });
 
@@ -269,7 +271,7 @@ describe("useAutoGeofenceCheck", () => {
       renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // Wait for initial poll to complete
@@ -308,7 +310,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // Flush initial poll
@@ -372,7 +374,7 @@ describe("useAutoGeofenceCheck", () => {
       renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       await act(async () => {
@@ -398,7 +400,7 @@ describe("useAutoGeofenceCheck", () => {
       const { result } = renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // Trigger 3 poor accuracy cycles
@@ -439,7 +441,7 @@ describe("useAutoGeofenceCheck", () => {
       const { result } = renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // Initial poll
@@ -513,7 +515,7 @@ describe("useAutoGeofenceCheck", () => {
       const { result } = renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       await act(async () => {
@@ -542,7 +544,7 @@ describe("useAutoGeofenceCheck", () => {
       const { result } = renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       await act(async () => {
@@ -576,7 +578,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // First poll already happened during initialization
@@ -635,7 +637,7 @@ describe("useAutoGeofenceCheck", () => {
       renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       await act(async () => {
@@ -694,7 +696,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // First poll already happened, flush it
@@ -754,7 +756,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // First poll already happened, flush it
@@ -833,7 +835,7 @@ describe("useAutoGeofenceCheck", () => {
       renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // First poll - inside (resets outsideStreak)
@@ -906,7 +908,7 @@ describe("useAutoGeofenceCheck", () => {
       (useCachedSession as jest.Mock).mockReturnValue({
         activeSession: mockSession,
       });
-      (getAssignedLocations as jest.Mock).mockResolvedValue([
+      (getCachedLocationsByProvider as jest.Mock).mockResolvedValue([
         mockLocation,
         otherLocation,
       ]);
@@ -930,7 +932,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // First poll already happened (outsideStreak = 1), flush it
@@ -985,7 +987,7 @@ describe("useAutoGeofenceCheck", () => {
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
         enabled: true,
       });
-      (getAssignedLocations as jest.Mock).mockResolvedValue([
+      (getCachedLocationsByProvider as jest.Mock).mockResolvedValue([
         location1,
         location2,
       ]);
@@ -1015,7 +1017,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // First poll already happened, flush it
@@ -1100,7 +1102,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // First poll already happened, flush it

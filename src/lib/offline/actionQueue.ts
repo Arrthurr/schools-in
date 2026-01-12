@@ -5,19 +5,125 @@ import { initCacheDB, CACHE_STORES } from "./cacheStrategy";
 import { httpsCallable } from "firebase/functions";
 import { Timestamp } from "firebase/firestore";
 import { getDayKey } from "@/lib/utils/time";
-import { updateDocument, COLLECTIONS } from "@/lib/firebase/firestore";
 import { functions } from "../../../firebase.config";
+
+type ActionQueueLockRecord = {
+  id: string;
+  ownerId: string;
+  createdAt: number;
+  expiresAt: number;
+};
+
+const ACTION_QUEUE_LOCK_ID = "action_queue_processing_lock";
+const ACTION_QUEUE_LOCK_TTL_MS = 2 * 60 * 1000; // 2 minutes
+const ACTION_QUEUE_LOCK_HEARTBEAT_MS = 15 * 1000; // 15 seconds
+const TAB_ID_SESSION_KEY = "__schools_in_tab_id";
+
+function getTabId(): string {
+  if (typeof window === "undefined") {
+    // Should not happen for this module in normal app usage, but keep it safe.
+    return `nonwindow-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  try {
+    const existing = window.sessionStorage.getItem(TAB_ID_SESSION_KEY);
+    if (existing) return existing;
+    const created = `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    window.sessionStorage.setItem(TAB_ID_SESSION_KEY, created);
+    return created;
+  } catch {
+    // sessionStorage can be blocked; fall back to per-load id
+    return `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+async function tryAcquireActionQueueLock(): Promise<{
+  acquired: boolean;
+  ownerId: string;
+}> {
+  const ownerId = getTabId();
+  const now = Date.now();
+  const expiresAt = now + ACTION_QUEUE_LOCK_TTL_MS;
+
+  const db = await initCacheDB();
+  const tx = db.transaction(CACHE_STORES.LOCKS, "readwrite");
+  const store = tx.objectStore(CACHE_STORES.LOCKS);
+
+  const existing = (await store.get(ACTION_QUEUE_LOCK_ID)) as
+    | ActionQueueLockRecord
+    | undefined;
+
+  if (existing && existing.expiresAt > now && existing.ownerId !== ownerId) {
+    await tx.done;
+    return { acquired: false, ownerId };
+  }
+
+  const record: ActionQueueLockRecord = {
+    id: ACTION_QUEUE_LOCK_ID,
+    ownerId,
+    createdAt: existing?.createdAt ?? now,
+    expiresAt,
+  };
+
+  await store.put(record);
+  await tx.done;
+
+  // Verify we still own it (in case of ultra-tight races).
+  const verify = (await db.get(CACHE_STORES.LOCKS, ACTION_QUEUE_LOCK_ID)) as
+    | ActionQueueLockRecord
+    | undefined;
+
+  return { acquired: verify?.ownerId === ownerId, ownerId };
+}
+
+async function refreshActionQueueLock(ownerId: string): Promise<void> {
+  try {
+    const db = await initCacheDB();
+    const now = Date.now();
+    const tx = db.transaction(CACHE_STORES.LOCKS, "readwrite");
+    const store = tx.objectStore(CACHE_STORES.LOCKS);
+    const existing = (await store.get(ACTION_QUEUE_LOCK_ID)) as
+      | ActionQueueLockRecord
+      | undefined;
+
+    if (!existing || existing.ownerId !== ownerId) {
+      await tx.done;
+      return;
+    }
+
+    existing.expiresAt = now + ACTION_QUEUE_LOCK_TTL_MS;
+    await store.put(existing);
+    await tx.done;
+  } catch {
+    // ignore best-effort heartbeat failures
+  }
+}
+
+async function releaseActionQueueLock(ownerId: string): Promise<void> {
+  try {
+    const db = await initCacheDB();
+    const tx = db.transaction(CACHE_STORES.LOCKS, "readwrite");
+    const store = tx.objectStore(CACHE_STORES.LOCKS);
+    const existing = (await store.get(ACTION_QUEUE_LOCK_ID)) as
+      | ActionQueueLockRecord
+      | undefined;
+
+    if (existing?.ownerId === ownerId) {
+      await store.delete(ACTION_QUEUE_LOCK_ID);
+    }
+    await tx.done;
+  } catch {
+    // ignore release failures; TTL will expire
+  }
+}
 
 // Action types for the offline queue
 export const QUEUE_ACTIONS = {
   CHECK_IN: "check_in",
   CHECK_OUT: "check_out",
-  SESSION_UPDATE: "session_update",
-  LOCATION_UPDATE: "location_update",
 } as const;
 
-export type QueueActionType =
-  (typeof QUEUE_ACTIONS)[keyof typeof QUEUE_ACTIONS];
+export type QueueActionType = typeof QUEUE_ACTIONS[keyof typeof QUEUE_ACTIONS];
 
 // Status of queued actions
 export const QUEUE_STATUS = {
@@ -90,6 +196,10 @@ export async function queueAction(
   metadata?: Partial<QueuedAction>
 ): Promise<string> {
   try {
+    if (![QUEUE_ACTIONS.CHECK_IN, QUEUE_ACTIONS.CHECK_OUT].includes(type)) {
+      throw new Error(`Unsupported action type: ${type}`);
+    }
+
     const db = await initCacheDB();
     const actionId = generateActionId();
     const now = Date.now();
@@ -288,6 +398,18 @@ export async function processQueue(): Promise<{
   failed: number;
 }> {
   try {
+    const lock = await tryAcquireActionQueueLock();
+    if (!lock.acquired) {
+      // Another tab is already processing the shared IndexedDB queue.
+      return { processed: 0, synced: 0, failed: 0 };
+    }
+
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
+    try {
+      heartbeat = setInterval(() => {
+        refreshActionQueueLock(lock.ownerId).catch(() => undefined);
+      }, ACTION_QUEUE_LOCK_HEARTBEAT_MS);
+
     const pendingActions = await getPendingActions();
 
     if (pendingActions.length === 0) {
@@ -335,6 +457,10 @@ export async function processQueue(): Promise<{
     );
 
     return { processed, synced, failed };
+    } finally {
+      if (heartbeat) clearInterval(heartbeat);
+      await releaseActionQueueLock(lock.ownerId);
+    }
   } catch (error) {
     console.error("Failed to process queue:", error);
     return { processed: 0, synced: 0, failed: 0 };
@@ -376,10 +502,6 @@ async function syncActionByType(action: QueuedAction): Promise<boolean> {
       return syncCheckIn(action);
     case QUEUE_ACTIONS.CHECK_OUT:
       return syncCheckOut(action);
-    case QUEUE_ACTIONS.SESSION_UPDATE:
-      return syncSessionUpdate(action);
-    case QUEUE_ACTIONS.LOCATION_UPDATE:
-      return syncLocationUpdate(action);
     default:
       console.warn(`Unknown action type: ${action.type}`);
       return false;
@@ -473,63 +595,6 @@ async function syncCheckOut(action: QueuedAction): Promise<boolean> {
     return true;
   } catch (error) {
     console.error("Failed to sync check-out:", error);
-    return false;
-  }
-}
-
-// Sync session update action with Firebase
-async function syncSessionUpdate(action: QueuedAction): Promise<boolean> {
-  try {
-    const sessionId = action.sessionId || action.payload.sessionId;
-
-    if (!sessionId) {
-      throw new Error("Session ID is required for session update");
-    }
-
-    const updateData = {
-      ...action.payload,
-      updatedAt: Timestamp.now(),
-      // Store metadata about the queued action
-      queuedActionId: action.id,
-      originalTimestamp: Timestamp.fromMillis(action.timestamp),
-    };
-
-    await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
-    console.log("Session update synced successfully:", {
-      sessionId,
-      actionId: action.id,
-    });
-    return true;
-  } catch (error) {
-    console.error("Failed to sync session update:", error);
-    return false;
-  }
-}
-
-// Sync location update action with Firebase
-async function syncLocationUpdate(action: QueuedAction): Promise<boolean> {
-  try {
-    const locationId = action.payload.locationId || action.schoolId;
-
-    if (!locationId) {
-      throw new Error("Location ID is required for location update");
-    }
-
-    const updateData = {
-      ...action.payload,
-      updatedAt: Timestamp.now(),
-      queuedActionId: action.id,
-      originalTimestamp: Timestamp.fromMillis(action.timestamp),
-    };
-
-    await updateDocument(COLLECTIONS.LOCATIONS, locationId, updateData);
-    console.log("Location update synced successfully:", {
-      locationId,
-      actionId: action.id,
-    });
-    return true;
-  } catch (error) {
-    console.error("Failed to sync location update:", error);
     return false;
   }
 }

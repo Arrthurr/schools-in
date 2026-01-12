@@ -10,11 +10,11 @@ import { useAutoGeofencePreference } from "@/lib/hooks/useAutoGeofencePreference
 import { useGeofenceStrategy } from "@/lib/hooks/useGeofenceStrategy";
 import { locationService } from "@/lib/utils/location";
 import { validateGeofence } from "@/lib/utils/geo";
-import { getAssignedLocations } from "@/lib/services/locationService";
 import { appLogger } from "@/lib/logging/appLogger";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction, type ToastActionElement } from "@/components/ui/toast";
 import { formatDuration } from "@/lib/utils/session";
+import { getCachedLocationsByProvider } from "@/lib/firebase/cachedFirestore";
 import {
   saveGeofenceConfig,
   updateGeofenceActiveSession,
@@ -81,8 +81,7 @@ const ACCURACY_THRESHOLD_METERS = GEOFENCE_TUNING.accuracyThresholdMeters;
 const POOR_ACCURACY_LIMIT = 3;
 const COUNTDOWN_MS = 15_000;
 const CANCEL_COOLDOWN_MS = 5 * 60_000;
-const FEATURE_FLAG =
-  process.env.NEXT_PUBLIC_FEATURE_AUTO_GEOFENCE !== "false";
+const FEATURE_FLAG = process.env.NEXT_PUBLIC_FEATURE_AUTO_GEOFENCE !== "false";
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
 export function useAutoGeofenceCheck(): AutoGeofenceState {
@@ -90,7 +89,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const { enabled: prefEnabled } = useAutoGeofencePreference();
   const { activeSession } = useCachedSession(user?.uid);
   const { checkIn, checkOut } = useSession();
-  
+
   // Get strategy based on platform capabilities
   const {
     strategy,
@@ -111,14 +110,16 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const [pausedReason, setPausedReason] = useState<"poor-accuracy" | null>(
     null
   );
-  const [activeCountdown, setActiveCountdown] = useState<
-    AutoGeofenceState["activeCountdown"]
-  >(null);
-  const [locationPermission, setLocationPermission] = useState<LocationPermission>("unknown");
-  const [pushRemindersInitialized, setPushRemindersInitialized] = useState(false);
+  const [activeCountdown, setActiveCountdown] =
+    useState<AutoGeofenceState["activeCountdown"]>(null);
+  const [locationPermission, setLocationPermission] =
+    useState<LocationPermission>("unknown");
+  const [pushRemindersInitialized, setPushRemindersInitialized] =
+    useState(false);
   const [adaptivePollIntervalMs, setAdaptivePollIntervalMs] = useState(
     strategyConfig.pollIntervalMs
   );
+  const [isDocumentVisible, setIsDocumentVisible] = useState(true);
 
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const poorAccuracyCount = useRef(0);
@@ -132,6 +133,33 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const swListenerCleanupRef = useRef<(() => void) | null>(null);
   const runPollRef = useRef<(() => void) | null>(null);
   const lastInsideUpdateRef = useRef(0);
+  const lastGeofenceConfigRef = useRef<string | null>(null);
+  const pendingGeofenceSaveRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const lastActiveSessionPersistedRef = useRef<{
+    sessionId?: string;
+    locationId?: string;
+  }>({});
+
+  const setLocationsIfChanged = useCallback(
+    (next: Location[]) =>
+      setAssignedLocations((prev) => {
+        if (
+          prev.length === next.length &&
+          prev.every(
+            (loc, idx) =>
+              loc.id === next[idx]?.id &&
+              loc.radiusMeters === next[idx]?.radiusMeters &&
+              loc.name === next[idx]?.name
+          )
+        ) {
+          return prev;
+        }
+        return next;
+      }),
+    []
+  );
 
   const getActiveRadius = useCallback(() => {
     if (activeSession) {
@@ -153,10 +181,18 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       return Math.min(baseInterval, GEOFENCE_TUNING.countdownPollIntervalMs);
     }
 
+    if (!isDocumentVisible && strategy !== "periodic-sync") {
+      // When hidden and not using background periodic sync, relax polling to save battery
+      return Math.max(baseInterval, GEOFENCE_TUNING.farPollIntervalMs * 2);
+    }
+
     const distance =
       typeof lastDistanceMeters === "number" ? lastDistanceMeters : null;
     const activeRadius = getActiveRadius();
-    const nearBoundary = Math.max(GEOFENCE_TUNING.nearDistanceMeters, activeRadius * 2);
+    const nearBoundary = Math.max(
+      GEOFENCE_TUNING.nearDistanceMeters,
+      activeRadius * 2
+    );
 
     if (
       geofenceState === "entering" ||
@@ -181,13 +217,19 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     geofenceState,
     getActiveRadius,
     lastDistanceMeters,
+    isDocumentVisible,
+    strategy,
     strategyConfig.pollIntervalMs,
   ]);
 
   const getLocationOptions = useCallback((): PositionOptions => {
-    const distance = typeof lastDistanceMeters === "number" ? lastDistanceMeters : Infinity;
+    const distance =
+      typeof lastDistanceMeters === "number" ? lastDistanceMeters : Infinity;
     const activeRadius = getActiveRadius();
-    const nearBoundary = Math.max(GEOFENCE_TUNING.nearDistanceMeters, activeRadius * 2);
+    const nearBoundary = Math.max(
+      GEOFENCE_TUNING.nearDistanceMeters,
+      activeRadius * 2
+    );
     const hasDistance = Number.isFinite(distance);
     const isNearBoundary =
       geofenceState === "entering" ||
@@ -199,15 +241,31 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       hasDistance &&
       distance >= Math.max(GEOFENCE_TUNING.farDistanceMeters, activeRadius * 4);
 
+    const hiddenRelaxed =
+      !isDocumentVisible && strategy !== "periodic-sync" && !activeCountdown;
+
     return {
-      enableHighAccuracy: isNearBoundary,
-      maximumAge: isNearBoundary ? 15_000 : isFar ? 120_000 : 60_000,
-      timeout: isNearBoundary ? 10_000 : 5_000,
+      enableHighAccuracy: hiddenRelaxed ? false : isNearBoundary,
+      maximumAge: hiddenRelaxed
+        ? 180_000
+        : isNearBoundary
+        ? 15_000
+        : isFar
+        ? 120_000
+        : 60_000,
+      timeout: hiddenRelaxed ? 5_000 : isNearBoundary ? 10_000 : 5_000,
     };
-  }, [activeCountdown, geofenceState, getActiveRadius, lastDistanceMeters]);
+  }, [
+    activeCountdown,
+    geofenceState,
+    getActiveRadius,
+    isDocumentVisible,
+    lastDistanceMeters,
+    strategy,
+  ]);
 
   const featureEnabled = FEATURE_FLAG && !!user?.uid;
-  
+
   // Derive debounce from strategy config
   const DEBOUNCE_POLLS = strategyConfig.debouncePolls;
 
@@ -253,14 +311,29 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const refreshAssignedLocations = useCallback(async () => {
     if (!user?.uid) return;
     try {
-      const locations = await getAssignedLocations(user.uid);
-      setAssignedLocations(locations);
+      const cached = await getCachedLocationsByProvider(user.uid);
+      if (cached) {
+        setLocationsIfChanged(cached);
+      }
+
+      // Background revalidate
+      getCachedLocationsByProvider(user.uid, { forceRefresh: true })
+        .then((fresh) => {
+          if (fresh) {
+            setLocationsIfChanged(fresh);
+          }
+        })
+        .catch((error) => {
+          appLogger.warn("Failed to refresh provider locations from network", {
+            error,
+          });
+        });
     } catch (error) {
       appLogger.warn("Failed to load assigned locations for geofence", {
         error,
       });
     }
-  }, [user?.uid]);
+  }, [setLocationsIfChanged, user?.uid]);
 
   // Load assignments when enabled
   useEffect(() => {
@@ -274,35 +347,62 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   useEffect(() => {
     if (!user?.uid || !prefEnabled || !featureEnabled) return;
 
-    const syncConfig = async () => {
-      try {
-        // Convert locations to GeofenceLocation format
-        const geofenceLocations: GeofenceLocation[] = assignedLocations.map(
-          (loc) => ({
-            id: loc.id,
-            name: loc.name,
-            latitude: loc.geo.latitude,
-            longitude: loc.geo.longitude,
-            radiusMeters: loc.radiusMeters ?? 100,
-          })
-        );
+    const geofenceLocations: GeofenceLocation[] = assignedLocations.map(
+      (loc) => ({
+        id: loc.id,
+        name: loc.name,
+        latitude: loc.geo.latitude,
+        longitude: loc.geo.longitude,
+        radiusMeters: loc.radiusMeters ?? 100,
+      })
+    );
 
-        await saveGeofenceConfig({
-          userId: user.uid,
-          assignedLocations: geofenceLocations,
-          activeSessionId: activeSession?.id,
-          activeSessionLocationId: activeSession?.locationId,
-          autoGeofenceEnabled: prefEnabled,
-        });
-      } catch (error) {
-        appLogger.warn("Failed to sync geofence config to IndexedDB", {
-          error,
-        });
-      }
+    const payload = {
+      userId: user.uid,
+      assignedLocations: geofenceLocations,
+      activeSessionId: activeSession?.id,
+      activeSessionLocationId: activeSession?.locationId,
+      autoGeofenceEnabled: prefEnabled,
     };
 
-    syncConfig();
-  }, [user?.uid, prefEnabled, featureEnabled, assignedLocations, activeSession]);
+    const serialized = JSON.stringify(payload);
+    if (lastGeofenceConfigRef.current === serialized) {
+      return;
+    }
+
+    if (pendingGeofenceSaveRef.current) {
+      clearTimeout(pendingGeofenceSaveRef.current);
+    }
+
+    pendingGeofenceSaveRef.current = setTimeout(() => {
+      saveGeofenceConfig(payload)
+        .then(() => {
+          lastGeofenceConfigRef.current = serialized;
+        })
+        .catch((error) => {
+          appLogger.warn("Failed to sync geofence config to IndexedDB", {
+            error,
+          });
+        })
+        .finally(() => {
+          pendingGeofenceSaveRef.current = null;
+        });
+    }, 1000);
+
+    return () => {
+      if (pendingGeofenceSaveRef.current) {
+        clearTimeout(pendingGeofenceSaveRef.current);
+        pendingGeofenceSaveRef.current = null;
+      }
+    };
+  }, [
+    activeSession?.id,
+    activeSession?.locationId,
+    assignedLocations,
+    featureEnabled,
+    prefEnabled,
+    user?.uid,
+  ]);
 
   // ============================================
   // Register/unregister periodic background sync (strategy-aware)
@@ -320,7 +420,9 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
           appLogger.info("Periodic background sync registered", { strategy });
         } else {
           // Registration failed, switch to fallback strategy
-          appLogger.warn("Periodic sync registration failed, switching to fallback");
+          appLogger.warn(
+            "Periodic sync registration failed, switching to fallback"
+          );
           switchToFallback();
         }
       });
@@ -374,7 +476,14 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         setPushRemindersInitialized(false);
       }
     };
-  }, [prefEnabled, featureEnabled, user?.uid, strategy, strategyConfig.usePushReminders, pushRemindersInitialized]);
+  }, [
+    prefEnabled,
+    featureEnabled,
+    user?.uid,
+    strategy,
+    strategyConfig.usePushReminders,
+    pushRemindersInitialized,
+  ]);
 
   // ============================================
   // Listen for SW geofence check requests
@@ -406,22 +515,37 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   useEffect(() => {
     if (!user?.uid) return;
 
-    updateGeofenceActiveSession(activeSession?.id, activeSession?.locationId);
+    const last = lastActiveSessionPersistedRef.current;
+    const nextSessionId = activeSession?.id;
+    const nextLocationId = activeSession?.locationId;
+
+    if (
+      last.sessionId === nextSessionId &&
+      last.locationId === nextLocationId
+    ) {
+      return;
+    }
+
+    lastActiveSessionPersistedRef.current = {
+      sessionId: nextSessionId,
+      locationId: nextLocationId,
+    };
+
+    updateGeofenceActiveSession(nextSessionId, nextLocationId).catch((error) =>
+      appLogger.warn("Failed to sync active session to IndexedDB", { error })
+    );
   }, [user?.uid, activeSession?.id, activeSession?.locationId]);
 
-  const clearCountdown = useCallback(
-    (key: string) => {
-      const cleanup = countdownCleanup.current[key];
-      if (cleanup) {
-        cleanup();
-        delete countdownCleanup.current[key];
-      }
-      setActiveCountdown((curr) =>
-        curr && curr.locationId === key ? null : curr
-      );
-    },
-    []
-  );
+  const clearCountdown = useCallback((key: string) => {
+    const cleanup = countdownCleanup.current[key];
+    if (cleanup) {
+      cleanup();
+      delete countdownCleanup.current[key];
+    }
+    setActiveCountdown((curr) =>
+      curr && curr.locationId === key ? null : curr
+    );
+  }, []);
 
   const startCountdownToast = useCallback(
     ({
@@ -497,10 +621,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       }, durationMs);
 
       interval = setInterval(() => {
-        const remaining = Math.max(
-          0,
-          durationMs - (Date.now() - startedAt)
-        );
+        const remaining = Math.max(0, durationMs - (Date.now() - startedAt));
         const secondsLeft = Math.ceil(remaining / 1000);
         toastInstance.update({
           id: toastInstance.id,
@@ -565,9 +686,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   }, []);
 
   const clearCountdowns = useCallback(() => {
-    Object.keys(countdownCleanup.current).forEach((key) =>
-      clearCountdown(key)
-    );
+    Object.keys(countdownCleanup.current).forEach((key) => clearCountdown(key));
   }, [clearCountdown]);
 
   // Keep ref in sync with state
@@ -609,10 +728,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         const current = await locationService.getCurrentLocation(
           getLocationOptions()
         );
-        
+
         // Mark permission as granted on successful location fetch
         setLocationPermission("granted");
-        
+
         const accuracyMeters =
           typeof current.accuracy === "number" ? current.accuracy : undefined;
         const actionableAccuracy =
@@ -681,7 +800,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               );
             }
 
-            if (outsideStreak.current >= DEBOUNCE_POLLS && !activeCountdownRef.current) {
+            if (
+              outsideStreak.current >= DEBOUNCE_POLLS &&
+              !activeCountdownRef.current
+            ) {
               const countdownKey = `checkout-${activeLoc.id}`;
               setActiveCountdown({
                 type: "checkout",
@@ -766,8 +888,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         if (!activeSession && firstInside) {
           const withinCooldown =
             cancelledCheckIn.current[firstInside.id] &&
-            Date.now() -
-              cancelledCheckIn.current[firstInside.id] <
+            Date.now() - cancelledCheckIn.current[firstInside.id] <
               CANCEL_COOLDOWN_MS;
 
           if (!withinCooldown) {
@@ -804,7 +925,8 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                 type: "checkin",
                 locationId: firstInside.id,
               });
-              const distanceMeters = firstInsideDistance ?? lastDistanceMeters ?? 0;
+              const distanceMeters =
+                firstInsideDistance ?? lastDistanceMeters ?? 0;
               const distanceText =
                 distanceMeters < 1000
                   ? `${Math.round(distanceMeters)}m`
@@ -857,12 +979,15 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         }
       } catch (error: any) {
         appLogger.warn("Auto geofence polling error", { error });
-        
+
         // Track permission state based on error
         if (error?.code === 1) {
           // Permission denied
           setLocationPermission("denied");
-        } else if (error?.code === 0 || error?.message?.includes("not supported")) {
+        } else if (
+          error?.code === 0 ||
+          error?.message?.includes("not supported")
+        ) {
           // Geolocation not available
           setLocationPermission("unavailable");
         }
@@ -881,47 +1006,58 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       pollTimerRef.current = setInterval(runPoll, pollInterval);
     }
 
-    const visibilityHandler = () => {
-      if (document.visibilityState === "visible") {
-        runPoll();
-        
-        // For strategies with push reminders, show reminder on return if appropriate
-        if (strategyConfig.usePushReminders && isReminderTime()) {
-          if (activeSession) {
-            const activeLoc = assignedLocations.find(
-              (loc) => loc.id === activeSession.locationId
-            );
+    let visibilityHandler: (() => void) | null = null;
 
-            const startTime =
-              activeSession.startTime?.toDate?.() ??
-              activeSession.checkInTime?.toDate?.();
+    if (typeof document !== "undefined") {
+      setIsDocumentVisible(document.visibilityState === "visible");
 
-            const durationMinutes =
-              startTime instanceof Date
-                ? Math.max(
-                    1,
-                    Math.round((Date.now() - startTime.getTime()) / 60_000)
-                  )
-                : undefined;
+      visibilityHandler = () => {
+        const nowVisible = document.visibilityState === "visible";
+        setIsDocumentVisible(nowVisible);
 
-            void showCheckOutReminder(
-              activeLoc?.name,
-              durationMinutes ? formatDuration(durationMinutes) : undefined
-            );
-          } else if (assignedLocations.length > 0) {
-            const nextLocation = assignedLocations[0];
-            void showCheckInReminder(nextLocation.name);
+        if (nowVisible) {
+          runPoll();
+
+          // For strategies with push reminders, show reminder on return if appropriate
+          if (strategyConfig.usePushReminders && isReminderTime()) {
+            if (activeSession) {
+              const activeLoc = assignedLocations.find(
+                (loc) => loc.id === activeSession.locationId
+              );
+
+              const startTime =
+                activeSession.startTime?.toDate?.() ??
+                activeSession.checkInTime?.toDate?.();
+
+              const durationMinutes =
+                startTime instanceof Date
+                  ? Math.max(
+                      1,
+                      Math.round((Date.now() - startTime.getTime()) / 60_000)
+                    )
+                  : undefined;
+
+              void showCheckOutReminder(
+                activeLoc?.name,
+                durationMinutes ? formatDuration(durationMinutes) : undefined
+              );
+            } else if (assignedLocations.length > 0) {
+              const nextLocation = assignedLocations[0];
+              void showCheckInReminder(nextLocation.name);
+            }
           }
         }
-      }
-    };
+      };
 
-    document.addEventListener("visibilitychange", visibilityHandler);
+      document.addEventListener("visibilitychange", visibilityHandler);
+    }
 
     return () => {
       clearPollTimer();
       runPollRef.current = null;
-      document.removeEventListener("visibilitychange", visibilityHandler);
+      if (visibilityHandler) {
+        document.removeEventListener("visibilitychange", visibilityHandler);
+      }
     };
   }, [
     prefEnabled,

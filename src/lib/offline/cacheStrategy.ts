@@ -55,6 +55,7 @@ const CACHE_STORES = {
   LOCATION_DATA: "location_cache",
   CACHE_METADATA: "cache_metadata",
   PENDING_ACTIONS: "pending_actions",
+  LOCKS: "locks",
 } as const;
 
 export const DEFAULT_CACHE_KEY = "__global__";
@@ -73,7 +74,7 @@ export async function initCacheDB() {
     return dbInstance;
   }
 
-  dbInstance = await openDB("schools-in-cache", 2, {
+  dbInstance = await openDB("schools-in-cache", 3, {
     upgrade(db) {
       // Schools cache store
       if (!db.objectStoreNames.contains(CACHE_STORES.SCHOOLS)) {
@@ -141,6 +142,15 @@ export async function initCacheDB() {
         pendingStore.createIndex("timestamp", "timestamp");
         pendingStore.createIndex("type", "type");
         pendingStore.createIndex("priority", "priority");
+      }
+
+      // Cross-tab locks store (used for queue processing mutex)
+      if (!db.objectStoreNames.contains(CACHE_STORES.LOCKS)) {
+        const locksStore = db.createObjectStore(CACHE_STORES.LOCKS, {
+          keyPath: "id",
+        });
+        locksStore.createIndex("expiresAt", "expiresAt");
+        locksStore.createIndex("ownerId", "ownerId");
       }
     },
   });

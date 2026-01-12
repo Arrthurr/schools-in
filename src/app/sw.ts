@@ -323,59 +323,115 @@ self.addEventListener("sync", (event: any) => {
     tag === CHECK_OUT_SYNC_TAG ||
     tag === SESSION_SYNC_TAG
   ) {
-    event.waitUntil(syncPendingActions());
+    event.waitUntil(notifyClientsToProcessActionQueue(tag));
   }
 });
 
-async function syncPendingActions(): Promise<void> {
+async function notifyClientsToProcessActionQueue(
+  tag: string
+): Promise<void> {
   try {
-    const db = await openDB(DB_NAME, DB_VERSION, {
-      upgrade: upgradeOfflineDBForSW,
-    });
-    const actions = await db.getAll(STORES.PENDING_ACTIONS);
+    const pendingAcks = new Map<string, (error?: unknown) => void>();
 
-    if (actions.length === 0) {
-      console.log("[SW] No pending actions to sync");
-      return;
-    }
-
-    console.log(`[SW] Syncing ${actions.length} pending actions`);
-
-    // Notify clients that sync is starting
-    const clients = await self.clients.matchAll({ type: "window" });
-    clients.forEach((client) => {
-      client.postMessage({
-        type: "BACKGROUND_SYNC_STARTED",
-        count: actions.length,
-      });
-    });
-
-    // Process each action
-    for (const action of actions) {
+    const generateRequestId = (): string => {
       try {
-        // Post to client to handle the actual Firebase operation
-        // SW cannot directly use Firebase SDK due to auth context
-        if (clients.length > 0) {
-          clients[0].postMessage({
-            type: "SYNC_ACTION_REQUESTED",
-            action,
-          });
-        }
-      } catch (error) {
-        console.error("[SW] Failed to sync action:", action.id, error);
+        // Some browsers support crypto.randomUUID in SW contexts
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyCrypto = (self as any).crypto;
+        if (anyCrypto?.randomUUID) return anyCrypto.randomUUID();
+      } catch {
+        // ignore
       }
-    }
+      return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    };
 
-    // Notify clients that sync completed
-    clients.forEach((client) => {
-      client.postMessage({
-        type: "BACKGROUND_SYNC_COMPLETED",
-        count: actions.length,
+    const messageHandler = (event: ExtendableMessageEvent) => {
+      const data = (event as ExtendableMessageEvent).data || {};
+      const { type, requestId, error } = data;
+      if (
+        (type === "PROCESS_ACTION_QUEUE_COMPLETE" ||
+          type === "PROCESS_ACTION_QUEUE_ERROR") &&
+        typeof requestId === "string"
+      ) {
+        const finish = pendingAcks.get(requestId);
+        if (finish) finish(type === "PROCESS_ACTION_QUEUE_ERROR" ? error : undefined);
+      }
+    };
+
+    self.addEventListener("message", messageHandler);
+
+    try {
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
       });
-    });
+
+      if (clients.length === 0) {
+        console.log("[SW] No clients available to process action queue");
+        return;
+      }
+
+      // IMPORTANT: Only notify a single client to avoid multi-tab races.
+      // (Queue processing is additionally protected with a cross-tab lock.)
+      const bestClient =
+        clients.find((c) => (c as WindowClient).focused) ||
+        clients.find((c) => (c as WindowClient).visibilityState === "visible") ||
+        clients[0];
+
+      await new Promise<void>((resolve) => {
+        const requestId = generateRequestId();
+        const channel = new MessageChannel();
+        let finished = false;
+        const timeout = setTimeout(() => {
+          console.warn("[SW] PROCESS_ACTION_QUEUE timeout, continuing");
+          finish();
+        }, 15000);
+
+        const finish = (error?: unknown) => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timeout);
+          channel.port1.onmessage = null;
+          try {
+            channel.port1.close();
+          } catch {
+            // ignore
+          }
+          pendingAcks.delete(requestId);
+          resolve();
+          if (error) {
+            console.warn("[SW] PROCESS_ACTION_QUEUE error from client", { error });
+          }
+        };
+
+        pendingAcks.set(requestId, finish);
+
+        channel.port1.onmessage = (event) => {
+          const { type, error } = event.data || {};
+          if (type === "PROCESS_ACTION_QUEUE_COMPLETE") {
+            finish();
+          } else if (type === "PROCESS_ACTION_QUEUE_ERROR") {
+            finish(error);
+          }
+        };
+
+        bestClient.postMessage(
+          {
+            type: "PROCESS_ACTION_QUEUE",
+            source: "service-worker",
+            tag,
+            requestId,
+          },
+          [channel.port2]
+        );
+      });
+    } finally {
+      self.removeEventListener("message", messageHandler);
+      pendingAcks.clear();
+    }
   } catch (error) {
-    console.error("[SW] Background sync failed:", error);
-    throw error; // Rethrow to retry sync
+    console.error("[SW] Failed to request client action queue processing:", error);
+    throw error;
   }
 }
 

@@ -54,8 +54,6 @@ export interface SyncStrategy {
 const ACTION_PRIORITIES = {
   CHECK_IN: "high",
   CHECK_OUT: "critical",
-  SESSION_UPDATE: "medium",
-  LOCATION_UPDATE: "low",
 } as const;
 
 class SyncManager {

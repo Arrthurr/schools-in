@@ -51,6 +51,11 @@ export const getCachedDocument = async <T>(
       forceRefresh: options.forceRefresh,
       onCacheHit: () => CacheTracker.recordHit(),
       onCacheMiss: () => CacheTracker.recordMiss(),
+      tags: [
+        collectionName,
+        `doc:${collectionName}:${docId}`,
+        `collection:${collectionName}`,
+      ],
     }
   );
 };
@@ -121,6 +126,13 @@ export const getCachedCollection = async <T>(
       forceRefresh,
       onCacheHit: () => CacheTracker.recordHit(),
       onCacheMiss: () => CacheTracker.recordMiss(),
+      tags: [
+        collectionName,
+        `collection:${collectionName}`,
+        ...filters
+          .map((filter) => `${collectionName}:${filter.field}:${filter.value}`)
+          .filter(Boolean),
+      ],
     }
   );
 };
@@ -177,6 +189,11 @@ export const getCachedUserSessions = async (
       forceRefresh,
       onCacheHit: () => CacheTracker.recordHit(),
       onCacheMiss: () => CacheTracker.recordMiss(),
+      tags: [
+        "sessions",
+        `sessions:user:${userId}`,
+        status ? `sessions:status:${status}` : "sessions:all",
+      ],
     }
   );
 };
@@ -233,6 +250,7 @@ export const getCachedLocationsByProvider = async (
       forceRefresh: options.forceRefresh,
       onCacheHit: () => CacheTracker.recordHit(),
       onCacheMiss: () => CacheTracker.recordMiss(),
+      tags: ["locations", `locations:provider:${providerId}`],
     }
   );
 };
@@ -265,6 +283,7 @@ export const getCachedActiveSessions = async (
       forceRefresh: options.forceRefresh,
       onCacheHit: () => CacheTracker.recordHit(),
       onCacheMiss: () => CacheTracker.recordMiss(),
+      tags: ["sessions", "sessions:active"],
     }
   );
 };
@@ -313,6 +332,7 @@ export const searchCachedUsers = async (
       forceRefresh,
       onCacheHit: () => CacheTracker.recordHit(),
       onCacheMiss: () => CacheTracker.recordMiss(),
+      tags: ["users", role ? `users:role:${role}` : "users:all"],
     }
   );
 };
@@ -325,9 +345,9 @@ export const createCachedDocument = async <T extends object>(
   const docRef = await addDoc(collection(db, collectionName), data);
 
   // Invalidate related cache entries
-  await FirebaseCache.invalidateCache([
-    `collection_${collectionName}`,
-    `${collectionName}_`,
+  await FirebaseCache.invalidateTags([
+    `collection:${collectionName}`,
+    collectionName,
   ]);
 
   return docRef.id;
@@ -341,10 +361,10 @@ export const updateCachedDocument = async (
   await updateDoc(doc(db, collectionName, docId), data);
 
   // Invalidate specific document and related cache entries
-  await FirebaseCache.invalidateCache([
-    `doc_${collectionName}_${docId}`,
-    `collection_${collectionName}`,
-    `${collectionName}_`,
+  await FirebaseCache.invalidateTags([
+    `doc:${collectionName}:${docId}`,
+    `collection:${collectionName}`,
+    collectionName,
   ]);
 };
 
@@ -355,10 +375,10 @@ export const deleteCachedDocument = async (
   await deleteDoc(doc(db, collectionName, docId));
 
   // Invalidate specific document and related cache entries
-  await FirebaseCache.invalidateCache([
-    `doc_${collectionName}_${docId}`,
-    `collection_${collectionName}`,
-    `${collectionName}_`,
+  await FirebaseCache.invalidateTags([
+    `doc:${collectionName}:${docId}`,
+    `collection:${collectionName}`,
+    collectionName,
   ]);
 };
 
@@ -462,7 +482,15 @@ export const subscribeToCachedCollection = <T>(
         limitCount
       );
 
-      FirebaseCache.cacheLocationData(cacheKey, () => Promise.resolve(data));
+      FirebaseCache.cacheLocationData(cacheKey, () => Promise.resolve(data), {
+        tags: [
+          collectionName,
+          `collection:${collectionName}`,
+          ...filters
+            .map((filter) => `${collectionName}:${filter.field}:${filter.value}`)
+            .filter(Boolean),
+        ],
+      });
 
       callback(data);
     },
@@ -502,9 +530,9 @@ export const batchUpdateWithCache = async (
   const collections = [...new Set(operations.map((op) => op.collection))];
   await Promise.all(
     collections.map((collection) =>
-      FirebaseCache.invalidateCache([
-        `collection_${collection}`,
-        `${collection}_`,
+      FirebaseCache.invalidateTags([
+        `collection:${collection}`,
+        collection,
       ])
     )
   );

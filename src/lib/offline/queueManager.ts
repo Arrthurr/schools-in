@@ -42,6 +42,9 @@ class QueueManager {
   private listeners: Set<(stats: any) => void> = new Set();
   private networkStatus: NetworkStatus | null = null;
   private lastSyncResult: SyncResult | null = null;
+  private lastKnownStats: Awaited<ReturnType<typeof getQueueStats>> | null = null;
+  private lastStatsAt = 0;
+  private idleSkipCount = 0;
 
   constructor(config: Partial<QueueManagerConfig> = {}) {
     this.config = {
@@ -270,10 +273,13 @@ class QueueManager {
     }
 
     try {
-      return await getQueueStats();
+      const stats = await getQueueStats();
+      this.lastKnownStats = stats;
+      this.lastStatsAt = Date.now();
+      return stats;
     } catch (error) {
       console.error("Failed to get queue stats:", error);
-      return {
+      const fallback = {
         total: 0,
         pending: 0,
         syncing: 0,
@@ -281,6 +287,9 @@ class QueueManager {
         failed: 0,
         cancelled: 0,
       };
+      this.lastKnownStats = fallback;
+      this.lastStatsAt = Date.now();
+      return fallback;
     }
   }
 
@@ -365,7 +374,11 @@ class QueueManager {
     this.listeners.add(callback);
 
     // Send current stats immediately
-    this.getStats().then((stats) => callback(stats));
+    if (this.lastKnownStats) {
+      callback(this.lastKnownStats);
+    } else {
+      this.getStats().then((stats) => callback(stats));
+    }
 
     // Return unsubscribe function
     return () => {
@@ -422,24 +435,49 @@ class QueueManager {
     }
 
     this.syncInterval = setInterval(async () => {
-      if (!this.isProcessing) {
-        const stats = await this.getStats();
-        if (stats.pending > 0) {
-          // Use intelligent sync if enabled and network status available
-          if (this.config.enableIntelligentSync && this.networkStatus) {
-            const recommendations = syncManager.getSyncRecommendations(
-              this.networkStatus
-            );
+      if (this.isProcessing) {
+        return;
+      }
 
-            if (recommendations.shouldSync) {
-              await this.syncNow();
-            } else if (this.config.debugMode) {
-              console.log("Auto-sync skipped:", recommendations.reason);
-            }
-          } else if (navigator.onLine) {
-            // Fall back to basic sync when online
+      const hasRecentStats =
+        this.lastKnownStats && Date.now() - this.lastStatsAt < this.config.syncInterval * 2;
+
+      const stats =
+        hasRecentStats && this.lastKnownStats
+          ? this.lastKnownStats
+          : await this.getStats();
+
+      if (!stats) {
+        return;
+      }
+
+      // Reduce churn when idle: skip repeated checks if no pending/failed actions
+      if (stats.pending === 0 && stats.failed === 0) {
+        this.idleSkipCount += 1;
+        // Refresh stats periodically even when idle
+        if (this.idleSkipCount < 3) {
+          return;
+        }
+        this.idleSkipCount = 0;
+      } else {
+        this.idleSkipCount = 0;
+      }
+
+      if (stats.pending > 0 || stats.failed > 0) {
+        // Use intelligent sync if enabled and network status available
+        if (this.config.enableIntelligentSync && this.networkStatus) {
+          const recommendations = syncManager.getSyncRecommendations(
+            this.networkStatus
+          );
+
+          if (recommendations.shouldSync) {
             await this.syncNow();
+          } else if (this.config.debugMode) {
+            console.log("Auto-sync skipped:", recommendations.reason);
           }
+        } else if (navigator.onLine) {
+          // Fall back to basic sync when online
+          await this.syncNow();
         }
       }
     }, this.config.syncInterval);
@@ -501,7 +539,11 @@ class QueueManager {
   private async notifyListeners(): Promise<void> {
     if (this.listeners.size > 0) {
       try {
-        const stats = await this.getStats();
+        const stats =
+          this.lastKnownStats &&
+          Date.now() - this.lastStatsAt < this.config.syncInterval * 2
+            ? this.lastKnownStats
+            : await this.getStats();
         this.listeners.forEach((callback) => {
           try {
             callback(stats);
@@ -517,7 +559,10 @@ class QueueManager {
 
   // Check if queue has pending actions
   async hasPendingActions(): Promise<boolean> {
-    const stats = await this.getStats();
+    const stats =
+      this.lastKnownStats && Date.now() - this.lastStatsAt < this.config.syncInterval * 2
+        ? this.lastKnownStats
+        : await this.getStats();
     return stats.pending > 0;
   }
 
