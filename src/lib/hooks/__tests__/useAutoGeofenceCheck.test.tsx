@@ -756,7 +756,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // First poll already happened, flush it
@@ -835,7 +835,7 @@ describe("useAutoGeofenceCheck", () => {
       renderHook(() => useAutoGeofenceCheck());
 
       await waitFor(() => {
-        expect(getAssignedLocations).toHaveBeenCalled();
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
       });
 
       // First poll - inside (resets outsideStreak)
