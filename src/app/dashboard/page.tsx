@@ -31,19 +31,20 @@ import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "../../../firebase.config";
-import { getAssignedLocations } from "@/lib/services/locationService";
 import { Logo } from "../../components/ui/logo";
 import { CachedSessionService } from "@/lib/services/cachedSessionService";
 import { Session } from "@/lib/firebase/types";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useAutoGeofencePreference } from "@/lib/hooks/useAutoGeofencePreference";
 import { useAutoGeofenceCheck } from "@/lib/hooks/useAutoGeofenceCheck";
+import { useProviderLocations } from "@/lib/hooks/useProviderLocations";
 
 export default function DashboardPage() {
   const { user } = useCachedAuth();
   const metrics = useProviderMetrics();
   const router = useRouter();
   const pathname = usePathname();
+  const { locations: providerLocations } = useProviderLocations(user?.uid);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
   const { enabled: autoGeofenceEnabled } = useAutoGeofencePreference();
@@ -55,26 +56,14 @@ export default function DashboardPage() {
   const [locationsMap, setLocationsMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const loadSchools = async () => {
-      if (!user?.uid) return;
+    setAssignedSchoolsCount(providerLocations?.length || 0);
 
-      try {
-        const locations = await getAssignedLocations(user.uid);
-        setAssignedSchoolsCount(locations.length);
-
-        // Create a map of location IDs to names
-        const map: Record<string, string> = {};
-        locations.forEach((loc) => {
-          map[loc.id] = loc.name;
-        });
-        setLocationsMap(map);
-      } catch (error) {
-        console.error("Error loading schools:", error);
-      }
-    };
-
-    loadSchools();
-  }, [user?.uid]);
+    const map: Record<string, string> = {};
+    (providerLocations || []).forEach((loc) => {
+      map[loc.id] = loc.name;
+    });
+    setLocationsMap(map);
+  }, [providerLocations]);
 
   // Fetch recent sessions
   useEffect(() => {

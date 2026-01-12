@@ -6,20 +6,12 @@ import {
   getCachedSchools,
   cacheSessionData,
   getCachedSessions,
-  queueOfflineAction,
-  syncPendingActions,
   cacheUserData,
   getCachedUserData,
   clearOfflineData,
   hasPendingActions,
 } from "./offlineDB";
-import {
-  createDocument,
-  updateDocument,
-  COLLECTIONS,
-} from "@/lib/firebase/firestore";
-import { Timestamp } from "firebase/firestore";
-import { getDayKey } from "@/lib/utils/time";
+import { queueManager } from "./queueManager";
 
 // Background Sync tags
 const CHECK_IN_SYNC_TAG = "check-in-sync";
@@ -155,7 +147,7 @@ export class ServiceManager {
 
     try {
       // Process the action through the normal sync flow
-      await syncPendingActions();
+      await queueManager.syncNow(true);
       this.notifyStatusChange("sync-completed");
     } catch (error) {
       console.error("[ServiceManager] Failed to process sync action:", error);
@@ -221,57 +213,34 @@ export class ServiceManager {
     timestamp: number;
   }) {
     try {
-      if (this.isOnline) {
-        // Online - perform immediate check-in using Firebase SDK
-        const now = Timestamp.now();
-        const dayKey = getDayKey(now);
-
-        const sessionData = {
-          userId: checkInData.userId,
-          locationId: checkInData.schoolId,
-          startTime: now,
-          checkInTime: now, // Legacy field
-          status: "active" as const,
-          checkInMethod: "geo" as const,
-          distanceFromCenterAtCheckIn: checkInData.coordinates.lat ? 0 : 0, // Use accuracy if available
-          dayKey,
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        const sessionId = await createDocument(COLLECTIONS.SESSIONS, sessionData);
-
-        return {
-          id: sessionId,
-          ...sessionData,
-        };
-      } else {
-        // Offline - queue the action
-        await queueOfflineAction({
-          type: "check-in",
-          data: checkInData,
-          timestamp: Date.now(),
-        });
-
-        // Register background sync if supported
-        if (this.backgroundSyncSupported) {
-          await registerBackgroundSync(CHECK_IN_SYNC_TAG);
+      const result = await queueManager.checkIn(
+        checkInData.schoolId,
+        checkInData.userId,
+        {
+          latitude: checkInData.coordinates.lat,
+          longitude: checkInData.coordinates.lng,
         }
+      );
 
-        // Create local session record
+      if (this.backgroundSyncSupported && result.offline) {
+        await registerBackgroundSync(CHECK_IN_SYNC_TAG);
+      }
+
+      if (result.offline) {
         const localSession = {
-          id: `offline-${Date.now()}`,
-          ...checkInData,
+          id: result.actionId || `offline-${Date.now()}`,
+          schoolId: checkInData.schoolId,
+          userId: checkInData.userId,
+          coordinates: checkInData.coordinates,
           status: "pending-sync",
           startTime: new Date(checkInData.timestamp).toISOString(),
         };
-
-        // Cache locally
         await cacheSessionData([localSession]);
-
         console.log("Check-in queued for offline sync");
         return localSession;
       }
+
+      return result;
     } catch (error) {
       console.error("Check-in error:", error);
       throw error;
@@ -282,60 +251,24 @@ export class ServiceManager {
     sessionId: string;
     coordinates: { lat: number; lng: number };
     timestamp: number;
+    userId?: string;
   }) {
     try {
-      if (this.isOnline) {
-        // Online - perform immediate check-out using Firebase SDK
-        const { getDocument } = await import("@/lib/firebase/firestore");
-        const session = await getDocument(COLLECTIONS.SESSIONS, checkOutData.sessionId);
+      const result = await queueManager.checkOut(checkOutData.sessionId, checkOutData.userId || "unknown-user", {
+        latitude: checkOutData.coordinates.lat,
+        longitude: checkOutData.coordinates.lng,
+      });
 
-        if (!session) {
-          throw new Error("Session not found");
-        }
+      if (this.backgroundSyncSupported && result.offline) {
+        await registerBackgroundSync(CHECK_OUT_SYNC_TAG);
+      }
 
-        const sessionData = session as any;
-        const startTime = sessionData.startTime || sessionData.checkInTime;
-        
-        if (!startTime) {
-          throw new Error("Session missing start time");
-        }
-
-        const now = Timestamp.now();
-        const startMs = startTime.toMillis ? startTime.toMillis() : startTime.seconds * 1000;
-        const endMs = now.toMillis();
-        const durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
-
-        const updateData = {
-          endTime: now,
-          checkOutTime: now, // Legacy field
-          status: "completed" as const,
-          durationMinutes,
-          updatedAt: now,
-        };
-
-        await updateDocument(COLLECTIONS.SESSIONS, checkOutData.sessionId, updateData);
-
-        return {
-          id: checkOutData.sessionId,
-          ...sessionData,
-          ...updateData,
-        };
-      } else {
-        // Offline - queue the action
-        await queueOfflineAction({
-          type: "check-out",
-          data: checkOutData,
-          timestamp: Date.now(),
-        });
-
-        // Register background sync if supported
-        if (this.backgroundSyncSupported) {
-          await registerBackgroundSync(CHECK_OUT_SYNC_TAG);
-        }
-
+      if (result.offline) {
         console.log("Check-out queued for offline sync");
         return { status: "pending-sync" };
       }
+
+      return result;
     } catch (error) {
       console.error("Check-out error:", error);
       throw error;
@@ -351,7 +284,7 @@ export class ServiceManager {
     console.log("Starting background sync...");
 
     try {
-      await syncPendingActions();
+      await queueManager.syncNow(true);
       console.log("Background sync completed");
       this.notifyStatusChange("sync-completed");
     } catch (error) {

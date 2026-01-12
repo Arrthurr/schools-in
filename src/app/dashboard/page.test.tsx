@@ -2,12 +2,6 @@ import { render, waitFor } from "@testing-library/react";
 import DashboardPage from "./page";
 import React from "react";
 
-const mockGetAssignedLocations = jest.fn();
-
-jest.mock("@/lib/services/locationService", () => ({
-  getAssignedLocations: (...args: any[]) => mockGetAssignedLocations(...args),
-}));
-
 jest.mock("@/lib/hooks/useCachedAuth", () => ({
   useCachedAuth: () => ({ user: { uid: "provider-123" } }),
 }));
@@ -83,20 +77,33 @@ jest.mock("@/lib/hooks/useAutoGeofenceCheck", () => ({
   }),
 }));
 
+const mockUseProviderLocations = jest.fn();
+
+jest.mock("@/lib/hooks/useProviderLocations", () => ({
+  useProviderLocations: (...args: any[]) => mockUseProviderLocations(...args),
+}));
+
 describe("DashboardPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetAssignedLocations.mockResolvedValue([
-      { id: "loc1", name: "School One" },
-      { id: "loc2", name: "School Two" },
-    ]);
+    mockUseProviderLocations.mockReturnValue({
+      locations: [
+        { id: "loc1", name: "School One" },
+        { id: "loc2", name: "School Two" },
+      ],
+      loading: false,
+      error: null,
+      refreshing: false,
+      refreshLocations: jest.fn(),
+      refreshAssignments: jest.fn(),
+    });
   });
 
-  it("loads assigned locations for the current user", async () => {
+  it("loads assigned locations for the current user via useProviderLocations", async () => {
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(mockGetAssignedLocations).toHaveBeenCalledWith("provider-123");
+      expect(mockUseProviderLocations).toHaveBeenCalledWith("provider-123");
     });
   });
 });

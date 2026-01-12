@@ -19,14 +19,10 @@ import {
 import {
   type ConnectivityRestorationConfig,
 } from "../hooks/useConnectivityRestoration";
-import {
-  createDocument,
-  updateDocument,
-  getDocument,
-  COLLECTIONS,
-} from "@/lib/firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { Timestamp } from "firebase/firestore";
 import { getDayKey } from "@/lib/utils/time";
+import { functions } from "../../../firebase.config";
 
 export interface QueueManagerConfig {
   enableAutoSync: boolean;
@@ -113,25 +109,32 @@ class QueueManager {
 
     try {
       if (navigator.onLine) {
-        // Try direct Firebase SDK call first when online
+        // Try Cloud Function first when online
         try {
-          const now = Timestamp.now();
-          const dayKey = getDayKey(now);
+          const startDate = new Date();
+          const startTimestamp = Timestamp.fromDate(startDate);
+          const dayKey = getDayKey(startTimestamp);
 
-          const sessionData = {
-            userId,
+          const startSessionFn = httpsCallable(functions, "startSession");
+          const response = await startSessionFn({
             locationId: schoolId,
-            startTime: now,
-            checkInTime: now, // Legacy field
-            status: "active" as const,
-            checkInMethod: "geo" as const,
+            startTime: startDate.toISOString(),
+            checkInMethod: "geo",
             distanceFromCenterAtCheckIn: location.accuracy ?? 0,
             dayKey,
-            createdAt: now,
-            updatedAt: now,
-          };
+            checkInLocation: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              accuracy: location.accuracy,
+            },
+          });
 
-          const sessionId = await createDocument(COLLECTIONS.SESSIONS, sessionData);
+          const data = (response as any)?.data;
+          if (!data?.success) {
+            throw new Error("startSession callable returned failure");
+          }
+
+          const sessionId = data.sessionId;
 
           if (this.config.debugMode) {
             console.log("Check-in completed online:", { sessionId });
@@ -182,35 +185,26 @@ class QueueManager {
 
     try {
       if (navigator.onLine) {
-        // Try direct Firebase SDK call first when online
+        // Try Cloud Function first when online
         try {
-          const session = await getDocument(COLLECTIONS.SESSIONS, sessionId);
+          const endSessionFn = httpsCallable(functions, "endSession");
+          const checkOutDate = new Date();
 
-          if (!session) {
-            throw new Error("Session not found");
+          const response = await endSessionFn({
+            sessionId,
+            checkOutTime: checkOutDate.toISOString(),
+            checkOutLocation: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              accuracy: location.accuracy,
+            },
+            distanceFromCenterAtCheckOut: location.accuracy ?? undefined,
+          });
+
+          const data = (response as any)?.data;
+          if (!data?.success) {
+            throw new Error("endSession callable returned failure");
           }
-
-          const sessionData = session as any;
-          const startTime = sessionData.startTime || sessionData.checkInTime;
-          
-          if (!startTime) {
-            throw new Error("Session missing start time");
-          }
-
-          const now = Timestamp.now();
-          const startMs = startTime.toMillis ? startTime.toMillis() : startTime.seconds * 1000;
-          const endMs = now.toMillis();
-          const durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
-
-          const updateData = {
-            endTime: now,
-            checkOutTime: now, // Legacy field
-            status: "completed" as const,
-            durationMinutes,
-            updatedAt: now,
-          };
-
-          await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
 
           if (this.config.debugMode) {
             console.log("Check-out completed online:", { sessionId });

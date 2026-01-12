@@ -186,41 +186,25 @@ export const getCachedLocationsByProvider = async (
   providerId: string,
   options: { forceRefresh?: boolean } = {}
 ): Promise<Location[]> => {
-  const cacheKey = `provider_locations_${providerId}`;
+  const cacheKey = `provider_locations_${providerId}_active`;
 
   return FirebaseCache.cacheLocationData(
     cacheKey,
     async () => {
-      // Prefer assignments collection for mapping provider->locations
-      const assignmentsSnap = await getDocs(
-        query(
-          collection(db, COLLECTIONS.ASSIGNMENTS),
-          where("userId", "==", providerId)
-        )
+      const q = query(
+        collection(db, COLLECTIONS.LOCATIONS),
+        where("assignedProviders", "array-contains", providerId),
+        where("active", "==", true),
+        orderBy("name")
       );
-      const assignedLocationIds = assignmentsSnap.docs
-        .map((d) => (d.data() as any).locationId)
-        .filter(Boolean);
 
-      const normalizeDocs = (docs: typeof assignmentsSnap.docs) =>
-        docs.map((docSnapshot) =>
-          normalizeLocationData(docSnapshot.id, docSnapshot.data())
-        ) as Location[];
+      const snap = await getDocs(q);
+      const normalized = snap.docs.map((docSnapshot) =>
+        normalizeLocationData(docSnapshot.id, docSnapshot.data())
+      ) as Location[];
 
-      if (assignedLocationIds.length === 0) {
-        // Fallback to legacy array-contains
-        const qLegacy = query(
-          collection(db, COLLECTIONS.LOCATIONS),
-          where("assignedProviders", "array-contains", providerId)
-        );
-        const legacySnap = await getDocs(qLegacy);
-        const normalizedLegacy = normalizeDocs(legacySnap.docs);
-
-        if (normalizedLegacy.length > 0) {
-          return normalizedLegacy;
-        }
-
-        // Final fallback: legacy field on user profile
+      // Legacy fallback to user.assignedLocations if nothing is found (defensive)
+      if (normalized.length === 0) {
         const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, providerId));
         const legacyAssigned = (userDoc.data() as any)?.assignedLocations;
         if (Array.isArray(legacyAssigned) && legacyAssigned.length > 0) {
@@ -233,28 +217,17 @@ export const getCachedLocationsByProvider = async (
               where("__name__", "in", chunk)
             );
             const chunkSnap = await getDocs(chunkQuery);
-            results.push(...normalizeDocs(chunkSnap.docs));
+            results.push(
+              ...chunkSnap.docs.map((docSnapshot) =>
+                normalizeLocationData(docSnapshot.id, docSnapshot.data())
+              )
+            );
           }
           return results;
         }
-
-        return normalizedLegacy;
       }
 
-      // Fetch locations by IDs (batched)
-      const results: Location[] = [];
-      // Firestore doesn't support IN with more than 10 values; chunk if needed
-      const chunkSize = 10;
-      for (let i = 0; i < assignedLocationIds.length; i += chunkSize) {
-        const chunk = assignedLocationIds.slice(i, i + chunkSize);
-        const qIds = query(
-          collection(db, COLLECTIONS.LOCATIONS),
-          where("__name__", "in", chunk)
-        );
-        const snap = await getDocs(qIds);
-        results.push(...normalizeDocs(snap.docs));
-      }
-      return results;
+      return normalized;
     },
     {
       forceRefresh: options.forceRefresh,

@@ -117,7 +117,7 @@ export async function subscribeToPush(
       // Create new subscription
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as BufferSource,
       });
 
       appLogger.info("New push subscription created");
@@ -187,9 +187,16 @@ export async function getCurrentSubscription(): Promise<PushSubscriptionData | n
  */
 export async function savePushSubscriptionToFirebase(
   userId: string,
-  subscription: PushSubscriptionData
+  subscription: PushSubscriptionData,
+  subscriptionId: string = "geofence"
 ): Promise<void> {
-  const docRef = doc(db, COLLECTIONS.USERS, userId, "pushSubscriptions", "geofence");
+  const docRef = doc(
+    db,
+    COLLECTIONS.USERS,
+    userId,
+    "pushSubscriptions",
+    subscriptionId
+  );
 
   await setDoc(docRef, {
     ...subscription,
@@ -206,12 +213,38 @@ export async function savePushSubscriptionToFirebase(
  * Remove push subscription from Firebase
  */
 export async function removePushSubscriptionFromFirebase(
-  userId: string
+  userId: string,
+  subscriptionId: string = "geofence"
 ): Promise<void> {
-  const docRef = doc(db, COLLECTIONS.USERS, userId, "pushSubscriptions", "geofence");
+  const docRef = doc(
+    db,
+    COLLECTIONS.USERS,
+    userId,
+    "pushSubscriptions",
+    subscriptionId
+  );
 
   await deleteDoc(docRef);
   appLogger.info("Push subscription removed from Firebase", { userId });
+}
+
+/**
+ * Save admin alert push subscription (separate doc id to avoid mixing with geofence)
+ */
+export async function saveAdminAlertSubscriptionToFirebase(
+  userId: string,
+  subscription: PushSubscriptionData
+): Promise<void> {
+  await savePushSubscriptionToFirebase(userId, subscription, "adminAlerts");
+}
+
+/**
+ * Remove admin alert push subscription
+ */
+export async function removeAdminAlertSubscriptionFromFirebase(
+  userId: string
+): Promise<void> {
+  await removePushSubscriptionFromFirebase(userId, "adminAlerts");
 }
 
 /**
@@ -248,10 +281,7 @@ export function saveReminderSettings(settings: Partial<ReminderSettings>): void 
   };
 
   localStorage.setItem(REMINDER_SETTINGS_KEY, JSON.stringify(updated));
-  appLogger.info(
-    "Reminder settings saved",
-    updated as unknown as Record<string, unknown>
-  );
+  appLogger.info("Reminder settings saved", { settings: updated });
 }
 
 /**
@@ -308,7 +338,7 @@ export async function showCheckInReminder(locationName?: string): Promise<void> 
       { action: "open", title: "Open App" },
       { action: "dismiss", title: "Dismiss" },
     ],
-  });
+  } as NotificationOptions);
 }
 
 /**
@@ -333,7 +363,7 @@ export async function showCheckOutReminder(
       { action: "open", title: "Open App" },
       { action: "dismiss", title: "Dismiss" },
     ],
-  });
+  } as NotificationOptions);
 }
 
 /**

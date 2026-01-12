@@ -4,14 +4,15 @@ import { useState, useCallback, useEffect } from "react";
 import { Timestamp, onSnapshot, collection, query, where, orderBy, limit } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import {
-  updateDocument,
   getSessionsByUser,
   COLLECTIONS,
 } from "../firebase/firestore";
 import { SessionData, calculateSessionDuration } from "../utils/session";
+import { getDayKey } from "../utils/time";
 import { Coordinates } from "../utils/location";
 import { useAuth } from "./useAuth";
 import { db, functions } from "../../../firebase.config";
+import { queueManager } from "../offline/queueManager";
 
 interface UseSessionReturn {
   currentSession: SessionData | null;
@@ -63,20 +64,14 @@ export const useSession = (): UseSessionReturn => {
 
       try {
         const startDate = new Date();
-        const chicagoOffset = -6;
-        const chicagoDate = new Date(
-          startDate.getTime() + chicagoOffset * 60 * 60 * 1000
-        );
-        const dayKey = chicagoDate.toISOString().split("T")[0];
+        const startSessionFn = httpsCallable(functions, "startSession");
 
-        const startSessionFn = httpsCallable(functions, 'startSession');
-        
         const payload = {
           locationId: schoolId,
           startTime: startDate.toISOString(),
           checkInMethod: "geo",
           distanceFromCenterAtCheckIn: location.accuracy ?? 0,
-          dayKey,
+          dayKey: getDayKey(Timestamp.fromDate(startDate)),
           checkInLocation: {
             latitude: location.latitude,
             longitude: location.longitude,
@@ -87,41 +82,48 @@ export const useSession = (): UseSessionReturn => {
         const result = await startSessionFn(payload);
         const data = result.data as any;
 
-        if (!data.success) {
-           throw new Error("Failed to start session");
+        if (!data?.success) {
+          throw new Error("Failed to start session");
         }
-
-        // The cloud function returns the session data, but fields like Timestamps 
-        // might need conversion if we were to use them directly.
-        // However, since we have a real-time listener (onSnapshot) below, 
-        // the UI will update automatically when the document is created in Firestore.
-        // We can optimistically set the current session or just wait for the listener.
-        // To be safe and responsive, let's set the state with the data returned, 
-        // converting dates if necessary.
-        
-        // Re-constructing SessionData from the response if needed, 
-        // but relying on the listener is often cleaner for Firestore apps.
-        // Given the existing code updated local state, we will do so here too 
-        // to maintain immediate feedback.
 
         const newSession: SessionData = {
           id: data.sessionId,
           userId: user.uid,
           locationId: schoolId,
-          schoolId, // Keeping for backward compatibility if used
+          schoolId,
           checkInTime: Timestamp.fromDate(startDate),
           checkInLocation: location,
           status: "active",
           checkInMethod: "geo",
           distanceFromCenterAtCheckIn: location.accuracy ?? 0,
-          dayKey,
+          dayKey: payload.dayKey,
         };
 
         setCurrentSession(newSession);
         setSessions((prev) => [newSession, ...prev]);
       } catch (err) {
         console.error("Check-in error:", err);
-        setError(err instanceof Error ? err.message : "Failed to check in");
+
+        try {
+          const queued = await queueManager.checkIn(schoolId, user.uid, {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+          });
+
+          if (queued.offline) {
+            setError("Offline: check-in queued for sync");
+          } else if (!queued.success) {
+            setError("Failed to check in");
+          }
+        } catch (queueError) {
+          console.error("Failed to queue offline check-in:", queueError);
+          setError(
+            queueError instanceof Error
+              ? queueError.message
+              : "Failed to check in"
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -135,48 +137,66 @@ export const useSession = (): UseSessionReturn => {
       setError(null);
 
       try {
-        const checkOutTime = Timestamp.now();
+        const checkOutDate = new Date();
 
-        // Find the current session to get check-in time for duration calculation
-        const currentSessionData =
-          currentSession ||
-          sessions.find((session) => session.id === sessionId);
+        const endSessionFn = httpsCallable(functions, "endSession");
+        const response = await endSessionFn({
+          sessionId,
+          checkOutTime: checkOutDate.toISOString(),
+          checkOutLocation: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+          },
+          distanceFromCenterAtCheckOut: location.accuracy ?? undefined,
+        });
 
-        let duration = 0;
-        if (currentSessionData?.checkInTime) {
-          // Calculate duration in minutes
-          duration = Math.round(
-            (checkOutTime.toMillis() -
-              currentSessionData.checkInTime.toMillis()) /
-              (1000 * 60)
-          );
+        const data = response.data as any;
+        if (!data?.success) {
+          throw new Error("Failed to complete session");
         }
-
-        const updateData = {
-          checkOutTime,
-          endTime: checkOutTime,
-          checkOutLocation: location,
-          status: "completed" as const,
-          active: false,
-          duration,
-          updatedAt: checkOutTime,
-        };
-
-        await updateDocument(COLLECTIONS.SESSIONS, sessionId, updateData);
 
         setCurrentSession(null);
         setSessions((prev) =>
           prev.map((session) =>
-            session.id === sessionId ? { ...session, ...updateData } : session
+            session.id === sessionId
+              ? {
+                  ...session,
+                  status: "completed",
+                  checkOutTime: Timestamp.fromDate(checkOutDate),
+                  endTime: Timestamp.fromDate(checkOutDate),
+                  checkOutLocation: location,
+                }
+              : session
           )
         );
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to check out");
+        try {
+          const queued = await queueManager.checkOut(sessionId, user?.uid || "unknown-user", {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+          });
+
+          if (queued.offline) {
+            setError("Offline: check-out queued for sync");
+            // Don't clear currentSession here - it's only queued, not completed.
+            // The real-time subscription will clear it when checkout actually syncs to the server.
+          } else if (!queued.success) {
+            setError("Failed to check out");
+          }
+        } catch (queueError) {
+          setError(
+            queueError instanceof Error
+              ? queueError.message
+              : "Failed to check out"
+          );
+        }
       } finally {
         setLoading(false);
       }
     },
-    [currentSession, sessions]
+    [currentSession, sessions, user?.uid]
   );
 
   const loadSessions = useCallback(

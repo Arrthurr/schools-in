@@ -68,7 +68,16 @@ interface CountdownConfig {
   onCancel?: () => void;
 }
 
-const ACCURACY_THRESHOLD_METERS = 50;
+const GEOFENCE_TUNING = {
+  accuracyThresholdMeters: 50,
+  nearDistanceMeters: 250,
+  farDistanceMeters: 500,
+  countdownPollIntervalMs: 12_000,
+  nearPollIntervalMs: 30_000,
+  farPollIntervalMs: 90_000,
+} as const;
+
+const ACCURACY_THRESHOLD_METERS = GEOFENCE_TUNING.accuracyThresholdMeters;
 const POOR_ACCURACY_LIMIT = 3;
 const COUNTDOWN_MS = 15_000;
 const CANCEL_COOLDOWN_MS = 5 * 60_000;
@@ -107,6 +116,9 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   >(null);
   const [locationPermission, setLocationPermission] = useState<LocationPermission>("unknown");
   const [pushRemindersInitialized, setPushRemindersInitialized] = useState(false);
+  const [adaptivePollIntervalMs, setAdaptivePollIntervalMs] = useState(
+    strategyConfig.pollIntervalMs
+  );
 
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const poorAccuracyCount = useRef(0);
@@ -119,11 +131,99 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const swListenerCleanupRef = useRef<(() => void) | null>(null);
   const runPollRef = useRef<(() => void) | null>(null);
+  const lastInsideUpdateRef = useRef(0);
+
+  const getActiveRadius = useCallback(() => {
+    if (activeSession) {
+      const activeLoc = assignedLocations.find(
+        (loc) => loc.id === activeSession.locationId
+      );
+      if (activeLoc?.radiusMeters) {
+        return activeLoc.radiusMeters;
+      }
+    }
+    return 100;
+  }, [activeSession, assignedLocations]);
+
+  const computeAdaptivePollInterval = useCallback(() => {
+    const baseInterval = strategyConfig.pollIntervalMs;
+
+    if (activeCountdown) {
+      // Countdown should remain responsive; do not exceed base interval
+      return Math.min(baseInterval, GEOFENCE_TUNING.countdownPollIntervalMs);
+    }
+
+    const distance =
+      typeof lastDistanceMeters === "number" ? lastDistanceMeters : null;
+    const activeRadius = getActiveRadius();
+    const nearBoundary = Math.max(GEOFENCE_TUNING.nearDistanceMeters, activeRadius * 2);
+
+    if (
+      geofenceState === "entering" ||
+      geofenceState === "exiting" ||
+      (distance !== null && distance <= nearBoundary)
+    ) {
+      // Allow faster polling near boundaries/active transitions (cap by strategy baseline)
+      return Math.min(baseInterval, GEOFENCE_TUNING.nearPollIntervalMs);
+    }
+
+    if (
+      distance !== null &&
+      distance >= Math.max(GEOFENCE_TUNING.farDistanceMeters, activeRadius * 4)
+    ) {
+      // Extend interval when far away to save battery; keep baseline if already slower
+      return Math.max(baseInterval, GEOFENCE_TUNING.farPollIntervalMs);
+    }
+
+    return baseInterval;
+  }, [
+    activeCountdown,
+    geofenceState,
+    getActiveRadius,
+    lastDistanceMeters,
+    strategyConfig.pollIntervalMs,
+  ]);
+
+  const getLocationOptions = useCallback((): PositionOptions => {
+    const distance = typeof lastDistanceMeters === "number" ? lastDistanceMeters : Infinity;
+    const activeRadius = getActiveRadius();
+    const nearBoundary = Math.max(GEOFENCE_TUNING.nearDistanceMeters, activeRadius * 2);
+    const hasDistance = Number.isFinite(distance);
+    const isNearBoundary =
+      geofenceState === "entering" ||
+      geofenceState === "exiting" ||
+      !hasDistance ||
+      distance <= nearBoundary ||
+      !!activeCountdown;
+    const isFar =
+      hasDistance &&
+      distance >= Math.max(GEOFENCE_TUNING.farDistanceMeters, activeRadius * 4);
+
+    return {
+      enableHighAccuracy: isNearBoundary,
+      maximumAge: isNearBoundary ? 15_000 : isFar ? 120_000 : 60_000,
+      timeout: isNearBoundary ? 10_000 : 5_000,
+    };
+  }, [activeCountdown, geofenceState, getActiveRadius, lastDistanceMeters]);
 
   const featureEnabled = FEATURE_FLAG && !!user?.uid;
   
   // Derive debounce from strategy config
   const DEBOUNCE_POLLS = strategyConfig.debouncePolls;
+
+  // Update adaptive poll interval when key signals change
+  useEffect(() => {
+    const nextInterval = computeAdaptivePollInterval();
+    setAdaptivePollIntervalMs((prev) => {
+      if (prev !== nextInterval) {
+        appLogger.info("Adaptive geofence poll interval updated", {
+          from: prev,
+          to: nextInterval,
+        });
+      }
+      return nextInterval;
+    });
+  }, [computeAdaptivePollInterval]);
 
   // ============================================
   // Wake Lock Management
@@ -363,7 +463,40 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         action: actionEl,
       });
 
-      const interval = setInterval(() => {
+      let finished = false;
+      let interval: ReturnType<typeof setInterval> | undefined;
+
+      const finishCountdown = async () => {
+        if (finished) return;
+        finished = true;
+        if (interval) {
+          clearInterval(interval);
+        }
+        try {
+          await onConfirm();
+        } catch (error) {
+          appLogger.error("Auto geofence countdown action failed", { error });
+          toast({
+            title: "Auto action failed",
+            description: "Please try again manually.",
+            variant: "destructive",
+          });
+        } finally {
+          releaseWakeLock();
+          toastInstance.dismiss();
+          delete countdownCleanup.current[id];
+        }
+      };
+
+      const timeout = setTimeout(() => {
+        if (interval) {
+          clearInterval(interval);
+          interval = undefined;
+        }
+        finishCountdown();
+      }, durationMs);
+
+      interval = setInterval(() => {
         const remaining = Math.max(
           0,
           durationMs - (Date.now() - startedAt)
@@ -376,28 +509,16 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         });
 
         if (remaining <= 0) {
-          clearInterval(interval);
-          (async () => {
-            try {
-              await onConfirm();
-            } catch (error) {
-              appLogger.error("Auto geofence countdown action failed", { error });
-              toast({
-                title: "Auto action failed",
-                description: "Please try again manually.",
-                variant: "destructive",
-              });
-            } finally {
-              releaseWakeLock();
-              toastInstance.dismiss();
-              delete countdownCleanup.current[id];
-            }
-          })();
+          clearTimeout(timeout);
+          finishCountdown();
         }
       }, 1000);
 
       countdownCleanup.current[id] = () => {
-        clearInterval(interval);
+        if (interval) {
+          clearInterval(interval);
+        }
+        clearTimeout(timeout);
         releaseWakeLock();
         toastInstance.dismiss();
       };
@@ -436,11 +557,14 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     }
   }, [pausedReason]);
 
-  const clearTimers = useCallback(() => {
+  const clearPollTimer = useCallback(() => {
     if (pollTimerRef.current) {
       clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
     }
+  }, []);
+
+  const clearCountdowns = useCallback(() => {
     Object.keys(countdownCleanup.current).forEach((key) =>
       clearCountdown(key)
     );
@@ -467,7 +591,8 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   // Core polling loop
   useEffect(() => {
     if (!prefEnabled || !featureEnabled) {
-      clearTimers();
+      clearPollTimer();
+      clearCountdowns();
       runPollRef.current = null;
       setGeofenceState("idle");
       return;
@@ -478,39 +603,57 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         return;
       }
 
+      const now = Date.now();
       setIsPolling(true);
       try {
-        const current = await locationService.getCurrentLocation();
+        const current = await locationService.getCurrentLocation(
+          getLocationOptions()
+        );
         
         // Mark permission as granted on successful location fetch
         setLocationPermission("granted");
         
-        if (
-          typeof current.accuracy === "number" &&
-          current.accuracy > ACCURACY_THRESHOLD_METERS
-        ) {
+        const accuracyMeters =
+          typeof current.accuracy === "number" ? current.accuracy : undefined;
+        const actionableAccuracy =
+          accuracyMeters === undefined ||
+          accuracyMeters <= ACCURACY_THRESHOLD_METERS;
+
+        if (!actionableAccuracy) {
           handlePoorAccuracy();
+          setLastAccuracyMeters(accuracyMeters);
+          // Still update last known location for visibility but skip decisions
+          updateGeofenceUserLocation(current.latitude, current.longitude).catch(
+            () => undefined
+          );
           setIsPolling(false);
           return;
+        } else {
+          handleGoodAccuracy();
+          setLastAccuracyMeters(accuracyMeters);
         }
-
-        handleGoodAccuracy();
-        setLastAccuracyMeters(current.accuracy);
 
         // Update user location in IndexedDB for SW access
         updateGeofenceUserLocation(current.latitude, current.longitude).catch(
           () => undefined
         );
 
-        // If paused, only check accuracy and return early
+        // If previously paused but accuracy is now good, clear the pause.
+        // Only bail out when still poor accuracy.
         if (pausedReason) {
-          setIsPolling(false);
-          return;
+          if (actionableAccuracy) {
+            setPausedReason(null);
+          } else {
+            setIsPolling(false);
+            return;
+          }
         }
 
         // Determine geofence state
         let firstInside: Location | null = null;
         let firstInsideDistance: number | null = null;
+
+        let closestDistance: number | null = null;
 
         if (activeSession) {
           const activeLoc = assignedLocations.find(
@@ -525,6 +668,8 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
             );
 
             setLastDistanceMeters(distance);
+
+            closestDistance = distance;
 
             if (isWithinGeofence) {
               outsideStreak.current = 0;
@@ -604,6 +749,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               loc.radiusMeters ?? 100
             );
 
+            if (closestDistance === null || distance < closestDistance) {
+              closestDistance = distance;
+            }
+
             if (isWithinGeofence) {
               firstInside = loc;
               firstInsideDistance = distance;
@@ -624,11 +773,23 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
           if (!withinCooldown) {
             // Stick to first location detected
             if (targetLocationId.current === firstInside.id) {
+              const justEnteredRecently =
+                geofenceState === "entering" &&
+                insideStreak.current === 1 &&
+                now - lastInsideUpdateRef.current < 1000;
+
+              if (justEnteredRecently) {
+                setIsPolling(false);
+                return;
+              }
+
               insideStreak.current += 1;
             } else {
               targetLocationId.current = firstInside.id;
               insideStreak.current = 1;
             }
+
+            lastInsideUpdateRef.current = now;
 
             setGeofenceState(
               insideStreak.current >= DEBOUNCE_POLLS ? "inside" : "entering"
@@ -687,6 +848,9 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         }
 
         if (!firstInside && !activeSession) {
+          if (closestDistance !== null) {
+            setLastDistanceMeters(closestDistance);
+          }
           insideStreak.current = 0;
           targetLocationId.current = null;
           setGeofenceState("outside");
@@ -709,13 +873,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
     // Expose runPoll via ref so SW listener can trigger it
     runPollRef.current = runPoll;
+    runPoll();
 
-    // Use strategy-based poll interval
-    const pollInterval = strategyConfig.pollIntervalMs;
-
-    runPoll(); // immediate
-    
-    // Only set up interval polling if strategy supports it
+    // Set up interval polling using adaptive interval
+    const pollInterval = adaptivePollIntervalMs;
     if (pollInterval > 0) {
       pollTimerRef.current = setInterval(runPoll, pollInterval);
     }
@@ -758,7 +919,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     document.addEventListener("visibilitychange", visibilityHandler);
 
     return () => {
-      clearTimers();
+      clearPollTimer();
       runPollRef.current = null;
       document.removeEventListener("visibilitychange", visibilityHandler);
     };
@@ -770,9 +931,13 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     checkIn,
     checkOut,
     pausedReason,
-    clearTimers,
     startCountdownToast,
-    strategyConfig.pollIntervalMs,
+    handleGoodAccuracy,
+    handlePoorAccuracy,
+    getLocationOptions,
+    clearPollTimer,
+    clearCountdowns,
+    adaptivePollIntervalMs,
     strategyConfig.usePushReminders,
   ]);
 

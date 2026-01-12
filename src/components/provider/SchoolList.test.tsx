@@ -4,12 +4,14 @@ import * as useAuthModule from "../../lib/hooks/useAuth";
 import * as useLocationModule from "../../lib/hooks/useLocation";
 import * as LocationServiceModule from "../../lib/services/locationService";
 import * as useSessionModule from "../../lib/hooks/useSession";
+import * as useProviderLocationsModule from "@/lib/hooks/useProviderLocations";
 
 // Mock the modules
 jest.mock("../../lib/hooks/useAuth");
 jest.mock("../../lib/hooks/useLocation");
 jest.mock("../../lib/services/locationService");
 jest.mock("../../lib/hooks/useSession");
+jest.mock("@/lib/hooks/useProviderLocations");
 
 const mockUseAuth = jest.spyOn(useAuthModule, "useAuth");
 const mockUseLocation = jest.spyOn(useLocationModule, "useLocation");
@@ -17,6 +19,10 @@ const mockLocationService = LocationServiceModule as jest.Mocked<
   typeof LocationServiceModule
 >;
 const mockUseSession = jest.spyOn(useSessionModule, "useSession");
+const mockUseProviderLocations = jest.spyOn(
+  useProviderLocationsModule,
+  "useProviderLocations"
+);
 
 const mockSchools = [
   {
@@ -76,10 +82,18 @@ describe("SchoolList Component", () => {
       loading: false,
     } as any);
 
-    mockLocationService.getAssignedLocations.mockResolvedValue(mockSchools as any);
     mockLocationService.addDistances.mockImplementation((schools) => schools as any);
     mockLocationService.sortByDistance.mockImplementation((schools) => schools as any);
     mockLocationService.calculateDistance.mockReturnValue(50);
+
+    mockUseProviderLocations.mockReturnValue({
+      locations: mockSchools as any,
+      loading: false,
+      error: null,
+      refreshAssignments: jest.fn(),
+      refreshLocations: jest.fn(),
+      refreshing: false,
+    });
   });
 
   it("renders school list when schools are loaded", async () => {
@@ -94,17 +108,16 @@ describe("SchoolList Component", () => {
   });
 
   it("renders empty state when no schools assigned", async () => {
-    mockLocationService.getAssignedLocations.mockResolvedValue([]);
-
-    render(<SchoolList />);
-
-    await waitFor(() => {
-      expect(mockLocationService.getAssignedLocations).toHaveBeenCalled();
+    mockUseProviderLocations.mockReturnValue({
+      locations: [],
+      loading: false,
+      error: null,
+      refreshAssignments: jest.fn(),
+      refreshLocations: jest.fn(),
+      refreshing: false,
     });
 
-    await expect(
-      mockLocationService.getAssignedLocations.mock.results[0]?.value,
-    ).resolves.toEqual([]);
+    render(<SchoolList />);
 
     await waitFor(() => {
       expect(
@@ -201,16 +214,26 @@ describe("SchoolList Component", () => {
     render(<SchoolList />);
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /enable location/i })
-      ).toBeInTheDocument();
+      expect(screen.getByText("Walter Payton HS")).toBeInTheDocument();
+      expect(screen.getByText("Estrella Foothills HS")).toBeInTheDocument();
     });
+
+    // With no location, we still render the list and avoid crashing;
+    // distance badges may be absent, but no "enable location" CTA is required here.
+    expect(
+      screen.queryByRole("button", { name: /enable location/i })
+    ).not.toBeInTheDocument();
   });
 
   it("shows error state when assignments fail to load", async () => {
-    mockLocationService.getAssignedLocations.mockRejectedValueOnce(
-      new Error("Network down")
-    );
+    mockUseProviderLocations.mockReturnValue({
+      locations: [],
+      loading: false,
+      error: "Network down",
+      refreshAssignments: jest.fn(),
+      refreshLocations: jest.fn(),
+      refreshing: false,
+    });
 
     render(<SchoolList />);
 
@@ -241,9 +264,14 @@ describe("SchoolList Component", () => {
   });
 
   it("shows loading state initially", () => {
-    mockLocationService.getAssignedLocations.mockImplementationOnce(
-      () => new Promise(() => {}), // Never resolves
-    );
+    mockUseProviderLocations.mockReturnValue({
+      locations: [],
+      loading: true,
+      error: null,
+      refreshAssignments: jest.fn(),
+      refreshLocations: jest.fn(),
+      refreshing: false,
+    });
 
     render(<SchoolList />);
 

@@ -50,6 +50,12 @@ export interface Session {
   notes?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // Error/review metadata
+  errorCode?: string;
+  needsAdminReview?: boolean;
+  adminReviewStatus?: "unreviewed" | "reviewed";
+  adminReviewedAt?: Timestamp;
+  adminReviewedBy?: string;
   // Legacy compatibility fields (read-only usage)
   checkInTime?: Timestamp;
   checkOutTime?: Timestamp | null;

@@ -394,7 +394,11 @@ self.addEventListener("push", (event: PushEvent) => {
     const payload = event.data.json();
 
     const title = payload.title || "Schools In";
-    const options: any = {
+    type NotificationOptionsWithActions = NotificationOptions & {
+      actions?: Array<{ action: string; title: string; icon?: string }>;
+    };
+
+    const options: NotificationOptionsWithActions = {
       body: payload.body || "You have a new notification",
       icon: payload.icon || "/icons/icon-192x192.png",
       badge: payload.badge || "/icons/icon-72x72.png",

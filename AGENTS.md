@@ -2,37 +2,55 @@
 
 ## Commands
 
-- **Build**: `npm run build` (Next.js build for static export)
-- **Production Build**: `npm run production:build` (optimized production build)
-- **Staging Build**: `npm run staging:build` (staging environment build)
-- **Lint**: `npm run lint` or `npm run lint:fix` (ESLint with TypeScript)
-- **Test**: `npm test` (Jest with React Testing Library)
-- **Test single file**: `npm test -- path/to/file.test.ts`
-- **Test watch mode**: `npm run test:watch`
-- **Test CI**: `npm run test:ci` (Jest with coverage and CI reporting)
-- **E2E tests**: `npm run test:e2e` (Cypress)
-- **E2E headless**: `npm run test:e2e:headless` (Cypress headless mode)
-- **Performance tests**: `npm run test:performance` (Cypress performance testing)
-- **Accessibility tests**: `npm run test:a11y` (Cypress accessibility testing)
-- **Lighthouse**: `npm run lighthouse:local` (Lighthouse CI performance auditing)
-- **Bundle analysis**: `npm run analyze` (Bundle analyzer with Next.js)
-- **Firebase Rules Tests**: `npm run test:firestore-rules` and `npm run test:storage-rules`
-- **Dev with Firebase**: `npm run dev:firebase` (concurrently runs Firebase emulators + Next.js dev)
-- **Deploy**: `npx firebase deploy --only firestore,hosting` (deploy Firestore + static hosting)
-- **Deploy Production**: `npm run firebase:deploy:production` (full production deployment)
-- **Deploy Staging**: `npm run firebase:deploy:staging` (staging channel deployment)
-- **Rollback**: `npm run firebase:rollback` (interactive rollback utility)
-- **Emergency Rollback**: `npm run firebase:rollback:emergency` (one-click rollback)
-- **Deployment Status**: `npm run deployment:status` (check deployment health)
+- **Dev (Next.js)**: `npm run dev` (runs on `http://localhost:3000`)
+- **Dev with Firebase emulators**: `npm run dev:firebase` (runs emulators + `npm run dev`)
+- **Build (static export)**: `npm run build`
+  - `next.config.js` sets `output: "export"`, so `npm run build` produces the `out/` directory used by Firebase Hosting.
+  - `npm run export` exists but is generally redundant when `output: "export"` is enabled.
+- **Production build**: `npm run production:build` (sets `NEXT_PUBLIC_APP_ENV=production`)
+- **Staging build**: `npm run staging:build` (sets `NEXT_PUBLIC_APP_ENV=staging`)
+- **Start (server)**: `npm run start` (for non-static Next server usage; Firebase Hosting serves `out/`)
+- **Lint**: `npm run lint` (primary) or `npm run lint:fix`
+  - `npm run lint:next` exists (Next.js lint wrapper), but the repo’s main lint is flat-config ESLint.
+- **Unit tests**: `npm test`
+  - **Watch**: `npm run test:watch`
+  - **CI (coverage + junit)**: `npm run test:ci`
+- **E2E (Cypress)**:
+  - **Interactive**: `npm run test:e2e`
+  - **Headless**: `npm run test:e2e:headless`
+  - **With dev server (local/CI)**: `npm run test:e2e:dev` / `npm run test:e2e:ci`
+  - **Performance**: `npm run test:performance`
+  - **Accessibility**: `npm run test:a11y`
+- **Lighthouse CI**:
+  - **Direct**: `npm run lighthouse`
+  - **Local (starts dev server)**: `npm run lighthouse:local`
+- **Bundle analysis**: `npm run analyze` (enables `@next/bundle-analyzer`)
+- **Firebase rules tests (emulator-backed)**: `npm run test:firestore-rules` / `npm run test:storage-rules`
+- **Firebase emulators**:
+  - **All**: `npm run firebase:emulators`
+  - **Auth/Firestore/Storage**: `npm run firebase:emulators:ui`
+- **Deploy**:
+  - **Everything**: `npm run firebase:deploy`
+  - **Hosting only**: `npm run firebase:deploy:hosting`
+  - **Rules only**: `npm run firebase:deploy:rules`
+  - **Production (script)**: `npm run firebase:deploy:production` (see `scripts/deploy-production.sh`)
+  - **Production dry-run**: `npm run firebase:deploy:dry-run`
+  - **Staging channel**: `npm run firebase:deploy:staging`
+- **Rollback (Hosting)**:
+  - **Interactive**: `npm run firebase:rollback`
+  - **Emergency (auto previous)**: `npm run firebase:rollback:emergency`
+- **Deployment status utilities**: `npm run deployment:status` (invokes `HostingManager.monitorDeployment()`; primarily useful in-browser since it short-circuits when `window` is undefined)
+- **Seed Firestore**: `npm run db:seed` (runs `scripts/seed-firestore.ts` via `ts-node`)
 
 ## Architecture
 
-- **Architecture**: Next.js 14 with TypeScript, App Router, PWA support, Static Export
+- **Architecture**: Next.js 14 + TypeScript, App Router, PWA support, **static export** (`output: "export"`)
 - **Hosting**: Firebase Hosting with static site deployment
 - **Database**: Firebase Firestore with collections: users, system, sessions, locations
 - **Caching**: Multi-layer caching (Memory → Session → Local → IndexedDB) with SSR-safe initialization
 - **Geofencing**: Adaptive strategy detection (Periodic Sync, Wake Lock, Polling) with background support
-- **Images**: Next.js Image optimization with lazy loading and WebP/AVIF support
+- **Service worker / PWA**: Serwist (`@serwist/next`) with source at `src/app/sw.ts` and output at `public/sw.js`
+- **Images**: `next.config.js` uses `images.unoptimized: true` (required for static export); formats include WebP/AVIF
 - **UI**: Radix UI components with Tailwind CSS, shadcn/ui components
 - **Auth**: Microsoft Authentication only with cached user data and role-based access
 - **Maps**: Google Maps integration with @vis.gl/react-google-maps for geolocation and navigation
@@ -40,6 +58,13 @@
 - **State**: React hooks, cached Firebase data, offline-capable storage
 - **Deployment**: Firebase Hosting static export with Firestore backend
 - **Monitoring**: Firebase Performance Monitoring + Web Vitals tracking
+
+## Static Export Constraints (Important)
+
+- **Static output**: Routes must be compatible with `output: "export"` (no runtime server rendering).
+- **Type-checking on build**: `next.config.js` sets `typescript.ignoreBuildErrors: true`.
+  - The project is still TypeScript-`strict` (see `tsconfig.json`), but **a successful `npm run build` does not guarantee type safety**.
+  - When you need a hard type-check locally/CI, run `npx tsc --noEmit`.
 
 ## Performance Optimizations
 
@@ -71,7 +96,25 @@
 - **Hosting Config**: `firebase.json` - Optimized headers and caching strategies for static export
 - **Monitoring**: Real-time health checks, performance metrics, error tracking
 - **Deployment**: Firebase Hosting static export with composite Firestore indexes
-- **Live URL**: https://schools-in-check.web.app
+- **Live URL**: `https://schools-in-check.web.app`
+
+## Local Firebase Emulator Ports
+
+From `firebase.json`:
+
+- **Auth**: 9099
+- **Functions**: 5001
+- **Firestore**: 8080
+- **Hosting**: 5000
+
+## Deploy / Rollback Notes
+
+- **Production deploy script**: `scripts/deploy-production.sh`
+  - Validates `.env.production`, validates rules, runs unit tests, builds `out/`, then deploys Firestore + Storage + Hosting.
+  - Supports `--dry-run` and `--skip-tests`.
+- **Rollback script**: `scripts/rollback-deployment.sh`
+  - Requires `jq` and `curl` available on PATH.
+  - Supports `FORCE_ROLLBACK=true` to skip confirmation and `emergency` mode.
 
 ## Key Utilities
 
@@ -101,12 +144,12 @@
   - `src/components/pwa/PWAInstallPrompt.tsx` - Custom install prompt
   - `src/components/pwa/PWAUpdatePrompt.tsx` - Service worker update notifications
 - **Image Components**:
-  - `OptimizedImage` - Main optimized image component with SSR guards
-  - `OptimizedAvatar` - User avatar with fallbacks
-  - `LazyImage` - Advanced lazy loading with placeholders
+  - `src/components/ui/optimized-image.tsx` - `OptimizedImage` + `OptimizedAvatar` (SSR guards + fallbacks)
+  - `src/components/ui/lazy-image.tsx` - `LazyImage` (advanced lazy loading with placeholders)
+  - `src/components/ui/avatar.tsx` - Radix `Avatar` primitives (simple UI wrapper)
 - **Performance Monitoring**:
   - `src/lib/performance/webVitals.ts` - Core Web Vitals tracking
-  - `src/components/dev/PerformanceMonitor.tsx` - Development performance dashboard
+  - `src/lib/firebase/productionConfig.ts` - Firebase Performance Monitoring setup (production config)
 - **SSR Safety**: All client-only modules (cache, offline) safely initialized post-hydration
 
 ## Code Style
@@ -122,7 +165,7 @@
 - **Performance**: Prefer cached hooks (`useCachedAuth`, `useCachedSession`) for better performance
 - **Maps**: Use `@vis.gl/react-google-maps` components for Google Maps integration
 - **Testing**: Write tests for all new components and utilities
-- **Accessibility**: Include proper ARIA labels and semantic HTML (see `src/AGENTS.md` for detailed UI/UX rules)
+- **Accessibility**: Include proper ARIA labels and semantic HTML (see `docs/design-system.md` and `docs/responsive-design-system.md`)
 
 ## Recent Updates (as of December 2025)
 
@@ -174,7 +217,7 @@
 
 ### Performance & PWA
 
-- **serwist**: ^1.2.0 (Progressive Web App)
+- **serwist**: ^9.2.3 (Progressive Web App) + `@serwist/next` ^9.2.3
 - **Bundle Analyzer**: ^15.5.2 (Bundle size analysis)
 - **Web Vitals**: ^5.1.0 (Performance monitoring)
 - **IDB**: ^8.0.3 (IndexedDB for offline storage)

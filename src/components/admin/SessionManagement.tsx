@@ -44,6 +44,7 @@ import {
   calculateSessionDuration,
 } from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
+import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import {
   getCollection,
   updateDocument,
@@ -96,6 +97,7 @@ interface CorrectionFormData {
 }
 
 export function SessionManagement() {
+  const { user } = useCachedAuth();
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [providers, setProviders] = useState<User[]>([]);
@@ -218,6 +220,33 @@ export function SessionManagement() {
     }));
   };
 
+  const markSessionReviewed = async (session: SessionData) => {
+    if (!session.id) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const reviewUpdate = {
+        needsAdminReview: false,
+        adminReviewStatus: "reviewed" as const,
+        adminReviewedAt: Timestamp.now(),
+        adminReviewedBy: user?.uid ?? "unknown",
+      };
+
+      await updateDocument(COLLECTIONS.SESSIONS, session.id, reviewUpdate);
+
+      setSessions((prev) =>
+        prev.map((s) => (s.id === session.id ? { ...s, ...reviewUpdate } : s))
+      );
+    } catch (err) {
+      console.error("Error marking session reviewed:", err);
+      setError("Failed to mark session as reviewed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Save session corrections
   const saveSessionCorrections = async () => {
     if (!selectedSession?.id) return;
@@ -293,14 +322,42 @@ export function SessionManagement() {
       const isStuck =
         session.status === "active" &&
         session.checkInTime.toDate() < twelveHoursAgo;
-      const hasError = session.status === "error";
       const isPaused = session.status === "paused";
+      const hasErrorNeedingReview =
+        session.status === "error" && session.needsAdminReview !== false;
 
-      return isStuck || hasError || isPaused;
+      return isStuck || hasErrorNeedingReview || isPaused;
     });
   };
 
-  const sessionsNeedingAttention = getSessionsNeedingAttention();
+  const getAttentionPriority = (session: SessionData) => {
+    if (session.status === "error" && session.errorCode === "timeout_auto_close")
+      return 0;
+    if (session.status === "error") return 1;
+    if (session.status === "active") return 2;
+    if (session.status === "paused") return 3;
+    return 4;
+  };
+
+  const getAttentionReason = (session: SessionData) => {
+    if (session.status === "error" && session.errorCode === "timeout_auto_close") {
+      return "Auto-closed by system after timeout";
+    }
+    if (session.status === "error") {
+      return "Error state";
+    }
+    if (session.status === "active") {
+      return "Active for more than 12 hours";
+    }
+    if (session.status === "paused") {
+      return "Paused session";
+    }
+    return "Needs review";
+  };
+
+  const sessionsNeedingAttention = getSessionsNeedingAttention().sort(
+    (a, b) => getAttentionPriority(a) - getAttentionPriority(b)
+  );
 
   return (
     <div className="space-y-6">
@@ -347,6 +404,7 @@ export function SessionManagement() {
                     <TableHead>Check In</TableHead>
                     <TableHead>Duration</TableHead>
                     <TableHead>Status</TableHead>
+                  <TableHead>Attention</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -386,9 +444,19 @@ export function SessionManagement() {
                               : "default"
                           }
                         >
-                          {getSessionStatusConfig(session.status).label}
+                          {getSessionStatusConfig(session).label}
                         </Badge>
                       </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {getAttentionReason(session)}
+                      {session.status === "error" &&
+                        session.errorCode === "timeout_auto_close" &&
+                        session.needsAdminReview !== false && (
+                          <div className="text-xs text-orange-700">
+                            Needs admin review
+                          </div>
+                        )}
+                    </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button
@@ -399,6 +467,18 @@ export function SessionManagement() {
                             <Edit className="h-3 w-3" />
                             Edit
                           </Button>
+                        {session.status === "error" &&
+                          session.errorCode === "timeout_auto_close" &&
+                          session.needsAdminReview !== false && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => markSessionReviewed(session)}
+                              disabled={loading}
+                            >
+                              Mark Reviewed
+                            </Button>
+                          )}
                           {session.status === "active" && (
                             <Button
                               size="sm"
@@ -499,7 +579,7 @@ export function SessionManagement() {
                               : "outline"
                           }
                         >
-                          {getSessionStatusConfig(session.status).label}
+                          {getSessionStatusConfig(session).label}
                         </Badge>
                       </TableCell>
                       <TableCell>
