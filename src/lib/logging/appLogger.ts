@@ -42,7 +42,7 @@ const normalizeMeta = (meta?: LogMetadata): LogMetadata | undefined => {
 };
 
 const formatPrefix = (level: LogLevel) =>
-  `[Schools-In][${level.toUpperCase()}][${new Date().toISOString()}]`;
+  `[CampusAccess][${level.toUpperCase()}][${new Date().toISOString()}]`;
 
 const log = (level: LogLevel, message: string, meta?: LogMetadata) => {
   const method = consoleMap[level];

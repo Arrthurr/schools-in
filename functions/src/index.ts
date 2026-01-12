@@ -1254,7 +1254,7 @@ exports.notifyOnFeedback = onDocumentCreated(
           <a href="${feedbackUrl}" class="button">View in Admin Console</a>
         </div>
         <div class="footer">
-          <p>This is an automated notification from Schools-In Feedback System</p>
+          <p>This is an automated notification from DMDL CampusAccess Feedback System</p>
         </div>
       </div>
     </body>

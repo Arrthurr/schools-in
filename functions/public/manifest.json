@@ -1,6 +1,6 @@
 {
-  "name": "DMDL Schools-In - Provider Check-In System",
-  "short_name": "DMDL Schools-In",
+  "name": "DMDL CampusAccess - Provider Check-In System",
+  "short_name": "DMDL CampusAccess",
   "description": "Professional location-based check-in and check-out system for service providers at schools",
   "start_url": "/",
   "display": "standalone",
