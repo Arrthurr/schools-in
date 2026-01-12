@@ -540,7 +540,10 @@ class QueueManager {
     if (this.listeners.size > 0) {
       try {
         const stats =
-          this.lastKnownStats ?? (await this.getStats());
+          this.lastKnownStats &&
+          Date.now() - this.lastStatsAt < this.config.syncInterval * 2
+            ? this.lastKnownStats
+            : await this.getStats();
         this.listeners.forEach((callback) => {
           try {
             callback(stats);
