@@ -117,7 +117,7 @@ export async function subscribeToPush(
       // Create new subscription
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as BufferSource,
       });
 
       appLogger.info("New push subscription created");
@@ -281,7 +281,7 @@ export function saveReminderSettings(settings: Partial<ReminderSettings>): void 
   };
 
   localStorage.setItem(REMINDER_SETTINGS_KEY, JSON.stringify(updated));
-  appLogger.info("Reminder settings saved", updated);
+  appLogger.info("Reminder settings saved", { settings: updated });
 }
 
 /**
@@ -333,7 +333,7 @@ export async function showCheckInReminder(locationName?: string): Promise<void> 
       { action: "open", title: "Open App" },
       { action: "dismiss", title: "Dismiss" },
     ],
-  });
+  } as NotificationOptions);
 }
 
 /**
@@ -358,7 +358,7 @@ export async function showCheckOutReminder(
       { action: "open", title: "Open App" },
       { action: "dismiss", title: "Dismiss" },
     ],
-  });
+  } as NotificationOptions);
 }
 
 /**

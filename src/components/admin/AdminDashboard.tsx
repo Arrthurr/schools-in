@@ -436,7 +436,6 @@ export function AdminDashboard() {
                     size="sm"
                     className="touch-target"
                     onClick={disableAdminAlerts}
-                    disabled={alertStatus === "enabling"}
                   >
                     Disable alerts
                   </Button>

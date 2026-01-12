@@ -231,7 +231,7 @@ export function SessionManagement() {
         needsAdminReview: false,
         adminReviewStatus: "reviewed" as const,
         adminReviewedAt: Timestamp.now(),
-        adminReviewedBy: user?.uid || null,
+        adminReviewedBy: user?.uid ?? "unknown",
       };
 
       await updateDocument(COLLECTIONS.SESSIONS, session.id, reviewUpdate);

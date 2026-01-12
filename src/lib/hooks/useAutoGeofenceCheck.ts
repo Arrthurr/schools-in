@@ -608,13 +608,15 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         // Mark permission as granted on successful location fetch
         setLocationPermission("granted");
         
-        const hasAccuracy = typeof current.accuracy === "number";
+        const accuracyMeters =
+          typeof current.accuracy === "number" ? current.accuracy : undefined;
         const actionableAccuracy =
-          !hasAccuracy || current.accuracy <= ACCURACY_THRESHOLD_METERS;
+          accuracyMeters === undefined ||
+          accuracyMeters <= ACCURACY_THRESHOLD_METERS;
 
         if (!actionableAccuracy) {
           handlePoorAccuracy();
-          setLastAccuracyMeters(current.accuracy);
+          setLastAccuracyMeters(accuracyMeters);
           // Still update last known location for visibility but skip decisions
           updateGeofenceUserLocation(current.latitude, current.longitude).catch(
             () => undefined
@@ -623,7 +625,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
           return;
         } else {
           handleGoodAccuracy();
-          setLastAccuracyMeters(current.accuracy);
+          setLastAccuracyMeters(accuracyMeters);
         }
 
         // Update user location in IndexedDB for SW access
@@ -881,14 +883,14 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         // For strategies with push reminders, show reminder on return if appropriate
         if (strategyConfig.usePushReminders && isReminderTime()) {
           if (activeSession) {
-            const activeLoc = assignedLocations.find(
-              (loc) => loc.id === activeSession.locationId
-            );
-            // Don't show reminder if user is inside geofence (checked in runPoll)
-            // This is just a gentle nudge for when they return to the app
+            const activeLocName =
+              assignedLocations.find((loc) => loc.id === activeSession.locationId)
+                ?.name ?? undefined;
+            // Gentle nudge when returning to the app during reminder windows.
+            void showCheckOutReminder(activeLocName);
           } else if (assignedLocations.length > 0) {
-            // No active session - could show check-in reminder
-            // But we don't want to be annoying, so only at reminder times
+            const firstLocationName = assignedLocations[0]?.name ?? undefined;
+            void showCheckInReminder(firstLocationName);
           }
         }
       }

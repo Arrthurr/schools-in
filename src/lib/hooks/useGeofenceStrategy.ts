@@ -24,7 +24,6 @@ import {
   type PWACapabilities,
   type PlatformInfo,
   type GeofenceStrategy,
-  type CapabilityReport,
 } from "@/lib/pwa/capabilities";
 import { appLogger } from "@/lib/logging/appLogger";
 
@@ -48,7 +47,6 @@ export function useGeofenceStrategy(): UseGeofenceStrategyResult {
   const [isLoading, setIsLoading] = useState(true);
   const [capabilities, setCapabilities] = useState<PWACapabilities | null>(null);
   const [platform, setPlatform] = useState<PlatformInfo | null>(null);
-  const [primaryStrategy, setPrimaryStrategy] = useState<GeofenceStrategy>("manual-only");
   const [fallbackStrategy, setFallbackStrategy] = useState<GeofenceStrategy | null>(null);
   const [currentStrategy, setCurrentStrategy] = useState<GeofenceStrategy>("manual-only");
   const [limitations, setLimitations] = useState<string[]>([]);
@@ -60,12 +58,11 @@ export function useGeofenceStrategy(): UseGeofenceStrategyResult {
       const caps = await detectCapabilities();
       const plat = detectPlatform();
       const strategy = determineGeofenceStrategy(caps, plat);
-      const fallback = determineFallbackStrategy(strategy, caps, plat);
+      const fallback = determineFallbackStrategy(strategy, caps);
       const limits = getCapabilityLimitations(caps, plat);
 
       setCapabilities(caps);
       setPlatform(plat);
-      setPrimaryStrategy(strategy);
       setFallbackStrategy(fallback);
       setCurrentStrategy(strategy);
       setLimitations(limits);

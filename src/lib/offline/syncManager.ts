@@ -2,7 +2,6 @@
 // Optimizes sync behavior based on network conditions and queue priority
 
 import {
-  processQueue,
   getPendingActions,
   processQueuedAction,
   updateActionStatus,

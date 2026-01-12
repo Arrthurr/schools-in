@@ -176,7 +176,7 @@ export async function detectCapabilities(): Promise<PWACapabilities> {
     notifications,
   };
 
-  appLogger.info("PWA capabilities detected", cachedCapabilities);
+  appLogger.info("PWA capabilities detected", { capabilities: cachedCapabilities });
 
   return cachedCapabilities;
 }
@@ -226,8 +226,7 @@ export function determineGeofenceStrategy(
  */
 export function determineFallbackStrategy(
   primaryStrategy: GeofenceStrategy,
-  capabilities: PWACapabilities,
-  platform: PlatformInfo
+  capabilities: PWACapabilities
 ): GeofenceStrategy | null {
   switch (primaryStrategy) {
     case "periodic-sync":
@@ -315,11 +314,7 @@ export async function getCapabilityReport(): Promise<CapabilityReport> {
   const capabilities = await detectCapabilities();
   const platform = detectPlatform();
   const recommendedStrategy = determineGeofenceStrategy(capabilities, platform);
-  const fallbackStrategy = determineFallbackStrategy(
-    recommendedStrategy,
-    capabilities,
-    platform
-  );
+  const fallbackStrategy = determineFallbackStrategy(recommendedStrategy, capabilities);
   const limitations = getCapabilityLimitations(capabilities, platform);
 
   const report: CapabilityReport = {
