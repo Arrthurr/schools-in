@@ -32,12 +32,17 @@ const config = {
     "!src/**/*.d.ts",
     "!src/**/*.stories.{js,jsx,ts,tsx}",
     "!src/**/index.{js,jsx,ts,tsx}",
+    // Exclude Next.js instrumentation hook file (runtime wiring; not meaningfully unit-testable)
+    "!src/instrumentation.ts",
     // Exclude infrastructure, generated UI primitives, and legacy/offline
     // code paths that are not part of the current runtime surface. This keeps
     // coverage focused on the authenticated app flows we ship.
     "!src/lib/deployment/**",
     "!src/lib/offline/**",
     "!src/lib/performance/**",
+    // Browser-only / integration-heavy code (maps + PWA) is covered by E2E rather than unit tests
+    "!src/components/maps/**",
+    "!src/lib/pwa/**",
     "!src/lib/testing/**",
     "!src/lib/cache/cacheInitializer.ts",
     "!src/lib/cache/**",

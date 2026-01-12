@@ -345,8 +345,8 @@ async function notifyClientsToProcessActionQueue(
       return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     };
 
-    const messageHandler = (event: MessageEvent) => {
-      const data = (event as MessageEvent).data || {};
+    const messageHandler = (event: ExtendableMessageEvent) => {
+      const data = (event as ExtendableMessageEvent).data || {};
       const { type, requestId, error } = data;
       if (
         (type === "PROCESS_ACTION_QUEUE_COMPLETE" ||
