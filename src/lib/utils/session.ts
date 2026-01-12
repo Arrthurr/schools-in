@@ -19,6 +19,12 @@ export interface SessionData {
   distanceFromCenterAtCheckIn?: number;
   dayKey?: string;
   active?: boolean;
+  // Error/review metadata
+  errorCode?: string;
+  needsAdminReview?: boolean;
+  adminReviewStatus?: "unreviewed" | "reviewed";
+  adminReviewedAt?: Timestamp;
+  adminReviewedBy?: string;
 }
 
 // Calculate session duration in minutes
@@ -100,7 +106,30 @@ export const getSessionStatusColor = (status: string): string => {
 };
 
 // Get session status configuration
-export const getSessionStatusConfig = (status: string) => {
+export const getSessionStatusConfig = (
+  statusOrSession: string | Partial<SessionData>
+) => {
+  const status =
+    typeof statusOrSession === "string"
+      ? statusOrSession
+      : statusOrSession.status || "unknown";
+  const errorCode =
+    typeof statusOrSession === "string"
+      ? undefined
+      : statusOrSession.errorCode;
+
+  const isTimeoutAutoClose =
+    status === "error" && errorCode === "timeout_auto_close";
+
+  if (isTimeoutAutoClose) {
+    return {
+      label: "Auto-closed (timeout)",
+      color: "bg-red-100 text-red-800 border-red-200",
+      icon: "AlertCircle",
+      description: "Session auto-closed by system after timeout",
+    };
+  }
+
   switch (status) {
     case "active":
       return {

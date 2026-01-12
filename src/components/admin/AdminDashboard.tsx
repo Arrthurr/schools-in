@@ -13,6 +13,7 @@ import {
   MapPin,
   Activity,
   Calendar,
+  Bell,
 } from "lucide-react";
 import { SkeletonCard, Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -26,6 +27,16 @@ import {
 } from "@/components/dashboard";
 import { ActiveSessionsModal } from "@/components/admin/ActiveSessionsModal";
 import { AdminManualCheckInOut } from "@/components/admin/AdminManualCheckInOut";
+import {
+  isPushSupported,
+  requestPushPermission,
+  subscribeToPush,
+  saveAdminAlertSubscriptionToFirebase,
+  removeAdminAlertSubscriptionFromFirebase,
+} from "@/lib/pwa/pushReminders";
+import { db } from "../../../firebase.config";
+import { doc, getDoc } from "firebase/firestore";
+import { COLLECTIONS } from "@/lib/firebase/firestore";
 
 interface RecentActivity {
   id: string;
@@ -41,6 +52,11 @@ export function AdminDashboard() {
   const { stats, recent, loading, error } = useAdminMetrics();
   const [totalSchools, setTotalSchools] = useState<number | null>(null);
   const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
+  const [alertStatus, setAlertStatus] = useState<
+    "idle" | "enabling" | "enabled" | "error"
+  >("idle");
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
   // Accessibility hooks
   // const { announce } = useAnnouncement();
@@ -70,6 +86,123 @@ export function AdminDashboard() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkAdminAlertSubscription = async () => {
+      if (!user?.uid) {
+        setAlertStatus("idle");
+        return;
+      }
+
+      if (!isPushSupported() || !VAPID_PUBLIC_KEY) {
+        setAlertStatus("idle");
+        return;
+      }
+
+      try {
+        const subDoc = await getDoc(
+          doc(
+            db,
+            COLLECTIONS.USERS,
+            user.uid,
+            "pushSubscriptions",
+            "adminAlerts"
+          )
+        );
+
+        if (cancelled) return;
+
+        if (subDoc.exists()) {
+          setAlertStatus("enabled");
+          setAlertMessage("Admin alerts are enabled.");
+        } else {
+          setAlertStatus("idle");
+          setAlertMessage(null);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to check admin alert subscription", err);
+        setAlertStatus("idle");
+      }
+    };
+
+    checkAdminAlertSubscription();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, VAPID_PUBLIC_KEY]);
+
+  const enableAdminAlerts = async () => {
+    if (!user?.uid) {
+      setAlertStatus("error");
+      setAlertMessage("You must be signed in as an admin to enable alerts.");
+      return;
+    }
+
+    if (!isPushSupported()) {
+      setAlertStatus("error");
+      setAlertMessage("Push notifications are not supported in this browser.");
+      return;
+    }
+
+    if (!VAPID_PUBLIC_KEY) {
+      setAlertStatus("error");
+      setAlertMessage("Push notifications are not configured (missing VAPID key).");
+      return;
+    }
+
+    setAlertStatus("enabling");
+    setAlertMessage(null);
+
+    try {
+      let permission = Notification.permission;
+      if (permission === "default") {
+        permission = await requestPushPermission();
+      }
+
+      if (permission !== "granted") {
+        setAlertStatus("error");
+        setAlertMessage("Notification permission was denied.");
+        return;
+      }
+
+      const subscription = await subscribeToPush(VAPID_PUBLIC_KEY);
+
+      if (!subscription) {
+        setAlertStatus("error");
+        setAlertMessage("Failed to create a push subscription.");
+        return;
+      }
+
+      await saveAdminAlertSubscriptionToFirebase(user.uid, subscription);
+
+      setAlertStatus("enabled");
+      setAlertMessage(
+        "Admin alerts enabled. You will be notified when sessions auto-close."
+      );
+    } catch (err) {
+      console.error("Failed to enable admin alerts", err);
+      setAlertStatus("error");
+      setAlertMessage("Failed to enable admin alerts. Please try again.");
+    }
+  };
+
+  const disableAdminAlerts = async () => {
+    if (!user?.uid) return;
+    setAlertStatus("enabling");
+    setAlertMessage(null);
+    try {
+      await removeAdminAlertSubscriptionFromFirebase(user.uid);
+      setAlertStatus("idle");
+      setAlertMessage("Admin alerts disabled.");
+    } catch (err) {
+      console.error("Failed to disable admin alerts", err);
+      setAlertStatus("error");
+      setAlertMessage("Failed to disable admin alerts. Please try again.");
+    }
+  };
 
   const formatRelativeTime = (date: Date) => {
     const now = new Date();
@@ -263,8 +396,55 @@ export function AdminDashboard() {
           />
         </SectionCard>
 
-        {/* Admin Manual Check-In/Out */}
-        <AdminManualCheckInOut />
+        <div className="space-y-4">
+          {/* Admin Manual Check-In/Out */}
+          <AdminManualCheckInOut />
+
+          {/* Admin Alerts Opt-In */}
+          <SectionCard
+            title="Admin alerts"
+            description="Get notified when sessions auto-close due to timeout"
+          >
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Enable push notifications to be alerted when a session is
+                automatically closed after timing out.
+              </p>
+              {alertMessage && (
+                <p
+                  className={`text-sm ${
+                    alertStatus === "error" ? "text-destructive" : "text-green-700"
+                  }`}
+                >
+                  {alertMessage}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="touch-target"
+                  onClick={enableAdminAlerts}
+                  disabled={alertStatus === "enabling"}
+                >
+                  <Bell className="h-4 w-4 mr-2" />
+                  {alertStatus === "enabled" ? "Re-enable alerts" : "Enable alerts"}
+                </Button>
+                {alertStatus === "enabled" && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="touch-target"
+                    onClick={disableAdminAlerts}
+                    disabled={alertStatus === "enabling"}
+                  >
+                    Disable alerts
+                  </Button>
+                )}
+              </div>
+            </div>
+          </SectionCard>
+        </div>
       </div>
 
       {/* Active Sessions Modal */}

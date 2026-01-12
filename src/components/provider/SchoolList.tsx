@@ -4,9 +4,9 @@ import { useState, useEffect, useId, useMemo, useCallback } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useLocation } from "@/lib/hooks/useLocation";
 import { useSession } from "@/lib/hooks/useSession";
+import { useProviderLocations } from "@/lib/hooks/useProviderLocations";
 
 import {
-  getAssignedLocations,
   addDistances,
   sortByDistance,
   LocationWithDistance,
@@ -30,6 +30,7 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
+  RefreshCcw,
 } from "lucide-react";
 import { SkeletonList } from "../ui/skeleton";
 import { ErrorState, EmptyState } from "../ui/error-empty-states";
@@ -62,10 +63,16 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   const { user } = useAuth();
   const { location } = useLocation();
   const { checkIn, currentSession } = useSession();
+  const {
+    locations: providerLocations,
+    loading: locationsLoading,
+    error: locationsError,
+    refreshAssignments,
+    refreshing,
+  } = useProviderLocations(user?.uid);
 
   const [schools, setSchools] = useState<School[]>([]);
   const [filteredSchools, setFilteredSchools] = useState<School[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [checkingInSchoolId, setCheckingInSchoolId] = useState<string | null>(null);
@@ -85,51 +92,14 @@ export const SchoolList: React.FC<SchoolListProps> = ({
   );
   const searchInputId = useId();
 
-  // Load assigned schools
+  // Sync provider locations from hook into component state
   useEffect(() => {
-    let isCancelled = false;
-    
-    const loadSchools = async () => {
-      if (!user?.uid || isCancelled) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const assignedLocations = await getAssignedLocations(user.uid);
-
-        // Check if component is still mounted before updating state
-        if (isCancelled) return;
-        
-        setSchools(assignedLocations);
-        setFilteredSchools(assignedLocations);
-
-        // Announce results to screen readers
-        announce(`${assignedLocations.length} assigned schools loaded`, "polite");
-      } catch (err) {
-        console.error("Error loading schools:", err);
-        const errorMessage = "Failed to load schools. Please try again.";
-
-        // Check if component is still mounted before updating state
-        if (isCancelled) return;
-        
-        setError(errorMessage);
-        announce(`Error: ${errorMessage}`, "assertive");
-      } finally {
-        // Check if component is still mounted before updating state
-        if (!isCancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadSchools();
-
-    // Cleanup function to mark component as cancelled
-    return () => {
-      isCancelled = true;
-    };
-  }, [user?.uid, announce]);
+    setError(locationsError || null);
+    if (!providerLocations) return;
+    setSchools(providerLocations);
+    setFilteredSchools(providerLocations);
+    announce(`${providerLocations.length} assigned schools loaded`, "polite");
+  }, [providerLocations, locationsError, announce]);
 
   // Clear any stale school data when the user changes or logs out
   useEffect(() => {
@@ -177,6 +147,21 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     const timeoutId = setTimeout(filterSchools, 300); // Debounce search
     return () => clearTimeout(timeoutId);
   }, [searchQuery, schools, announce]);
+
+  const combinedError = error || locationsError;
+  const isLoading = locationsLoading && schools.length === 0;
+
+  const handleRefreshAssignments = async () => {
+    try {
+      await refreshAssignments();
+      setError(null);
+      announce("Assignments refreshed", "polite");
+    } catch (err: any) {
+      const message = err?.message || "Failed to refresh assignments";
+      setError(message);
+      announce(message, "assertive");
+    }
+  };
 
   const isWithinRadius = (school: School) => {
     if (!location || typeof school.distance !== "number") {
@@ -243,7 +228,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card className={className}>
         <CardHeader>
@@ -260,12 +245,12 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     );
   }
 
-  if (error) {
+  if (combinedError) {
     return (
       <ErrorState
         type="generic"
         title="Failed to load schools"
-        message={error}
+        message={combinedError}
         onAction={() => window.location.reload()}
         actionLabel="Reload"
         className={className}
@@ -309,6 +294,27 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                 </span>
               )}
             </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRefreshAssignments}
+              disabled={refreshing || isLoading}
+              className="touch-target"
+            >
+              {refreshing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <RefreshCcw className="h-4 w-4 mr-2" />
+                  Refresh assignments
+                </>
+              )}
+            </Button>
           </div>
         </div>
 

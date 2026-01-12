@@ -665,8 +665,121 @@ exports.startSession = onCall(async (request: any) => {
   }
 });
 
+/**
+ * Callable function to end a session with server-side validation
+ */
+exports.endSession = onCall(async (request: any) => {
+  try {
+    const { data, auth } = request;
+
+    if (!auth) {
+      throw new Error("Authentication required");
+    }
+
+    if (!data?.sessionId || !data?.checkOutTime) {
+      throw new Error("Missing required session data: sessionId, checkOutTime");
+    }
+
+    const db = admin.firestore();
+    const userId = auth.uid;
+
+    const result = await db.runTransaction(async (transaction: any) => {
+      const sessionRef = db.collection("sessions").doc(data.sessionId);
+      const sessionDoc = await transaction.get(sessionRef);
+
+      if (!sessionDoc.exists) {
+        throw new Error("Session not found");
+      }
+
+      const sessionData = sessionDoc.data();
+
+      if (sessionData.userId !== userId) {
+        throw new Error("You are not authorized to end this session.");
+      }
+
+      if (!["active", "paused"].includes(sessionData.status)) {
+        throw new Error("Session is not active.");
+      }
+
+      const startTime = sessionData.startTime || sessionData.checkInTime;
+      if (!startTime) {
+        throw new Error("Session missing start time");
+      }
+
+      const checkOutTimestamp = admin.firestore.Timestamp.fromDate(
+        new Date(data.checkOutTime)
+      );
+      const durationMinutes = Math.max(
+        0,
+        Math.floor(
+          (checkOutTimestamp.toMillis() - startTime.toMillis()) / (1000 * 60)
+        )
+      );
+
+      const updateData: Record<string, any> = {
+        endTime: checkOutTimestamp,
+        checkOutTime: checkOutTimestamp,
+        status: "completed",
+        active: false,
+        durationMinutes,
+        updatedAt: admin.firestore.Timestamp.now(),
+      };
+
+      if (data.checkOutLocation) {
+        updateData.checkOutLocation = {
+          latitude: data.checkOutLocation.latitude,
+          longitude: data.checkOutLocation.longitude,
+          accuracy: data.checkOutLocation.accuracy || null,
+        };
+
+        if (sessionData.geo) {
+          updateData.distanceFromCenterAtCheckOut = Math.round(
+            calculateDistance(
+              data.checkOutLocation.latitude,
+              data.checkOutLocation.longitude,
+              sessionData.geo.latitude,
+              sessionData.geo.longitude
+            )
+          );
+        }
+      }
+
+      if (
+        updateData.distanceFromCenterAtCheckOut === undefined &&
+        typeof data.distanceFromCenterAtCheckOut === "number"
+      ) {
+        updateData.distanceFromCenterAtCheckOut = Math.round(
+          data.distanceFromCenterAtCheckOut
+        );
+      }
+
+      transaction.update(sessionRef, updateData);
+
+      transaction.update(db.collection("users").doc(userId), {
+        lastActiveAt: admin.firestore.Timestamp.now(),
+      });
+
+      return updateData;
+    });
+
+    logger.info(`Session ended successfully for user ${userId}: ${data.sessionId}`);
+
+    return {
+      success: true,
+      sessionId: data.sessionId,
+      sessionUpdates: result,
+    };
+  } catch (error) {
+    logger.error("Error ending session:", error);
+    throw error instanceof Error ? error : new Error("Failed to end session");
+  }
+});
+
 exports.cleanupStaleSessions = onSchedule(
-  "every 15 minutes",
+  {
+    schedule: "every 15 minutes",
+    secrets: ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL"],
+  },
   async (_event: any) => {
     try {
       const db = admin.firestore();
@@ -692,9 +805,11 @@ exports.cleanupStaleSessions = onSchedule(
       const batch = db.batch();
       const durationMinutes = Math.floor(sessionLimitInMs / 60000);
       const updateTime = admin.firestore.Timestamp.now();
+      const staleSessionIds: string[] = [];
 
       staleSessionsSnapshot.forEach((doc: any) => {
         logger.info(`Found stale session: ${doc.id}`);
+        staleSessionIds.push(doc.id);
         const sessionRef = sessionsRef.doc(doc.id);
         batch.update(sessionRef, {
           status: "error",
@@ -704,6 +819,11 @@ exports.cleanupStaleSessions = onSchedule(
           durationMinutes: durationMinutes, // Max duration in minutes
           notes: "Session automatically closed due to timeout.",
           updatedAt: updateTime, // Track update time
+          errorCode: "timeout_auto_close",
+          needsAdminReview: true,
+          adminReviewStatus: "unreviewed",
+          adminReviewedAt: admin.firestore.FieldValue.delete(),
+          adminReviewedBy: admin.firestore.FieldValue.delete(),
         });
       });
 
@@ -721,6 +841,73 @@ exports.cleanupStaleSessions = onSchedule(
         .collection("system")
         .doc("cleanup_metrics")
         .set(metrics, { merge: true });
+
+      // Persist an alert record for auditability
+      const alertSessionIds = staleSessionIds.slice(0, 50); // cap payload size
+      await db
+        .collection("system")
+        .doc("adminAlerts")
+        .collection("events")
+        .add({
+          type: "session-timeout",
+          createdAt: admin.firestore.Timestamp.now(),
+          count: staleSessionIds.length,
+          sessionIds: alertSessionIds,
+          status: "unread",
+        });
+
+      // Notify subscribed admins via push
+      if (initializeWebPush()) {
+        const adminsSnapshot = await db
+          .collection("users")
+          .where("role", "==", "admin")
+          .get();
+
+        if (!adminsSnapshot.empty) {
+          let sent = 0;
+          let failed = 0;
+          let missing = 0;
+
+          for (const adminDoc of adminsSnapshot.docs) {
+            const subscriptionDoc = await db
+              .collection("users")
+              .doc(adminDoc.id)
+              .collection("pushSubscriptions")
+              .doc("adminAlerts")
+              .get();
+
+            if (!subscriptionDoc.exists) {
+              missing++;
+              continue;
+            }
+
+            const subscription = subscriptionDoc.data() as PushSubscription;
+            const success = await sendPushNotification(subscription, {
+              title: "Session auto-closed (timeout)",
+              body: `${staleSessionIds.length} session(s) were auto-closed and need review.`,
+              data: {
+                type: "session-timeout",
+                count: staleSessionIds.length,
+              },
+            });
+
+            if (success) {
+              sent++;
+            } else {
+              failed++;
+              await subscriptionDoc.ref.delete();
+            }
+          }
+
+          logger.info("Admin timeout alerts dispatched", {
+            sent,
+            failed,
+            missing,
+          });
+        }
+      } else {
+        logger.warn("Skipping admin push alerts - VAPID not configured");
+      }
     } catch (error) {
       logger.error("Error cleaning up stale sessions:", error);
       logger.error("Error occurred:", error);

@@ -187,9 +187,16 @@ export async function getCurrentSubscription(): Promise<PushSubscriptionData | n
  */
 export async function savePushSubscriptionToFirebase(
   userId: string,
-  subscription: PushSubscriptionData
+  subscription: PushSubscriptionData,
+  subscriptionId: string = "geofence"
 ): Promise<void> {
-  const docRef = doc(db, COLLECTIONS.USERS, userId, "pushSubscriptions", "geofence");
+  const docRef = doc(
+    db,
+    COLLECTIONS.USERS,
+    userId,
+    "pushSubscriptions",
+    subscriptionId
+  );
 
   await setDoc(docRef, {
     ...subscription,
@@ -206,12 +213,38 @@ export async function savePushSubscriptionToFirebase(
  * Remove push subscription from Firebase
  */
 export async function removePushSubscriptionFromFirebase(
-  userId: string
+  userId: string,
+  subscriptionId: string = "geofence"
 ): Promise<void> {
-  const docRef = doc(db, COLLECTIONS.USERS, userId, "pushSubscriptions", "geofence");
+  const docRef = doc(
+    db,
+    COLLECTIONS.USERS,
+    userId,
+    "pushSubscriptions",
+    subscriptionId
+  );
 
   await deleteDoc(docRef);
   appLogger.info("Push subscription removed from Firebase", { userId });
+}
+
+/**
+ * Save admin alert push subscription (separate doc id to avoid mixing with geofence)
+ */
+export async function saveAdminAlertSubscriptionToFirebase(
+  userId: string,
+  subscription: PushSubscriptionData
+): Promise<void> {
+  await savePushSubscriptionToFirebase(userId, subscription, "adminAlerts");
+}
+
+/**
+ * Remove admin alert push subscription
+ */
+export async function removeAdminAlertSubscriptionFromFirebase(
+  userId: string
+): Promise<void> {
+  await removePushSubscriptionFromFirebase(userId, "adminAlerts");
 }
 
 /**

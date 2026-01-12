@@ -4,6 +4,7 @@
 import {
   processQueue,
   getPendingActions,
+  processQueuedAction,
   updateActionStatus,
   removeCompletedActions,
   QUEUE_STATUS,
@@ -320,9 +321,6 @@ class SyncManager {
           try {
             processed++;
 
-            // Update action status to syncing
-            await updateActionStatus(action.id, QUEUE_STATUS.SYNCING);
-
             // Create timeout promise
             const timeoutPromise = new Promise<never>((_, reject) => {
               setTimeout(
@@ -337,7 +335,6 @@ class SyncManager {
 
             if (success) {
               synced++;
-              await updateActionStatus(action.id, QUEUE_STATUS.SYNCED);
             } else {
               throw new Error("Sync failed");
             }
@@ -388,13 +385,10 @@ class SyncManager {
     );
   }
 
-  // Sync a single action (placeholder - actual implementation would call the real sync functions)
-  private async syncSingleAction(_action: QueuedAction): Promise<boolean> {
-    // This would call the actual sync functions from actionQueue.ts
-    // For now, we'll simulate the sync
+  // Sync a single action without reprocessing the entire queue
+  private async syncSingleAction(action: QueuedAction): Promise<boolean> {
     try {
-      const response = await processQueue(); // This processes the entire queue, but we can optimize later
-      return response.synced > 0;
+      return await processQueuedAction(action);
     } catch {
       return false;
     }
