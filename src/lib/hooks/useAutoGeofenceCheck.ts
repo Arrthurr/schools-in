@@ -159,21 +159,6 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     []
   );
 
-  useEffect(() => {
-    const updateVisibility = () => {
-      if (typeof document === "undefined") {
-        return;
-      }
-      setIsDocumentVisible(document.visibilityState === "visible");
-    };
-
-    updateVisibility();
-    document.addEventListener("visibilitychange", updateVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", updateVisibility);
-    };
-  }, []);
-
   const getActiveRadius = useCallback(() => {
     if (activeSession) {
       const activeLoc = assignedLocations.find(
@@ -1006,6 +991,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     const pollInterval = adaptivePollIntervalMs;
     if (pollInterval > 0) {
       pollTimerRef.current = setInterval(runPoll, pollInterval);
+    }
+
+    if (typeof document !== "undefined") {
+      setIsDocumentVisible(document.visibilityState === "visible");
     }
 
     const visibilityHandler = () => {
