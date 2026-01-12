@@ -43,9 +43,11 @@ export function useProviderLocations(
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Force refresh locations (bypasses cache) and update state
-  const refreshLocations = useCallback(async () => {
+  const refreshLocations = useCallback(async (skipRefreshingState = false) => {
     if (!userId || !enabled) return;
-    setRefreshing(true);
+    if (!skipRefreshingState) {
+      setRefreshing(true);
+    }
     try {
       const fresh = await getCachedLocationsByProvider(userId, {
         forceRefresh: true,
@@ -56,7 +58,9 @@ export function useProviderLocations(
       setError(err?.message || "Failed to refresh locations");
       throw err;
     } finally {
-      setRefreshing(false);
+      if (!skipRefreshingState) {
+        setRefreshing(false);
+      }
       setLoading(false);
     }
   }, [userId, enabled]);
@@ -67,7 +71,8 @@ export function useProviderLocations(
     setRefreshing(true);
     try {
       await syncUserFromM365();
-      await refreshLocations();
+      // Pass true to skip refreshing state management since we're managing it here
+      await refreshLocations(true);
     } catch (err: any) {
       setError(err?.message || "Failed to refresh assignments");
       throw err;

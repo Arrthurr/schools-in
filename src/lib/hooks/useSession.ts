@@ -187,7 +187,8 @@ export const useSession = (): UseSessionReturn => {
 
           if (queued.offline) {
             setError("Offline: check-out queued for sync");
-            setCurrentSession(null);
+            // Don't clear currentSession here - it's only queued, not completed.
+            // The real-time subscription will clear it when checkout actually syncs to the server.
           } else if (!queued.success) {
             setError("Failed to check out");
           }

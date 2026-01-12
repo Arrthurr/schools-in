@@ -464,11 +464,14 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       });
 
       let finished = false;
+      let interval: ReturnType<typeof setInterval> | undefined;
 
       const finishCountdown = async () => {
         if (finished) return;
         finished = true;
-        clearInterval(interval);
+        if (interval) {
+          clearInterval(interval);
+        }
         try {
           await onConfirm();
         } catch (error) {
@@ -489,7 +492,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         finishCountdown();
       }, durationMs);
 
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         const remaining = Math.max(
           0,
           durationMs - (Date.now() - startedAt)
@@ -507,7 +510,9 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       }, 1000);
 
       countdownCleanup.current[id] = () => {
-        clearInterval(interval);
+        if (interval) {
+          clearInterval(interval);
+        }
         clearTimeout(timeout);
         releaseWakeLock();
         toastInstance.dismiss();
