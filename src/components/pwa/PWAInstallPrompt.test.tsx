@@ -50,7 +50,7 @@ describe("PWAInstallPrompt", () => {
 
   it("renders nothing when no install prompt event is available", () => {
     render(<PWAInstallPrompt />);
-    expect(screen.queryByText("Install Schools In")).not.toBeInTheDocument();
+    expect(screen.queryByText("Install CampusAccess")).not.toBeInTheDocument();
   });
 
   it("renders install prompt when beforeinstallprompt event is triggered", async () => {
@@ -59,7 +59,7 @@ describe("PWAInstallPrompt", () => {
     setupPromptEvent("accepted");
 
     await waitFor(() => {
-      expect(screen.getByText("Install Schools In")).toBeInTheDocument();
+      expect(screen.getByText("Install CampusAccess")).toBeInTheDocument();
       expect(
         screen.getByText(
           "Install the app for faster access and offline functionality"
@@ -112,6 +112,6 @@ describe("PWAInstallPrompt", () => {
 
     setupPromptEvent("dismissed");
 
-    expect(screen.queryByText("Install Schools In")).not.toBeInTheDocument();
+    expect(screen.queryByText("Install CampusAccess")).not.toBeInTheDocument();
   });
 });

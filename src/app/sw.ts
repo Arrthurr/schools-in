@@ -295,10 +295,10 @@ async function showGeofenceReminderNotification(
 
   const body =
     action === "check-in"
-      ? "Open Schools In to check in at your location"
+      ? "Open CampusAccess to check in at your location"
       : locationName
         ? `Are you still at ${locationName}?`
-        : "Open Schools In to update your session";
+        : "Open CampusAccess to update your session";
 
   await self.registration.showNotification(title, {
     body,
@@ -449,7 +449,7 @@ self.addEventListener("push", (event: PushEvent) => {
   try {
     const payload = event.data.json();
 
-    const title = payload.title || "Schools In";
+    const title = payload.title || "CampusAccess";
     type NotificationOptionsWithActions = NotificationOptions & {
       actions?: Array<{ action: string; title: string; icon?: string }>;
     };

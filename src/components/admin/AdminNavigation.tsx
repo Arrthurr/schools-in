@@ -112,7 +112,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
         <Link href="/admin" className="flex items-center space-x-2">
           <Logo size="sm" showText={false} priority />
           <div>
-            <h2 className="text-lg font-semibold">Schools In</h2>
+            <h2 className="text-lg font-semibold">CampusAccess</h2>
             <p className="text-xs text-muted-foreground">Admin Panel</p>
           </div>
         </Link>

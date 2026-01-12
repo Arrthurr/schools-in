@@ -329,7 +329,7 @@ export async function showLocalNotification(
 export async function showCheckInReminder(locationName?: string): Promise<void> {
   const body = locationName
     ? `Don't forget to check in at ${locationName}`
-    : "Open Schools In to check in at your location";
+    : "Open CampusAccess to check in at your location";
 
   await showLocalNotification("Check-in Reminder", {
     body,

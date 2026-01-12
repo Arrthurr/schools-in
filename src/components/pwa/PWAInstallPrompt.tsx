@@ -101,7 +101,7 @@ export function PWAInstallPrompt() {
           <div className="flex items-center gap-2">
             <Download className="h-5 w-5 text-brand-primary" />
             <CardTitle className="text-lg text-brand-primary">
-              Install Schools In
+              Install CampusAccess
             </CardTitle>
           </div>
           <Button variant="ghost" size="sm" onClick={handleDismiss}>

@@ -1,4 +1,4 @@
-// Custom service worker functionality for Schools In PWA
+// Custom service worker functionality for CampusAccess PWA
 // This extends the auto-generated next-pwa service worker
 
 import { openDB } from "idb";

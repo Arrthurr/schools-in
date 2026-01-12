@@ -76,7 +76,7 @@ export function PWAUpdatePrompt() {
           </Button>
         </div>
         <CardDescription className="text-green-700">
-          A new version of Schools In is available with improvements and bug
+          A new version of CampusAccess is available with improvements and bug
           fixes
         </CardDescription>
       </CardHeader>

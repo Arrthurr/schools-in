@@ -91,7 +91,7 @@ describe("AdminNavigation", () => {
     );
 
     expect(screen.getByTestId("logo")).toBeInTheDocument();
-    expect(screen.getByText("Schools In")).toBeInTheDocument();
+    expect(screen.getByText("CampusAccess")).toBeInTheDocument();
     expect(screen.getByText("Admin Panel")).toBeInTheDocument();
   });
 
