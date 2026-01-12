@@ -342,22 +342,36 @@ async function notifyClientsToProcessActionQueue(
       (client) =>
         new Promise<void>((resolve) => {
           const channel = new MessageChannel();
+          let finished = false;
           const timeout = setTimeout(() => {
             console.warn("[SW] PROCESS_ACTION_QUEUE timeout, continuing");
-            resolve();
+            finish();
           }, 15000);
+
+          const finish = (error?: unknown) => {
+            if (finished) return;
+            finished = true;
+            clearTimeout(timeout);
+            channel.port1.onmessage = null;
+            try {
+              channel.port1.close();
+            } catch {
+              // ignore
+            }
+            resolve();
+            if (error) {
+              console.warn("[SW] PROCESS_ACTION_QUEUE error from client", {
+                error,
+              });
+            }
+          };
 
           channel.port1.onmessage = (event) => {
             const { type, error } = event.data || {};
             if (type === "PROCESS_ACTION_QUEUE_COMPLETE") {
-              clearTimeout(timeout);
-              resolve();
+              finish();
             } else if (type === "PROCESS_ACTION_QUEUE_ERROR") {
-              clearTimeout(timeout);
-              console.warn("[SW] PROCESS_ACTION_QUEUE error from client", {
-                error,
-              });
-              resolve();
+              finish(error);
             }
           };
 
