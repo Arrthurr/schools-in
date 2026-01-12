@@ -331,62 +331,101 @@ async function notifyClientsToProcessActionQueue(
   tag: string
 ): Promise<void> {
   try {
-    const clients = await self.clients.matchAll({ type: "window" });
+    const pendingAcks = new Map<string, (error?: unknown) => void>();
 
-    if (clients.length === 0) {
-      console.log("[SW] No clients available to process action queue");
-      return;
-    }
+    const generateRequestId = (): string => {
+      try {
+        // Some browsers support crypto.randomUUID in SW contexts
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyCrypto = (self as any).crypto;
+        if (anyCrypto?.randomUUID) return anyCrypto.randomUUID();
+      } catch {
+        // ignore
+      }
+      return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    };
 
-    const acknowledgements = clients.map(
-      (client) =>
-        new Promise<void>((resolve) => {
-          const channel = new MessageChannel();
-          let finished = false;
-          const timeout = setTimeout(() => {
-            console.warn("[SW] PROCESS_ACTION_QUEUE timeout, continuing");
-            finish();
-          }, 15000);
+    const messageHandler = (event: MessageEvent) => {
+      const data = (event as MessageEvent).data || {};
+      const { type, requestId, error } = data;
+      if (
+        (type === "PROCESS_ACTION_QUEUE_COMPLETE" ||
+          type === "PROCESS_ACTION_QUEUE_ERROR") &&
+        typeof requestId === "string"
+      ) {
+        const finish = pendingAcks.get(requestId);
+        if (finish) finish(type === "PROCESS_ACTION_QUEUE_ERROR" ? error : undefined);
+      }
+    };
 
-          const finish = (error?: unknown) => {
-            if (finished) return;
-            finished = true;
-            clearTimeout(timeout);
-            channel.port1.onmessage = null;
-            try {
-              channel.port1.close();
-            } catch {
-              // ignore
-            }
-            resolve();
-            if (error) {
-              console.warn("[SW] PROCESS_ACTION_QUEUE error from client", {
-                error,
-              });
-            }
-          };
+    self.addEventListener("message", messageHandler);
 
-          channel.port1.onmessage = (event) => {
-            const { type, error } = event.data || {};
-            if (type === "PROCESS_ACTION_QUEUE_COMPLETE") {
+    try {
+      const clients = await self.clients.matchAll({ type: "window" });
+
+      if (clients.length === 0) {
+        console.log("[SW] No clients available to process action queue");
+        return;
+      }
+
+      const acknowledgements = clients.map(
+        (client) =>
+          new Promise<void>((resolve) => {
+            const requestId = generateRequestId();
+            const channel = new MessageChannel();
+            let finished = false;
+            const timeout = setTimeout(() => {
+              console.warn("[SW] PROCESS_ACTION_QUEUE timeout, continuing");
               finish();
-            } else if (type === "PROCESS_ACTION_QUEUE_ERROR") {
-              finish(error);
-            }
-          };
+            }, 15000);
 
-          client.postMessage(
-            {
-              type: "PROCESS_ACTION_QUEUE",
-              source: "service-worker",
-              tag,
-            },
-            [channel.port2]
-          );
-        })
-    );
+            const finish = (error?: unknown) => {
+              if (finished) return;
+              finished = true;
+              clearTimeout(timeout);
+              channel.port1.onmessage = null;
+              try {
+                channel.port1.close();
+              } catch {
+                // ignore
+              }
+              pendingAcks.delete(requestId);
+              resolve();
+              if (error) {
+                console.warn("[SW] PROCESS_ACTION_QUEUE error from client", {
+                  error,
+                });
+              }
+            };
 
-    await Promise.all(acknowledgements);
+            pendingAcks.set(requestId, finish);
+
+            channel.port1.onmessage = (event) => {
+              const { type, error } = event.data || {};
+              if (type === "PROCESS_ACTION_QUEUE_COMPLETE") {
+                finish();
+              } else if (type === "PROCESS_ACTION_QUEUE_ERROR") {
+                finish(error);
+              }
+            };
+
+            client.postMessage(
+              {
+                type: "PROCESS_ACTION_QUEUE",
+                source: "service-worker",
+                tag,
+                requestId,
+              },
+              [channel.port2]
+            );
+          })
+      );
+
+      await Promise.all(acknowledgements);
+    } finally {
+      self.removeEventListener("message", messageHandler);
+      pendingAcks.clear();
+    }
   } catch (error) {
     console.error("[SW] Failed to request client action queue processing:", error);
     throw error;

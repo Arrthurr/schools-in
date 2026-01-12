@@ -42,7 +42,10 @@ async function registerBackgroundSync(tag: string): Promise<boolean> {
     console.log(`[ServiceManager] Registered background sync: ${tag}`);
     return true;
   } catch (error) {
-    console.warn(`[ServiceManager] Failed to register background sync: ${tag}`, error);
+    console.warn(
+      `[ServiceManager] Failed to register background sync: ${tag}`,
+      error
+    );
     return false;
   }
 }
@@ -125,25 +128,56 @@ export class ServiceManager {
       case "PROCESS_ACTION_QUEUE":
         try {
           await this.performBackgroundSync();
-          responsePort?.postMessage({ type: "PROCESS_ACTION_QUEUE_COMPLETE" });
+          if (responsePort) {
+            responsePort.postMessage({ type: "PROCESS_ACTION_QUEUE_COMPLETE" });
+          } else if (data?.requestId && navigator.serviceWorker?.controller) {
+            // Fallback path: if MessageChannel port transfer failed, respond via SW message handler
+            navigator.serviceWorker.controller.postMessage({
+              type: "PROCESS_ACTION_QUEUE_COMPLETE",
+              requestId: data.requestId,
+            });
+          } else {
+            console.warn(
+              "[ServiceManager] PROCESS_ACTION_QUEUE missing response port; cannot acknowledge",
+              { hasRequestId: Boolean(data?.requestId) }
+            );
+          }
         } catch (error) {
           console.error("[ServiceManager] PROCESS_ACTION_QUEUE failed", error);
-          responsePort?.postMessage({
-            type: "PROCESS_ACTION_QUEUE_ERROR",
-            error:
-              error instanceof Error ? error.message : "Unknown sync failure",
-          });
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown sync failure";
+          if (responsePort) {
+            responsePort.postMessage({
+              type: "PROCESS_ACTION_QUEUE_ERROR",
+              error: errorMessage,
+            });
+          } else if (data?.requestId && navigator.serviceWorker?.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: "PROCESS_ACTION_QUEUE_ERROR",
+              requestId: data.requestId,
+              error: errorMessage,
+            });
+          } else {
+            console.warn(
+              "[ServiceManager] PROCESS_ACTION_QUEUE missing response port; cannot send error acknowledgement",
+              { hasRequestId: Boolean(data?.requestId), error: errorMessage }
+            );
+          }
         }
         break;
       case "CACHE_UPDATE":
         this.notifyStatusChange("cache-updated");
         break;
       case "BACKGROUND_SYNC_STARTED":
-        console.log(`[ServiceManager] Background sync started: ${data.count} actions`);
+        console.log(
+          `[ServiceManager] Background sync started: ${data.count} actions`
+        );
         this.notifyStatusChange("sync-started");
         break;
       case "BACKGROUND_SYNC_COMPLETED":
-        console.log(`[ServiceManager] Background sync completed: ${data.count} actions`);
+        console.log(
+          `[ServiceManager] Background sync completed: ${data.count} actions`
+        );
         this.notifyStatusChange("sync-completed");
         break;
       default:
@@ -250,10 +284,14 @@ export class ServiceManager {
     userId?: string;
   }) {
     try {
-      const result = await queueManager.checkOut(checkOutData.sessionId, checkOutData.userId || "unknown-user", {
-        latitude: checkOutData.coordinates.lat,
-        longitude: checkOutData.coordinates.lng,
-      });
+      const result = await queueManager.checkOut(
+        checkOutData.sessionId,
+        checkOutData.userId || "unknown-user",
+        {
+          latitude: checkOutData.coordinates.lat,
+          longitude: checkOutData.coordinates.lng,
+        }
+      );
 
       if (this.backgroundSyncSupported && result.offline) {
         await registerBackgroundSync(CHECK_OUT_SYNC_TAG);

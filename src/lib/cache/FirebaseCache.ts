@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
 /**
  * Firebase-specific caching strategies and configurations
  */
 
-import { cacheManager, CacheType, CacheConfig } from './CacheManager';
+import { cacheManager, CacheType, CacheConfig } from "./CacheManager";
 
 // Cache TTL configurations (in milliseconds)
 export const CACHE_TTL = {
   // Short-term cache (5 minutes)
   SHORT: 5 * 60 * 1000,
-  // Medium-term cache (30 minutes)  
+  // Medium-term cache (30 minutes)
   MEDIUM: 30 * 60 * 1000,
   // Long-term cache (2 hours)
   LONG: 2 * 60 * 60 * 1000,
@@ -27,12 +27,12 @@ export const FIREBASE_CACHE_CONFIGS = {
     memory: {
       type: CacheType.MEMORY,
       ttl: CACHE_TTL.MEDIUM,
-      prefix: 'user_',
+      prefix: "user_",
     },
     session: {
       type: CacheType.SESSION,
       ttl: CACHE_TTL.LONG,
-      prefix: 'user_',
+      prefix: "user_",
     },
   },
 
@@ -41,12 +41,12 @@ export const FIREBASE_CACHE_CONFIGS = {
     memory: {
       type: CacheType.MEMORY,
       ttl: CACHE_TTL.MEDIUM,
-      prefix: 'auth_',
+      prefix: "auth_",
     },
     session: {
       type: CacheType.SESSION,
       ttl: CACHE_TTL.SESSION,
-      prefix: 'auth_',
+      prefix: "auth_",
     },
   },
 
@@ -55,17 +55,17 @@ export const FIREBASE_CACHE_CONFIGS = {
     memory: {
       type: CacheType.MEMORY,
       ttl: CACHE_TTL.LONG,
-      prefix: 'location_',
+      prefix: "location_",
     },
     local: {
       type: CacheType.LOCAL,
       ttl: CACHE_TTL.VERY_LONG,
-      prefix: 'location_',
+      prefix: "location_",
     },
     indexeddb: {
       type: CacheType.INDEXED_DB,
       ttl: CACHE_TTL.VERY_LONG,
-      prefix: 'location_',
+      prefix: "location_",
     },
   },
 
@@ -74,12 +74,12 @@ export const FIREBASE_CACHE_CONFIGS = {
     memory: {
       type: CacheType.MEMORY,
       ttl: CACHE_TTL.SHORT,
-      prefix: 'session_',
+      prefix: "session_",
     },
     session: {
       type: CacheType.SESSION,
       ttl: CACHE_TTL.MEDIUM,
-      prefix: 'session_',
+      prefix: "session_",
     },
   },
 
@@ -88,12 +88,12 @@ export const FIREBASE_CACHE_CONFIGS = {
     memory: {
       type: CacheType.MEMORY,
       ttl: CACHE_TTL.MEDIUM,
-      prefix: 'assignment_',
+      prefix: "assignment_",
     },
     session: {
       type: CacheType.SESSION,
       ttl: CACHE_TTL.LONG,
-      prefix: 'assignment_',
+      prefix: "assignment_",
     },
   },
 
@@ -102,7 +102,7 @@ export const FIREBASE_CACHE_CONFIGS = {
     memory: {
       type: CacheType.MEMORY,
       ttl: CACHE_TTL.SHORT,
-      prefix: 'search_',
+      prefix: "search_",
     },
   },
 
@@ -111,12 +111,12 @@ export const FIREBASE_CACHE_CONFIGS = {
     memory: {
       type: CacheType.MEMORY,
       ttl: CACHE_TTL.MEDIUM,
-      prefix: 'stats_',
+      prefix: "stats_",
     },
     local: {
       type: CacheType.LOCAL,
       ttl: CACHE_TTL.LONG,
-      prefix: 'stats_',
+      prefix: "stats_",
     },
   },
 } as const;
@@ -149,6 +149,20 @@ export class FirebaseCache {
     });
   }
 
+  private static pruneDeletedKeysFromTagIndex(deletedKeys: Set<string>): void {
+    if (!deletedKeys || deletedKeys.size === 0) return;
+
+    for (const [tag, keys] of this.tagIndex.entries()) {
+      let changed = false;
+      for (const key of deletedKeys) {
+        if (keys.delete(key)) changed = true;
+      }
+      if (changed && keys.size === 0) {
+        this.tagIndex.delete(tag);
+      }
+    }
+  }
+
   private static async deleteKeys(keys: Set<string>): Promise<void> {
     const allConfigs = this.allConfigs();
     await Promise.all(
@@ -179,6 +193,8 @@ export class FirebaseCache {
 
     if (keysToDelete.size > 0) {
       await this.deleteKeys(keysToDelete);
+      // Clean up stale references for other tags that might still point at deleted keys
+      this.pruneDeletedKeysFromTagIndex(keysToDelete);
     }
   }
 
@@ -209,7 +225,7 @@ export class FirebaseCache {
     // Execute query and cache result
     onCacheMiss?.();
     const result = await queryFn();
-    
+
     if (result !== null && result !== undefined) {
       await cacheManager.setMultiLayer(cacheKey, result, configs);
       // Always tag by cacheKey for backward-compat invalidation, plus caller-provided tags
@@ -231,15 +247,10 @@ export class FirebaseCache {
       FIREBASE_CACHE_CONFIGS.USER.session,
     ];
 
-    return this.cacheQuery(
-      userId,
-      dataFn,
-      configs,
-      {
-        ...options,
-        tags: options.tags ?? ["users", `user:${userId}`],
-      }
-    );
+    return this.cacheQuery(userId, dataFn, configs, {
+      ...options,
+      tags: options.tags ?? ["users", `user:${userId}`],
+    });
   }
 
   // Cache location data
@@ -254,15 +265,10 @@ export class FirebaseCache {
       FIREBASE_CACHE_CONFIGS.LOCATIONS.indexeddb,
     ];
 
-    return this.cacheQuery(
-      key,
-      dataFn,
-      configs,
-      {
-        ...options,
-        tags: options.tags ?? ["locations"],
-      }
-    );
+    return this.cacheQuery(key, dataFn, configs, {
+      ...options,
+      tags: options.tags ?? ["locations"],
+    });
   }
 
   // Cache session data
@@ -276,15 +282,10 @@ export class FirebaseCache {
       FIREBASE_CACHE_CONFIGS.SESSIONS.session,
     ];
 
-    return this.cacheQuery(
-      key,
-      dataFn,
-      configs,
-      {
-        ...options,
-        tags: options.tags ?? ["sessions", `session:${key}`],
-      }
-    );
+    return this.cacheQuery(key, dataFn, configs, {
+      ...options,
+      tags: options.tags ?? ["sessions", `session:${key}`],
+    });
   }
 
   // Cache assignment data
@@ -298,15 +299,10 @@ export class FirebaseCache {
       FIREBASE_CACHE_CONFIGS.ASSIGNMENTS.session,
     ];
 
-    return this.cacheQuery(
-      key,
-      dataFn,
-      configs,
-      {
-        ...options,
-        tags: options.tags ?? ["assignments"],
-      }
-    );
+    return this.cacheQuery(key, dataFn, configs, {
+      ...options,
+      tags: options.tags ?? ["assignments"],
+    });
   }
 
   // Cache search results
@@ -318,12 +314,11 @@ export class FirebaseCache {
     const configs = [FIREBASE_CACHE_CONFIGS.SEARCH.memory];
     const cacheKey = `search_${this.hashKey(searchQuery)}`;
 
-    return this.cacheQuery(
+    return this.cacheQuery(cacheKey, searchFn, configs, {
+      ...options,
       cacheKey,
-      searchFn,
-      configs,
-      { ...options, cacheKey, tags: options.tags ?? [`search:${cacheKey}`] }
-    );
+      tags: options.tags ?? [`search:${cacheKey}`],
+    });
   }
 
   // Cache statistics
@@ -337,12 +332,7 @@ export class FirebaseCache {
       FIREBASE_CACHE_CONFIGS.STATS.local,
     ];
 
-    return this.cacheQuery(
-      key,
-      statsFn,
-      configs,
-      options
-    );
+    return this.cacheQuery(key, statsFn, configs, options);
   }
 
   // Invalidate cache for specific patterns
@@ -372,7 +362,9 @@ export class FirebaseCache {
   }
 
   // Clear cache by type
-  static async clearByType(type: 'users' | 'locations' | 'sessions' | 'assignments'): Promise<void> {
+  static async clearByType(
+    type: "users" | "locations" | "sessions" | "assignments"
+  ): Promise<void> {
     const configMap = {
       users: FIREBASE_CACHE_CONFIGS.USER,
       locations: FIREBASE_CACHE_CONFIGS.LOCATIONS,
@@ -381,9 +373,7 @@ export class FirebaseCache {
     };
 
     const configs = Object.values(configMap[type]);
-    await Promise.all(
-      configs.map(config => cacheManager.clear(config))
-    );
+    await Promise.all(configs.map((config) => cacheManager.clear(config)));
   }
 
   // Generate cache key for complex queries
@@ -394,24 +384,24 @@ export class FirebaseCache {
     limit?: number
   ): string {
     const parts = [collection];
-    
+
     if (Object.keys(filters).length > 0) {
       const filterStr = Object.entries(filters)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([key, value]) => `${key}:${value}`)
-        .join('|');
+        .join("|");
       parts.push(`f:${filterStr}`);
     }
-    
+
     if (orderBy) {
       parts.push(`o:${orderBy}`);
     }
-    
+
     if (limit) {
       parts.push(`l:${limit}`);
     }
-    
-    return this.hashKey(parts.join('_'));
+
+    return this.hashKey(parts.join("_"));
   }
 
   // Simple hash function for cache keys
@@ -419,7 +409,7 @@ export class FirebaseCache {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
     return Math.abs(hash).toString(36);
