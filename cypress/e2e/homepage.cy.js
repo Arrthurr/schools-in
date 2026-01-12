@@ -4,7 +4,7 @@ describe('Homepage', () => {
   })
 
   it('displays the main heading and description', () => {
-    cy.get('h1').should('contain.text', 'Welcome to Schools-In')
+    cy.get('h1').should('contain.text', 'Welcome to DMDL CampusAccess')
     cy.get('p').should('contain.text', 'Streamlined location-based check-in and check-out system')
   })
 

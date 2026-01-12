@@ -12,14 +12,14 @@ export function generateMetadata(): Metadata {
     metadataBase: new URL(
       process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     ),
-    title: "DMDL Schools-In - Provider Check-In System",
+    title: "DMDL CampusAccess - Provider Check-In System",
     description:
       "Professional location-based check-in system for education service providers",
     manifest: "/manifest.json",
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: "DMDL Schools-In",
+      title: "DMDL CampusAccess",
     },
     // Include standard cross-platform PWA capability meta alongside Apple's
     other: {

@@ -13,7 +13,7 @@ describe('Navigation and Routing', () => {
 
   it('has proper page title and meta tags', () => {
     cy.visit('/')
-    cy.title().should('contain', 'Schools-In')
+    cy.title().should('contain', 'CampusAccess')
     cy.get('meta[name="description"]').should('exist')
   })
 })

@@ -34,7 +34,7 @@ export function Logo({
     <div className={cn(`flex ${layoutClass} ${gapClass}`, className)}>
       <OptimizedImage
         src="/DMDL_logo_alpha.png"
-        alt="DMDL Schools-In Logo"
+        alt="DMDL CampusAccess Logo"
         width={width}
         height={height}
         priority={priority}
@@ -50,7 +50,7 @@ export function Logo({
             textSize
           )}
         >
-          Schools-In
+          DMDL CampusAccess
         </span>
       )}
     </div>

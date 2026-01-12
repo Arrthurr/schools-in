@@ -25,7 +25,7 @@ export default function LoginPage() {
   return (
     <main className="flex flex-col items-center justify-center p-4 sm:p-6 lg:p-6">
       <div className="w-full max-w-sm sm:max-w-md space-y-2 sm:space-y-4">
-        <BrandHeader title="Sign In" subtitle="Welcome back to Schools-In" />
+        <BrandHeader title="Sign In" subtitle="Welcome back to DMDL CampusAccess" />
 
         <Suspense fallback={null}>
           <LoginForm />

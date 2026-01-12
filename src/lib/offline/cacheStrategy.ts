@@ -1,4 +1,4 @@
-// Enhanced offline data caching strategy for Schools-In PWA
+// Enhanced offline data caching strategy for DMDL CampusAccess PWA
 // Implements intelligent caching with expiration, size limits, and refresh policies
 
 import { openDB, IDBPDatabase } from "idb";
