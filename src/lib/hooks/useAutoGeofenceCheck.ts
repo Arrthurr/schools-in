@@ -993,54 +993,58 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       pollTimerRef.current = setInterval(runPoll, pollInterval);
     }
 
+    let visibilityHandler: (() => void) | null = null;
+
     if (typeof document !== "undefined") {
       setIsDocumentVisible(document.visibilityState === "visible");
-    }
 
-    const visibilityHandler = () => {
-      const nowVisible = document.visibilityState === "visible";
-      setIsDocumentVisible(nowVisible);
+      visibilityHandler = () => {
+        const nowVisible = document.visibilityState === "visible";
+        setIsDocumentVisible(nowVisible);
 
-      if (nowVisible) {
-        runPoll();
-        
-        // For strategies with push reminders, show reminder on return if appropriate
-        if (strategyConfig.usePushReminders && isReminderTime()) {
-          if (activeSession) {
-            const activeLoc = assignedLocations.find(
-              (loc) => loc.id === activeSession.locationId
-            );
+        if (nowVisible) {
+          runPoll();
+          
+          // For strategies with push reminders, show reminder on return if appropriate
+          if (strategyConfig.usePushReminders && isReminderTime()) {
+            if (activeSession) {
+              const activeLoc = assignedLocations.find(
+                (loc) => loc.id === activeSession.locationId
+              );
 
-            const startTime =
-              activeSession.startTime?.toDate?.() ??
-              activeSession.checkInTime?.toDate?.();
+              const startTime =
+                activeSession.startTime?.toDate?.() ??
+                activeSession.checkInTime?.toDate?.();
 
-            const durationMinutes =
-              startTime instanceof Date
-                ? Math.max(
-                    1,
-                    Math.round((Date.now() - startTime.getTime()) / 60_000)
-                  )
-                : undefined;
+              const durationMinutes =
+                startTime instanceof Date
+                  ? Math.max(
+                      1,
+                      Math.round((Date.now() - startTime.getTime()) / 60_000)
+                    )
+                  : undefined;
 
-            void showCheckOutReminder(
-              activeLoc?.name,
-              durationMinutes ? formatDuration(durationMinutes) : undefined
-            );
-          } else if (assignedLocations.length > 0) {
-            const nextLocation = assignedLocations[0];
-            void showCheckInReminder(nextLocation.name);
+              void showCheckOutReminder(
+                activeLoc?.name,
+                durationMinutes ? formatDuration(durationMinutes) : undefined
+              );
+            } else if (assignedLocations.length > 0) {
+              const nextLocation = assignedLocations[0];
+              void showCheckInReminder(nextLocation.name);
+            }
           }
         }
-      }
-    };
+      };
 
-    document.addEventListener("visibilitychange", visibilityHandler);
+      document.addEventListener("visibilitychange", visibilityHandler);
+    }
 
     return () => {
       clearPollTimer();
       runPollRef.current = null;
-      document.removeEventListener("visibilitychange", visibilityHandler);
+      if (visibilityHandler) {
+        document.removeEventListener("visibilitychange", visibilityHandler);
+      }
     };
   }, [
     prefEnabled,
