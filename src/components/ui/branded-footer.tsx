@@ -21,7 +21,7 @@ export function BrandedFooter({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {showLogo && <Logo size="sm" />}
             <div className="text-sm text-muted-foreground text-center sm:text-right">
-              <p>© {currentYear} DMDL CampusAccess. All rights reserved.</p>
+              <p>© {currentYear} CampusAccess. All rights reserved.</p>
             </div>
           </div>
         </div>
@@ -84,7 +84,7 @@ export function BrandedFooter({
         <div className="mt-8 pt-8 border-t">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              © {currentYear} DMDL CampusAccess. All rights reserved.
+              © {currentYear} CampusAccess. All rights reserved.
             </p>
             <p className="text-sm text-muted-foreground">
               Built with security and reliability in mind.
