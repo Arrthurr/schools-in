@@ -163,16 +163,16 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       geofenceState === "exiting" ||
       (distance !== null && distance <= nearBoundary)
     ) {
-      // Avoid increasing frequency beyond the baseline; only allow slower
-      return Math.max(baseInterval, GEOFENCE_TUNING.nearPollIntervalMs);
+    // Allow faster polling near boundaries/active transitions (cap by strategy baseline)
+    return Math.min(baseInterval, GEOFENCE_TUNING.nearPollIntervalMs);
     }
 
     if (
       distance !== null &&
       distance >= Math.max(GEOFENCE_TUNING.farDistanceMeters, activeRadius * 4)
     ) {
-      // Back off when far from any geofence
-      return Math.max(baseInterval, GEOFENCE_TUNING.farPollIntervalMs);
+    // Allow faster polling if strategy baseline is slower; otherwise keep baseline
+    return Math.min(baseInterval, GEOFENCE_TUNING.farPollIntervalMs);
     }
 
     return baseInterval;
