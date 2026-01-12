@@ -338,13 +338,41 @@ async function notifyClientsToProcessActionQueue(
       return;
     }
 
-    clients.forEach((client) => {
-      client.postMessage({
-        type: "PROCESS_ACTION_QUEUE",
-        source: "service-worker",
-        tag,
-      });
-    });
+    const acknowledgements = clients.map(
+      (client) =>
+        new Promise<void>((resolve) => {
+          const channel = new MessageChannel();
+          const timeout = setTimeout(() => {
+            console.warn("[SW] PROCESS_ACTION_QUEUE timeout, continuing");
+            resolve();
+          }, 15000);
+
+          channel.port1.onmessage = (event) => {
+            const { type, error } = event.data || {};
+            if (type === "PROCESS_ACTION_QUEUE_COMPLETE") {
+              clearTimeout(timeout);
+              resolve();
+            } else if (type === "PROCESS_ACTION_QUEUE_ERROR") {
+              clearTimeout(timeout);
+              console.warn("[SW] PROCESS_ACTION_QUEUE error from client", {
+                error,
+              });
+              resolve();
+            }
+          };
+
+          client.postMessage(
+            {
+              type: "PROCESS_ACTION_QUEUE",
+              source: "service-worker",
+              tag,
+            },
+            [channel.port2]
+          );
+        })
+    );
+
+    await Promise.all(acknowledgements);
   } catch (error) {
     console.error("[SW] Failed to request client action queue processing:", error);
     throw error;

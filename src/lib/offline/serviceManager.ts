@@ -114,15 +114,26 @@ export class ServiceManager {
     this.notifyStatusChange("offline");
   }
 
-  private handleServiceWorkerMessage(event: MessageEvent) {
-    const { data } = event;
+  private async handleServiceWorkerMessage(event: MessageEvent) {
+    const { data, ports } = event;
+    const responsePort = ports?.[0];
 
     switch (data.type) {
       case "BACKGROUND_SYNC":
-        this.performBackgroundSync();
+        await this.performBackgroundSync();
         break;
       case "PROCESS_ACTION_QUEUE":
-        this.performBackgroundSync();
+        try {
+          await this.performBackgroundSync();
+          responsePort?.postMessage({ type: "PROCESS_ACTION_QUEUE_COMPLETE" });
+        } catch (error) {
+          console.error("[ServiceManager] PROCESS_ACTION_QUEUE failed", error);
+          responsePort?.postMessage({
+            type: "PROCESS_ACTION_QUEUE_ERROR",
+            error:
+              error instanceof Error ? error.message : "Unknown sync failure",
+          });
+        }
         break;
       case "CACHE_UPDATE":
         this.notifyStatusChange("cache-updated");
