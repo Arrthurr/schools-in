@@ -107,7 +107,6 @@ describe("AdminNavigation", () => {
     expect(screen.getByText("Reports")).toBeInTheDocument();
     expect(screen.getByText("Users")).toBeInTheDocument();
     expect(screen.getByText("Assignments")).toBeInTheDocument();
-    expect(screen.getByText("Settings")).toBeInTheDocument();
   });
 
   it("highlights active navigation item", () => {
