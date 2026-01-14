@@ -24,7 +24,6 @@ import {
   X,
   Home,
   History,
-  Settings,
   MessageSquare,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -124,11 +123,6 @@ export default function DashboardPage() {
       icon: History,
     },
     { name: "Profile", href: "/profile", icon: User },
-    {
-      name: "Settings",
-      href: "/dashboard/settings",
-      icon: Settings,
-    },
     {
       name: "Feedback",
       href: "/provider/feedback",
@@ -381,6 +375,15 @@ export default function DashboardPage() {
               <SectionCard
                 title="Recent Activity"
                 description="Your recent check-ins and sessions"
+                headerActions={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push("/dashboard/history")}
+                  >
+                    View all
+                  </Button>
+                }
               >
                 {loadingRecent ? (
                   <SkeletonList items={3} />

@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import DashboardPage from "./page";
 import React from "react";
 
@@ -30,7 +30,12 @@ jest.mock("../../components/provider/SessionStatus", () => ({
 jest.mock("@/components/dashboard", () => ({
   PageHeader: ({ children }: any) => <div data-testid="page-header">{children}</div>,
   StatCard: () => <div data-testid="stat-card">Stat Card</div>,
-  SectionCard: ({ children }: any) => <div data-testid="section-card">{children}</div>,
+  SectionCard: ({ children, headerActions }: any) => (
+    <div data-testid="section-card">
+      {headerActions}
+      {children}
+    </div>
+  ),
   ActivityList: () => <div data-testid="activity-list">Activity List</div>,
 }));
 
@@ -104,6 +109,14 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(mockUseProviderLocations).toHaveBeenCalledWith("provider-123");
+    });
+  });
+
+  it("shows a View all link for recent activity history", async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("View all")).toBeInTheDocument();
     });
   });
 });
