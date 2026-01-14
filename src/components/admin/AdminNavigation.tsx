@@ -11,7 +11,6 @@ import {
   School,
   FileText,
   Users,
-  Settings,
   Menu,
   LogOut,
   Bell,
@@ -72,12 +71,6 @@ const navigationItems: NavItem[] = [
     label: "Assignments",
     icon: Activity,
     description: "School-provider assignments",
-  },
-  {
-    href: "/admin/settings",
-    label: "Settings",
-    icon: Settings,
-    description: "System configuration",
   },
   {
     href: "/admin/feedback",
