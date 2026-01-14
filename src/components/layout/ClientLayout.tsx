@@ -17,6 +17,7 @@ import { OfflineStatusIndicator } from "@/components/offline/OfflineStatusIndica
 import { Toaster } from "@/components/ui/toaster";
 import { Logo } from "../ui/logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useState, useEffect } from "react";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -25,24 +26,32 @@ interface ClientLayoutProps {
 export default function ClientLayout({ children }: ClientLayoutProps) {
   useStartupLogging();
   const pathname = usePathname();
-  const isAdminRoute = pathname?.startsWith("/admin");
+  const [mounted, setMounted] = useState(false);
+  
+  // Ensure consistent rendering between server and client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // Use consistent initial className to prevent hydration mismatch
+  // Default to non-admin styling to prevent layout shift
+  const isAdminRoute = mounted && pathname?.startsWith("/admin");
+  const mainClassName = isAdminRoute
+    ? "flex-1" // Remove container constraints for admin dashboard
+    : "flex-1 container-responsive py-4 sm:py-6 lg:py-8";
 
   return (
     <OfflineMessagingProvider enableToasts={true} enableNotifications={true}>
       <div className="flex flex-col min-h-screen">
-        {!isAdminRoute && <Header />}
-        <OfflineStatusBar variant="compact" position="top" />
-        <PWAUpdatePrompt />
+        {mounted && !isAdminRoute && <Header />}
+        {mounted && <OfflineStatusBar variant="compact" position="top" />}
+        {mounted && <PWAUpdatePrompt />}
         <main
           id="main-content"
-          className={
-            isAdminRoute
-              ? "flex-1" // Remove container constraints for admin dashboard
-              : "flex-1 container-responsive py-4 sm:py-6 lg:py-8"
-          }
+          className={mainClassName}
           tabIndex={-1}
         >
-          <PWAInstallPrompt />
+          {mounted && <PWAInstallPrompt />}
           {children}
         </main>
         <Toaster />
