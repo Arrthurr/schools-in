@@ -1,12 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useProviderLocations } from "@/lib/hooks/useProviderLocations";
 import { CachedSessionService } from "@/lib/services/cachedSessionService";
 import { Session } from "@/lib/firebase/types";
-import { aggregateHoursByLocation, buildDurationHistogram, getDurationMinutes } from "@/lib/utils/sessionHistory";
+import {
+  aggregateHoursByLocation,
+  buildDurationHistogram,
+  getDurationMinutes,
+} from "@/lib/utils/sessionHistory";
 import { formatDuration } from "@/lib/utils/session";
 import { PageHeader, SectionCard } from "@/components/dashboard";
 import {
@@ -22,7 +34,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { SimpleSelect, SelectOption } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { History, MapPin, Clock, Filter, RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 type DateRange = {
   startDate: Date;
@@ -81,7 +92,9 @@ export function SessionHistoryPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [{ startDate, endDate }, setDateRange] = useState<DateRange>(getDefaultRange);
+  const [{ startDate, endDate }, setDateRange] = useState<DateRange>(
+    getDefaultRange()
+  );
   const [locationFilter, setLocationFilter] = useState<string>("all");
 
   const locationOptions: SelectOption[] = useMemo(() => {
@@ -124,7 +137,8 @@ export function SessionHistoryPage() {
       );
       setSessions(data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load sessions";
+      const message =
+        err instanceof Error ? err.message : "Failed to load sessions";
       setError(message);
     } finally {
       setLoading(false);
@@ -241,7 +255,8 @@ export function SessionHistoryPage() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            Showing completed sessions only. Limited to {DEFAULT_LIMIT} items for mobile performance.
+            Showing completed sessions only. Limited to {DEFAULT_LIMIT} items
+            for mobile performance.
           </p>
         </SectionCard>
 
@@ -252,7 +267,9 @@ export function SessionHistoryPage() {
               <CardTitle className="text-base sm:text-lg">
                 Hours by location
               </CardTitle>
-              <CardDescription>Top locations from your history.</CardDescription>
+              <CardDescription>
+                Top locations from your history.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {hoursByLocation.length === 0 ? (
@@ -267,7 +284,11 @@ export function SessionHistoryPage() {
                       <XAxis dataKey="locationName" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip />
-                      <Bar dataKey="hours" radius={[6, 6, 0, 0]} fill="hsl(var(--chart-1))" />
+                      <Bar
+                        dataKey="hours"
+                        radius={[6, 6, 0, 0]}
+                        fill="hsl(var(--chart-1))"
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -280,7 +301,9 @@ export function SessionHistoryPage() {
               <CardTitle className="text-base sm:text-lg">
                 Session duration distribution
               </CardTitle>
-              <CardDescription>How long your sessions typically last.</CardDescription>
+              <CardDescription>
+                How long your sessions typically last.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {durationHistogram.every((d) => d.sessionCount === 0) ? (
@@ -295,7 +318,11 @@ export function SessionHistoryPage() {
                       <XAxis dataKey="binLabel" tick={{ fontSize: 12 }} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                       <Tooltip />
-                      <Bar dataKey="sessionCount" radius={[6, 6, 0, 0]} fill="hsl(var(--chart-2))" />
+                      <Bar
+                        dataKey="sessionCount"
+                        radius={[6, 6, 0, 0]}
+                        fill="hsl(var(--chart-2))"
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -318,9 +345,7 @@ export function SessionHistoryPage() {
           ) : error ? (
             <div className="flex items-center justify-between p-4 border rounded-md bg-destructive/5">
               <div>
-                <p className="text-sm font-medium text-destructive">
-                  {error}
-                </p>
+                <p className="text-sm font-medium text-destructive">{error}</p>
                 <p className="text-xs text-muted-foreground">
                   Try refreshing the page or adjusting filters.
                 </p>
@@ -352,10 +377,13 @@ export function SessionHistoryPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-medium text-foreground">{locationName}</p>
+                        <p className="font-medium text-foreground">
+                          {locationName}
+                        </p>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {formatTimestamp(session.startTime)} → {formatTimestamp(session.endTime)}
+                        {formatTimestamp(session.startTime)} →{" "}
+                        {formatTimestamp(session.endTime)}
                       </p>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
