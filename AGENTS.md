@@ -41,6 +41,7 @@
   - **Emergency (auto previous)**: `npm run firebase:rollback:emergency`
 - **Deployment status utilities**: `npm run deployment:status` (invokes `HostingManager.monitorDeployment()`; primarily useful in-browser since it short-circuits when `window` is undefined)
 - **Seed Firestore**: `npm run db:seed` (runs `scripts/seed-firestore.ts` via `ts-node`)
+- **Node versions**: App supports `>=18.17.0`, but Firebase Functions require Node `20`; use Node 20 for functions deploys/emulators.
 
 ## Architecture
 
