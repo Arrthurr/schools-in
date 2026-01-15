@@ -97,7 +97,7 @@ The app automatically selects the best detection method based on your device and
 1. **Chrome/Android**: Uses background sync for the most reliable detection, even when the app isn't open
 2. **Safari (iOS)**: Uses foreground detection with screen wake lock to prevent your device from sleeping
 3. **Firefox**: Uses visibility-based polling when the app is open
-4. **Fallback**: Manual check-in with optional notification reminders
+4. **Fallback**: Manual check-in/out when automatic detection isn't available
 
 ### How It Works in Practice
 

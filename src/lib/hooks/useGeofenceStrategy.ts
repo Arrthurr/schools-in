@@ -150,7 +150,6 @@ export function useStrategyBehavior(strategy: GeofenceStrategy) {
       shouldPoll: config.pollIntervalMs > 0,
       pollIntervalMs: config.pollIntervalMs,
       shouldUseWakeLock: config.useWakeLock,
-      shouldUsePushReminders: config.usePushReminders,
       debouncePolls: config.debouncePolls,
       strategyDescription: getStrategyDescription(strategy),
     };
@@ -170,16 +169,3 @@ function getStrategyDescription(strategy: GeofenceStrategy): string {
   }
 }
 
-/**
- * Hook to determine if push reminders should be initialized
- */
-export function useShouldUsePushReminders(): boolean {
-  const { strategy, capabilities } = useGeofenceStrategy();
-
-  return useMemo(() => {
-    if (!capabilities?.pushNotifications) return false;
-
-    // Use push reminders for strategies that don't have background sync
-    return strategy === "visibility-wakelock" || strategy === "visibility-polling";
-  }, [strategy, capabilities]);
-}

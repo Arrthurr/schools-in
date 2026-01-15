@@ -139,7 +139,7 @@ From `firebase.json`:
 - **PWA Capabilities**:
   - `src/lib/pwa/capabilities.ts` - Browser feature detection and strategy assignment
   - `src/lib/pwa/periodicBackgroundSync.ts` - Chrome/Android background geofence registration
-  - `src/lib/pwa/pushReminders.ts` - VAPID-based push notifications for Safari iOS fallback
+  - `src/lib/pwa/pushReminders.ts` - Push subscription helpers (admin alerts)
   - `src/components/pwa/PWAStatus.tsx` - PWA installation and status indicators
   - `src/components/pwa/PWAInstallPrompt.tsx` - Custom install prompt
   - `src/components/pwa/PWAUpdatePrompt.tsx` - Service worker update notifications
@@ -173,7 +173,7 @@ From `firebase.json`:
   1. `periodic-sync`: Best (Chrome/Android) - uses Service Worker Periodic Background Sync.
   2. `visibility-wakelock`: Good (Safari iOS) - uses Page Visibility + Wake Lock API.
   3. `visibility-polling`: Fallback (Firefox) - uses visibility-based foreground polling.
-  4. `manual-only`: Last resort - uses Push Notification reminders.
+  4. `manual-only`: Last resort - manual check-in/out only.
 - **Advanced PWA Capabilities**: Added `capabilities.ts` for fine-grained browser detection (Wake Lock, Periodic Sync, Push, etc.).
 - **Reliability Enhancements**: Added `useAutoCheckoutReminder` for visual countdowns and `useConnectivityRestoration` for robust offline-to-online syncing.
 - **Data Model Fix**: Migrated to `Location.assignedProviders` as single source of truth; removed `User.assignedSchools`.

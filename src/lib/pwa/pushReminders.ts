@@ -1,19 +1,18 @@
 /**
  * Push Notification Reminder System
  *
- * Provides push notification reminders for geofence check-ins on platforms
- * that don't support background sync (Safari iOS, Firefox).
+ * Provides push subscription helpers for server-driven notifications
+ * (e.g., admin alerts) and client permission management.
  *
  * This module handles:
  * - VAPID key management and subscription
- * - Scheduling local notification reminders
  * - Syncing push subscriptions with Firebase
  * - Coordinating with the service worker for push events
  *
  * Browser Support:
  * - Safari iOS 16.4+: Push notifications (requires user gesture)
  * - Firefox: Push notifications (full support)
- * - Chrome/Edge: Push notifications (but typically use Background Sync instead)
+ * - Chrome/Edge: Push notifications
  */
 
 import { appLogger } from "@/lib/logging/appLogger";
@@ -21,16 +20,7 @@ import { doc, setDoc, deleteDoc, Timestamp } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
 
-const PUSH_SUBSCRIPTION_KEY = "geofence-push-subscription";
-const REMINDER_SETTINGS_KEY = "geofence-reminder-settings";
-
-export interface ReminderSettings {
-  enabled: boolean;
-  morningReminderHour: number; // 0-23
-  eveningReminderHour: number; // 0-23
-  workDaysOnly: boolean; // Mon-Fri only
-  lastUpdated: number;
-}
+const PUSH_SUBSCRIPTION_KEY = "push-subscription";
 
 export interface PushSubscriptionData {
   endpoint: string;
@@ -40,14 +30,6 @@ export interface PushSubscriptionData {
     auth: string;
   };
 }
-
-const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
-  enabled: true,
-  morningReminderHour: 8, // 8 AM
-  eveningReminderHour: 17, // 5 PM
-  workDaysOnly: true,
-  lastUpdated: Date.now(),
-};
 
 /**
  * Check if push notifications are supported
@@ -188,7 +170,7 @@ export async function getCurrentSubscription(): Promise<PushSubscriptionData | n
 export async function savePushSubscriptionToFirebase(
   userId: string,
   subscription: PushSubscriptionData,
-  subscriptionId: string = "geofence"
+  subscriptionId: string = "default"
 ): Promise<void> {
   const docRef = doc(
     db,
@@ -214,7 +196,7 @@ export async function savePushSubscriptionToFirebase(
  */
 export async function removePushSubscriptionFromFirebase(
   userId: string,
-  subscriptionId: string = "geofence"
+  subscriptionId: string = "default"
 ): Promise<void> {
   const docRef = doc(
     db,
@@ -229,7 +211,7 @@ export async function removePushSubscriptionFromFirebase(
 }
 
 /**
- * Save admin alert push subscription (separate doc id to avoid mixing with geofence)
+ * Save admin alert push subscription (separate doc id for alert-specific subscriptions)
  */
 export async function saveAdminAlertSubscriptionToFirebase(
   userId: string,
@@ -245,215 +227,6 @@ export async function removeAdminAlertSubscriptionFromFirebase(
   userId: string
 ): Promise<void> {
   await removePushSubscriptionFromFirebase(userId, "adminAlerts");
-}
-
-/**
- * Get reminder settings from localStorage
- */
-export function getReminderSettings(): ReminderSettings {
-  if (typeof localStorage === "undefined") {
-    return DEFAULT_REMINDER_SETTINGS;
-  }
-
-  const stored = localStorage.getItem(REMINDER_SETTINGS_KEY);
-  if (!stored) {
-    return DEFAULT_REMINDER_SETTINGS;
-  }
-
-  try {
-    return { ...DEFAULT_REMINDER_SETTINGS, ...JSON.parse(stored) };
-  } catch {
-    return DEFAULT_REMINDER_SETTINGS;
-  }
-}
-
-/**
- * Save reminder settings to localStorage
- */
-export function saveReminderSettings(settings: Partial<ReminderSettings>): void {
-  if (typeof localStorage === "undefined") return;
-
-  const current = getReminderSettings();
-  const updated: ReminderSettings = {
-    ...current,
-    ...settings,
-    lastUpdated: Date.now(),
-  };
-
-  localStorage.setItem(REMINDER_SETTINGS_KEY, JSON.stringify(updated));
-  appLogger.info("Reminder settings saved", { settings: updated });
-}
-
-/**
- * Show a local notification (for immediate reminders)
- */
-export async function showLocalNotification(
-  title: string,
-  options: (NotificationOptions & {
-    actions?: Array<{ action: string; title: string }>;
-  }) = {}
-): Promise<void> {
-  if (!isPushSupported()) {
-    appLogger.warn("Notifications not supported");
-    return;
-  }
-
-  if (Notification.permission !== "granted") {
-    appLogger.warn("Notification permission not granted");
-    return;
-  }
-
-  try {
-    const registration = await navigator.serviceWorker.ready;
-
-    await registration.showNotification(
-      title,
-      ({
-      icon: "/icons/icon-192x192.png",
-      badge: "/icons/icon-72x72.png",
-      tag: "geofence-reminder",
-      requireInteraction: true,
-      ...options,
-      } as any)
-    );
-
-    appLogger.info("Local notification shown", { title });
-  } catch (error) {
-    appLogger.error("Failed to show notification", { error });
-  }
-}
-
-/**
- * Show check-in reminder notification
- */
-export async function showCheckInReminder(locationName?: string): Promise<void> {
-  const body = locationName
-    ? `Don't forget to check in at ${locationName}`
-    : "Open CampusAccess to check in at your location";
-
-  await showLocalNotification("Check-in Reminder", {
-    body,
-    data: { action: "check-in", locationName },
-    actions: [
-      { action: "open", title: "Open App" },
-      { action: "dismiss", title: "Dismiss" },
-    ],
-  } as NotificationOptions);
-}
-
-/**
- * Show check-out reminder notification
- */
-export async function showCheckOutReminder(
-  locationName?: string,
-  sessionDuration?: string
-): Promise<void> {
-  let body = "Don't forget to check out when you leave";
-
-  if (locationName && sessionDuration) {
-    body = `Still at ${locationName}? Session: ${sessionDuration}`;
-  } else if (locationName) {
-    body = `Don't forget to check out from ${locationName}`;
-  }
-
-  await showLocalNotification("Check-out Reminder", {
-    body,
-    data: { action: "check-out", locationName },
-    actions: [
-      { action: "open", title: "Open App" },
-      { action: "dismiss", title: "Dismiss" },
-    ],
-  } as NotificationOptions);
-}
-
-/**
- * Schedule a visibility-based reminder check
- * This uses the Page Visibility API to show reminders when the user returns to the app
- */
-export function setupVisibilityReminder(
-  onVisible: () => void
-): () => void {
-  if (typeof document === "undefined") {
-    return () => {};
-  }
-
-  const handler = () => {
-    if (document.visibilityState === "visible") {
-      onVisible();
-    }
-  };
-
-  document.addEventListener("visibilitychange", handler);
-
-  return () => {
-    document.removeEventListener("visibilitychange", handler);
-  };
-}
-
-/**
- * Check if it's a good time to show reminders based on settings
- */
-export function isReminderTime(): boolean {
-  const settings = getReminderSettings();
-
-  if (!settings.enabled) return false;
-
-  const now = new Date();
-  const hour = now.getHours();
-  const day = now.getDay();
-
-  // Check if it's a work day (Mon-Fri = 1-5)
-  if (settings.workDaysOnly && (day === 0 || day === 6)) {
-    return false;
-  }
-
-  // Check if it's around morning or evening reminder time (within 1 hour)
-  const isNearMorning = Math.abs(hour - settings.morningReminderHour) <= 1;
-  const isNearEvening = Math.abs(hour - settings.eveningReminderHour) <= 1;
-
-  return isNearMorning || isNearEvening;
-}
-
-/**
- * Get the next scheduled reminder time
- */
-export function getNextReminderTime(): Date | null {
-  const settings = getReminderSettings();
-
-  if (!settings.enabled) return null;
-
-  const now = new Date();
-  const today = new Date(now);
-
-  // Try morning reminder today
-  today.setHours(settings.morningReminderHour, 0, 0, 0);
-  if (today > now) {
-    if (!settings.workDaysOnly || (today.getDay() >= 1 && today.getDay() <= 5)) {
-      return today;
-    }
-  }
-
-  // Try evening reminder today
-  today.setHours(settings.eveningReminderHour, 0, 0, 0);
-  if (today > now) {
-    if (!settings.workDaysOnly || (today.getDay() >= 1 && today.getDay() <= 5)) {
-      return today;
-    }
-  }
-
-  // Find next valid day
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(settings.morningReminderHour, 0, 0, 0);
-
-  if (settings.workDaysOnly) {
-    // Skip to Monday if it's Friday evening or weekend
-    while (tomorrow.getDay() === 0 || tomorrow.getDay() === 6) {
-      tomorrow.setDate(tomorrow.getDate() + 1);
-    }
-  }
-
-  return tomorrow;
 }
 
 // ============================================
@@ -506,78 +279,3 @@ function detectPlatformForPush(): string {
   return "unknown";
 }
 
-// ============================================
-// Push Reminder Orchestration
-// ============================================
-
-export interface PushReminderConfig {
-  userId: string;
-  vapidPublicKey: string;
-  onPermissionDenied?: () => void;
-  onSubscriptionFailed?: (error: Error) => void;
-}
-
-/**
- * Initialize push reminders for a user
- * Call this when the user enables auto-geofence on unsupported platforms
- */
-export async function initializePushReminders(
-  config: PushReminderConfig
-): Promise<boolean> {
-  const { userId, vapidPublicKey, onPermissionDenied, onSubscriptionFailed } = config;
-
-  // Check if push is supported
-  if (!isPushSupported()) {
-    appLogger.info("Push not supported, skipping initialization");
-    return false;
-  }
-
-  // Check/request permission
-  let permission = getPushPermissionState();
-
-  if (permission === "default") {
-    permission = await requestPushPermission();
-  }
-
-  if (permission === "denied") {
-    appLogger.warn("Push permission denied");
-    onPermissionDenied?.();
-    return false;
-  }
-
-  if (permission !== "granted") {
-    return false;
-  }
-
-  // Subscribe to push
-  try {
-    const subscription = await subscribeToPush(vapidPublicKey);
-
-    if (!subscription) {
-      throw new Error("Failed to create push subscription");
-    }
-
-    // Save to Firebase for server-side push
-    await savePushSubscriptionToFirebase(userId, subscription);
-
-    appLogger.info("Push reminders initialized successfully");
-    return true;
-  } catch (error) {
-    appLogger.error("Failed to initialize push reminders", { error });
-    onSubscriptionFailed?.(error as Error);
-    return false;
-  }
-}
-
-/**
- * Cleanup push reminders for a user (e.g., on logout or disable)
- */
-export async function cleanupPushReminders(userId: string): Promise<void> {
-  try {
-    await unsubscribeFromPush();
-    await removePushSubscriptionFromFirebase(userId);
-    appLogger.info("Push reminders cleaned up");
-  } catch (error) {
-    appLogger.error("Failed to cleanup push reminders", { error });
-  }
-}
