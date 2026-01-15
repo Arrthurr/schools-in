@@ -101,12 +101,11 @@ function Header() {
                 <Button
                   variant="outline"
                   onClick={handleSignOut}
-                  className="touch-target text-sm sm:text-base focus-ring"
+                  className="touch-target text-sm focus-ring whitespace-nowrap"
                   size="sm"
                   aria-label="Sign out of application"
                 >
-                  <span className="hidden sm:inline">Sign Out</span>
-                  <span className="sm:hidden">Out</span>
+                  Sign Out
                 </Button>
               </>
             )}
