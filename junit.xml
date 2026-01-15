@@ -1,0 +1,1265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="572" failures="0" errors="0" time="4.464">
+  <testsuite name="AttendanceSummary Component" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:46" time="1.021" tests="5">
+    <testcase classname="AttendanceSummary Component renders attendance summary dashboard" name="AttendanceSummary Component renders attendance summary dashboard" time="0.136">
+    </testcase>
+    <testcase classname="AttendanceSummary Component renders filter controls" name="AttendanceSummary Component renders filter controls" time="0.049">
+    </testcase>
+    <testcase classname="AttendanceSummary Component renders provider and school attendance tables" name="AttendanceSummary Component renders provider and school attendance tables" time="0.063">
+    </testcase>
+    <testcase classname="AttendanceSummary Component shows empty state messages" name="AttendanceSummary Component shows empty state messages" time="0.036">
+    </testcase>
+    <testcase classname="AttendanceSummary Component renders apply and reset filter buttons" name="AttendanceSummary Component renders apply and reset filter buttons" time="0.106">
+    </testcase>
+  </testsuite>
+  <testsuite name="AdminManualCheckInOut Component" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:46" time="1.102" tests="9">
+    <testcase classname="AdminManualCheckInOut Component renders the manual check-in card" name="AdminManualCheckInOut Component renders the manual check-in card" time="0.047">
+    </testcase>
+    <testcase classname="AdminManualCheckInOut Component loads and displays schools in the dropdown" name="AdminManualCheckInOut Component loads and displays schools in the dropdown" time="0.064">
+    </testcase>
+    <testcase classname="AdminManualCheckInOut Component shows location button and can get location" name="AdminManualCheckInOut Component shows location button and can get location" time="0.162">
+    </testcase>
+    <testcase classname="AdminManualCheckInOut Component shows location error when geolocation is denied" name="AdminManualCheckInOut Component shows location error when geolocation is denied" time="0.046">
+    </testcase>
+    <testcase classname="AdminManualCheckInOut Component disables check-in button when not in range" name="AdminManualCheckInOut Component disables check-in button when not in range" time="0.031">
+    </testcase>
+    <testcase classname="AdminManualCheckInOut Component shows active session and end visit button when checked in" name="AdminManualCheckInOut Component shows active session and end visit button when checked in" time="0.016">
+    </testcase>
+    <testcase classname="AdminManualCheckInOut Component can end an active session" name="AdminManualCheckInOut Component can end an active session" time="0.022">
+    </testcase>
+    <testcase classname="AdminManualCheckInOut Component shows In Range badge when user is within geofence" name="AdminManualCheckInOut Component shows In Range badge when user is within geofence" time="0.026">
+    </testcase>
+    <testcase classname="AdminManualCheckInOut Component shows Out of Range badge when user is outside geofence" name="AdminManualCheckInOut Component shows Out of Range badge when user is outside geofence" time="0.029">
+    </testcase>
+  </testsuite>
+  <testsuite name="SessionReports Component" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:46" time="1.061" tests="5">
+    <testcase classname="SessionReports Component renders session reports dashboard" name="SessionReports Component renders session reports dashboard" time="0.156">
+    </testcase>
+    <testcase classname="SessionReports Component renders filter controls" name="SessionReports Component renders filter controls" time="0.071">
+    </testcase>
+    <testcase classname="SessionReports Component renders apply and reset filter buttons" name="SessionReports Component renders apply and reset filter buttons" time="0.088">
+    </testcase>
+    <testcase classname="SessionReports Component disables CSV export button when no sessions" name="SessionReports Component disables CSV export button when no sessions" time="0.051">
+    </testcase>
+    <testcase classname="SessionReports Component renders session data table" name="SessionReports Component renders session data table" time="0.06">
+    </testcase>
+  </testsuite>
+  <testsuite name="SessionAnalytics" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:46" time="1.049" tests="7">
+    <testcase classname="SessionAnalytics renders analytics dashboard" name="SessionAnalytics renders analytics dashboard" time="0.14">
+    </testcase>
+    <testcase classname="SessionAnalytics displays summary statistics" name="SessionAnalytics displays summary statistics" time="0.075">
+    </testcase>
+    <testcase classname="SessionAnalytics renders chart title" name="SessionAnalytics renders chart title" time="0.068">
+    </testcase>
+    <testcase classname="SessionAnalytics handles loading state" name="SessionAnalytics handles loading state" time="0.026">
+    </testcase>
+    <testcase classname="SessionAnalytics handles error state" name="SessionAnalytics handles error state" time="0.052">
+    </testcase>
+    <testcase classname="SessionAnalytics handles empty data state" name="SessionAnalytics handles empty data state" time="0.05">
+    </testcase>
+    <testcase classname="SessionAnalytics renders filter controls" name="SessionAnalytics renders filter controls" time="0.028">
+    </testcase>
+  </testsuite>
+  <testsuite name="SessionHistory Component" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:46" time="1.124" tests="21">
+    <testcase classname="SessionHistory Component renders loading state correctly" name="SessionHistory Component renders loading state correctly" time="0.05">
+    </testcase>
+    <testcase classname="SessionHistory Component renders error state correctly" name="SessionHistory Component renders error state correctly" time="0.004">
+    </testcase>
+    <testcase classname="SessionHistory Component renders empty state when no completed sessions" name="SessionHistory Component renders empty state when no completed sessions" time="0.078">
+    </testcase>
+    <testcase classname="SessionHistory Component renders completed sessions correctly" name="SessionHistory Component renders completed sessions correctly" time="0.081">
+    </testcase>
+    <testcase classname="SessionHistory Component loads sessions on mount" name="SessionHistory Component loads sessions on mount" time="0.004">
+    </testcase>
+    <testcase classname="SessionHistory Component retries loading sessions when retry button is clicked" name="SessionHistory Component retries loading sessions when retry button is clicked" time="0.026">
+    </testcase>
+    <testcase classname="SessionHistory Component refreshes sessions when refresh button is clicked" name="SessionHistory Component refreshes sessions when refresh button is clicked" time="0.006">
+    </testcase>
+    <testcase classname="SessionHistory Component loads school names for sessions" name="SessionHistory Component loads school names for sessions" time="0.008">
+    </testcase>
+    <testcase classname="SessionHistory Component handles unknown school gracefully" name="SessionHistory Component handles unknown school gracefully" time="0.013">
+    </testcase>
+    <testcase classname="SessionHistory Component handles school service error gracefully" name="SessionHistory Component handles school service error gracefully" time="0.014">
+    </testcase>
+    <testcase classname="SessionHistory Component displays pagination controls when there are sessions" name="SessionHistory Component displays pagination controls when there are sessions" time="0.006">
+    </testcase>
+    <testcase classname="SessionHistory Component disables previous button on first page" name="SessionHistory Component disables previous button on first page" time="0.005">
+    </testcase>
+    <testcase classname="SessionHistory Component enables next button when there are more sessions" name="SessionHistory Component enables next button when there are more sessions" time="0.004">
+    </testcase>
+    <testcase classname="SessionHistory Component disables next button when there are no more sessions" name="SessionHistory Component disables next button when there are no more sessions" time="0.004">
+    </testcase>
+    <testcase classname="SessionHistory Component calls loadSessions with pagination parameters when navigating" name="SessionHistory Component calls loadSessions with pagination parameters when navigating" time="0.01">
+    </testcase>
+    <testcase classname="SessionHistory Component resets to page 1 when refresh button is clicked" name="SessionHistory Component resets to page 1 when refresh button is clicked" time="0.004">
+    </testcase>
+    <testcase classname="SessionHistory Component shows filter controls when show filters button is clicked" name="SessionHistory Component shows filter controls when show filters button is clicked" time="0.028">
+    </testcase>
+    <testcase classname="SessionHistory Component hides filter controls when hide filters button is clicked" name="SessionHistory Component hides filter controls when hide filters button is clicked" time="0.017">
+    </testcase>
+    <testcase classname="SessionHistory Component shows View Details button for each session" name="SessionHistory Component shows View Details button for each session" time="0.004">
+    </testcase>
+    <testcase classname="SessionHistory Component opens session detail modal when View Details is clicked" name="SessionHistory Component opens session detail modal when View Details is clicked" time="0.062">
+    </testcase>
+    <testcase classname="SessionHistory Component includes Actions column in table header" name="SessionHistory Component includes Actions column in table header" time="0.006">
+    </testcase>
+  </testsuite>
+  <testsuite name="SchoolForm" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:46" time="1.157" tests="11">
+    <testcase classname="SchoolForm renders form with all required fields" name="SchoolForm renders form with all required fields" time="0.099">
+    </testcase>
+    <testcase classname="SchoolForm displays &apos;Add New School&apos; title when creating" name="SchoolForm displays &apos;Add New School&apos; title when creating" time="0.048">
+    </testcase>
+    <testcase classname="SchoolForm displays &apos;Edit School&apos; title when editing" name="SchoolForm displays &apos;Edit School&apos; title when editing" time="0.045">
+    </testcase>
+    <testcase classname="SchoolForm pre-fills form when editing existing school" name="SchoolForm pre-fills form when editing existing school" time="0.026">
+    </testcase>
+    <testcase classname="SchoolForm validates required fields" name="SchoolForm validates required fields" time="0.029">
+    </testcase>
+    <testcase classname="SchoolForm validates coordinates" name="SchoolForm validates coordinates" time="0.037">
+    </testcase>
+    <testcase classname="SchoolForm calls onSubmit with form data" name="SchoolForm calls onSubmit with form data" time="0.122">
+    </testcase>
+    <testcase classname="SchoolForm calls onClose when cancel button is clicked" name="SchoolForm calls onClose when cancel button is clicked" time="0.032">
+    </testcase>
+    <testcase classname="SchoolForm shows loading state" name="SchoolForm shows loading state" time="0.033">
+    </testcase>
+    <testcase classname="SchoolForm handles geocoding button click" name="SchoolForm handles geocoding button click" time="0.062">
+    </testcase>
+    <testcase classname="SchoolForm does not render when isOpen is false" name="SchoolForm does not render when isOpen is false" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="CheckInButton" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:46" time="1.143" tests="13">
+    <testcase classname="CheckInButton renders check-in button when not checked in" name="CheckInButton renders check-in button when not checked in" time="0.074">
+    </testcase>
+    <testcase classname="CheckInButton renders check-out button when checked in" name="CheckInButton renders check-out button when checked in" time="0.005">
+    </testcase>
+    <testcase classname="CheckInButton shows loading state while getting location" name="CheckInButton shows loading state while getting location" time="0.188">
+    </testcase>
+    <testcase classname="CheckInButton shows in range status when user is close to school" name="CheckInButton shows in range status when user is close to school" time="0.037">
+    </testcase>
+    <testcase classname="CheckInButton shows outside range status when user is far from school" name="CheckInButton shows outside range status when user is far from school" time="0.017">
+    </testcase>
+    <testcase classname="CheckInButton opens confirmation dialog when check-in is clicked and location is obtained" name="CheckInButton opens confirmation dialog when check-in is clicked and location is obtained" time="0.025">
+    </testcase>
+    <testcase classname="CheckInButton formats distance correctly for meters and kilometers" name="CheckInButton formats distance correctly for meters and kilometers" time="0.028">
+    </testcase>
+    <testcase classname="CheckInButton handles check-in when confirm button is clicked" name="CheckInButton handles check-in when confirm button is clicked" time="0.037">
+    </testcase>
+    <testcase classname="CheckInButton shows GPS accuracy in location info" name="CheckInButton shows GPS accuracy in location info" time="0.024">
+    </testcase>
+    <testcase classname="CheckInButton disables confirm button when location accuracy is too low" name="CheckInButton disables confirm button when location accuracy is too low" time="0.023">
+    </testcase>
+    <testcase classname="CheckInButton handles location errors gracefully" name="CheckInButton handles location errors gracefully" time="0.009">
+    </testcase>
+    <testcase classname="CheckInButton handles check-out flow" name="CheckInButton handles check-out flow" time="0.017">
+    </testcase>
+    <testcase classname="CheckInButton confirms successful location verification" name="CheckInButton confirms successful location verification" time="0.028">
+    </testcase>
+  </testsuite>
+  <testsuite name="ReportScheduler" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:46" time="1.282" tests="10">
+    <testcase classname="ReportScheduler renders scheduler dashboard" name="ReportScheduler renders scheduler dashboard" time="0.141">
+    </testcase>
+    <testcase classname="ReportScheduler displays mock schedules" name="ReportScheduler displays mock schedules" time="0.049">
+    </testcase>
+    <testcase classname="ReportScheduler shows schedule statistics" name="ReportScheduler shows schedule statistics" time="0.098">
+    </testcase>
+    <testcase classname="ReportScheduler displays schedule cards with proper information" name="ReportScheduler displays schedule cards with proper information" time="0.049">
+    </testcase>
+    <testcase classname="ReportScheduler shows active and paused schedules correctly" name="ReportScheduler shows active and paused schedules correctly" time="0.018">
+    </testcase>
+    <testcase classname="ReportScheduler displays recipient information" name="ReportScheduler displays recipient information" time="0.027">
+    </testcase>
+    <testcase classname="ReportScheduler shows format and delivery information" name="ReportScheduler shows format and delivery information" time="0.036">
+    </testcase>
+    <testcase classname="ReportScheduler handles create schedule button click" name="ReportScheduler handles create schedule button click" time="0.144">
+    </testcase>
+    <testcase classname="ReportScheduler displays schedule action buttons" name="ReportScheduler displays schedule action buttons" time="0.025">
+    </testcase>
+    <testcase classname="ReportScheduler shows next run dates for active schedules" name="ReportScheduler shows next run dates for active schedules" time="0.028">
+    </testcase>
+  </testsuite>
+  <testsuite name="useOfflineQueue" errors="0" failures="0" skipped="8" timestamp="2026-01-15T16:40:46" time="1.405" tests="16">
+    <testcase classname="useOfflineQueue Hook Initialization should initialize with default state" name="useOfflineQueue Hook Initialization should initialize with default state" time="0.121">
+    </testcase>
+    <testcase classname="useOfflineQueue Hook Initialization should load initial queue state" name="useOfflineQueue Hook Initialization should load initial queue state" time="0.104">
+    </testcase>
+    <testcase classname="useOfflineQueue Queue Operations should add check-in action to queue" name="useOfflineQueue Queue Operations should add check-in action to queue" time="0.11">
+    </testcase>
+    <testcase classname="useOfflineQueue Queue Operations should add check-out action to queue" name="useOfflineQueue Queue Operations should add check-out action to queue" time="0.105">
+    </testcase>
+    <testcase classname="useOfflineQueue Queue Operations should sync queue when online" name="useOfflineQueue Queue Operations should sync queue when online" time="0.103">
+    </testcase>
+    <testcase classname="useOfflineQueue Queue Operations should handle sync failures gracefully" name="useOfflineQueue Queue Operations should handle sync failures gracefully" time="0.103">
+    </testcase>
+    <testcase classname="useOfflineQueue Queue Operations should cancel action from queue" name="useOfflineQueue Queue Operations should cancel action from queue" time="0.112">
+    </testcase>
+    <testcase classname="useOfflineQueue Queue Operations should clear completed actions" name="useOfflineQueue Queue Operations should clear completed actions" time="0.112">
+    </testcase>
+    <testcase classname="useOfflineQueue Auto-refresh Functionality should refresh queue data periodically" name="useOfflineQueue Auto-refresh Functionality should refresh queue data periodically" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="useOfflineQueue Auto-refresh Functionality should clean up refresh interval on unmount" name="useOfflineQueue Auto-refresh Functionality should clean up refresh interval on unmount" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="useOfflineQueue Network Status Integration should handle offline state" name="useOfflineQueue Network Status Integration should handle offline state" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="useOfflineQueue Network Status Integration should handle network reconnection" name="useOfflineQueue Network Status Integration should handle network reconnection" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="useOfflineQueue Error Handling should handle queue operation errors" name="useOfflineQueue Error Handling should handle queue operation errors" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="useOfflineQueue Error Handling should handle data loading errors gracefully" name="useOfflineQueue Error Handling should handle data loading errors gracefully" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="useOfflineQueue Loading States should manage initialization state correctly" name="useOfflineQueue Loading States should manage initialization state correctly" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="useOfflineQueue Loading States should show processing during operations" name="useOfflineQueue Loading States should show processing during operations" time="0">
+      <skipped/>
+    </testcase>
+  </testsuite>
+  <testsuite name="useGeofenceStrategy" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:47" time="0.533" tests="4">
+    <testcase classname="useGeofenceStrategy detects capabilities/platform on mount and exposes derived strategy state" name="useGeofenceStrategy detects capabilities/platform on mount and exposes derived strategy state" time="0.064">
+    </testcase>
+    <testcase classname="useGeofenceStrategy switchToFallback moves to fallback strategy and marks isUsingFallback" name="useGeofenceStrategy switchToFallback moves to fallback strategy and marks isUsingFallback" time="0.058">
+    </testcase>
+    <testcase classname="useGeofenceStrategy refresh re-runs detection and updates current strategy" name="useGeofenceStrategy refresh re-runs detection and updates current strategy" time="0.058">
+    </testcase>
+    <testcase classname="useGeofenceStrategy falls back to manual-only strategy when detection throws" name="useGeofenceStrategy falls back to manual-only strategy when detection throws" time="0.064">
+    </testcase>
+  </testsuite>
+  <testsuite name="LoginForm" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:47" time="0.671" tests="10">
+    <testcase classname="LoginForm Microsoft Authentication renders Microsoft sign-in button" name="LoginForm Microsoft Authentication renders Microsoft sign-in button" time="0.067">
+    </testcase>
+    <testcase classname="LoginForm Microsoft Authentication calls signInWithMicrosoft when button clicked" name="LoginForm Microsoft Authentication calls signInWithMicrosoft when button clicked" time="0.037">
+    </testcase>
+    <testcase classname="LoginForm Microsoft Authentication shows error message for unauthorized accounts" name="LoginForm Microsoft Authentication shows error message for unauthorized accounts" time="0.03">
+    </testcase>
+    <testcase classname="LoginForm Microsoft Authentication disables button during Microsoft sign-in" name="LoginForm Microsoft Authentication disables button during Microsoft sign-in" time="0.014">
+    </testcase>
+    <testcase classname="LoginForm M365 Group Sync Integration calls syncUserFromM365 after successful Microsoft sign-in" name="LoginForm M365 Group Sync Integration calls syncUserFromM365 after successful Microsoft sign-in" time="0.02">
+    </testcase>
+    <testcase classname="LoginForm M365 Group Sync Integration routes to /dashboard for provider users after sync" name="LoginForm M365 Group Sync Integration routes to /dashboard for provider users after sync" time="0.036">
+    </testcase>
+    <testcase classname="LoginForm M365 Group Sync Integration routes to /admin for admin users after sync" name="LoginForm M365 Group Sync Integration routes to /admin for admin users after sync" time="0.035">
+    </testcase>
+    <testcase classname="LoginForm M365 Group Sync Integration respects redirectTo search param when present" name="LoginForm M365 Group Sync Integration respects redirectTo search param when present" time="0.014">
+    </testcase>
+    <testcase classname="LoginForm M365 Group Sync Integration shows error when M365 sync fails" name="LoginForm M365 Group Sync Integration shows error when M365 sync fails" time="0.015">
+    </testcase>
+    <testcase classname="LoginForm M365 Group Sync Integration assigns schools based on M365 group membership" name="LoginForm M365 Group Sync Integration assigns schools based on M365 group membership" time="0.025">
+    </testcase>
+  </testsuite>
+  <testsuite name="AdminNavigation" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:47" time="0.614" tests="11">
+    <testcase classname="AdminNavigation renders navigation with logo and branding" name="AdminNavigation renders navigation with logo and branding" time="0.036">
+    </testcase>
+    <testcase classname="AdminNavigation displays all navigation items" name="AdminNavigation displays all navigation items" time="0.016">
+    </testcase>
+    <testcase classname="AdminNavigation highlights active navigation item" name="AdminNavigation highlights active navigation item" time="0.042">
+    </testcase>
+    <testcase classname="AdminNavigation displays user information in sidebar" name="AdminNavigation displays user information in sidebar" time="0.027">
+    </testcase>
+    <testcase classname="AdminNavigation displays user information in header" name="AdminNavigation displays user information in header" time="0.008">
+    </testcase>
+    <testcase classname="AdminNavigation handles sign out functionality" name="AdminNavigation handles sign out functionality" time="0.073">
+    </testcase>
+    <testcase classname="AdminNavigation renders breadcrumb navigation" name="AdminNavigation renders breadcrumb navigation" time="0.007">
+    </testcase>
+    <testcase classname="AdminNavigation shows mobile navigation trigger on small screens" name="AdminNavigation shows mobile navigation trigger on small screens" time="0.014">
+    </testcase>
+    <testcase classname="AdminNavigation renders children content" name="AdminNavigation renders children content" time="0.007">
+    </testcase>
+    <testcase classname="AdminNavigation closes mobile navigation when navigation item is clicked" name="AdminNavigation closes mobile navigation when navigation item is clicked" time="0.007">
+    </testcase>
+    <testcase classname="AdminNavigation displays notification bell button" name="AdminNavigation displays notification bell button" time="0.014">
+    </testcase>
+  </testsuite>
+  <testsuite name="SchoolDetailView Component" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:47" time="0.683" tests="19">
+    <testcase classname="SchoolDetailView Component renders school details correctly" name="SchoolDetailView Component renders school details correctly" time="0.043">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows back button and calls onBack when clicked" name="SchoolDetailView Component shows back button and calls onBack when clicked" time="0.036">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows close button when onClose is provided" name="SchoolDetailView Component shows close button when onClose is provided" time="0.024">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows check-in button when showCheckInButton is true" name="SchoolDetailView Component shows check-in button when showCheckInButton is true" time="0.017">
+    </testcase>
+    <testcase classname="SchoolDetailView Component calls onCheckIn when check-in button is clicked and within radius" name="SchoolDetailView Component calls onCheckIn when check-in button is clicked and within radius" time="0.015">
+    </testcase>
+    <testcase classname="SchoolDetailView Component disables check-in button when outside radius" name="SchoolDetailView Component disables check-in button when outside radius" time="0.03">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows location status badge correctly when in range" name="SchoolDetailView Component shows location status badge correctly when in range" time="0.024">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows location status badge correctly when out of range" name="SchoolDetailView Component shows location status badge correctly when out of range" time="0.014">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows location unknown when no location available" name="SchoolDetailView Component shows location unknown when no location available" time="0.009">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows get location button when location not available" name="SchoolDetailView Component shows get location button when location not available" time="0.045">
+    </testcase>
+    <testcase classname="SchoolDetailView Component displays distance when location is available" name="SchoolDetailView Component displays distance when location is available" time="0.007">
+    </testcase>
+    <testcase classname="SchoolDetailView Component displays distance in kilometers when over 1000m" name="SchoolDetailView Component displays distance in kilometers when over 1000m" time="0.012">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows GPS coordinates correctly" name="SchoolDetailView Component shows GPS coordinates correctly" time="0.007">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows location help card when no location" name="SchoolDetailView Component shows location help card when no location" time="0.007">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows check-in instructions when outside radius" name="SchoolDetailView Component shows check-in instructions when outside radius" time="0.011">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows loading state for location button" name="SchoolDetailView Component shows loading state for location button" time="0.009">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows contact information section" name="SchoolDetailView Component shows contact information section" time="0.011">
+    </testcase>
+    <testcase classname="SchoolDetailView Component shows session information section" name="SchoolDetailView Component shows session information section" time="0.013">
+    </testcase>
+    <testcase classname="SchoolDetailView Component applies custom className" name="SchoolDetailView Component applies custom className" time="0.007">
+    </testcase>
+  </testsuite>
+  <testsuite name="useProviderMetrics" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:47" time="0.754" tests="19">
+    <testcase classname="useProviderMetrics initialization should initialize with default state" name="useProviderMetrics initialization should initialize with default state" time="0.021">
+    </testcase>
+    <testcase classname="useProviderMetrics initialization should handle auth loading state" name="useProviderMetrics initialization should handle auth loading state" time="0.001">
+    </testcase>
+    <testcase classname="useProviderMetrics initialization should handle no authenticated user" name="useProviderMetrics initialization should handle no authenticated user" time="0.002">
+    </testcase>
+    <testcase classname="useProviderMetrics weekly metrics calculation should calculate metrics for multiple completed sessions" name="useProviderMetrics weekly metrics calculation should calculate metrics for multiple completed sessions" time="0.002">
+    </testcase>
+    <testcase classname="useProviderMetrics weekly metrics calculation should handle mixed session statuses for completion rate" name="useProviderMetrics weekly metrics calculation should handle mixed session statuses for completion rate" time="0.017">
+    </testcase>
+    <testcase classname="useProviderMetrics weekly metrics calculation should identify most visited location" name="useProviderMetrics weekly metrics calculation should identify most visited location" time="0.001">
+    </testcase>
+    <testcase classname="useProviderMetrics session management should start a session successfully" name="useProviderMetrics session management should start a session successfully" time="0.02">
+    </testcase>
+    <testcase classname="useProviderMetrics session management should end a session successfully" name="useProviderMetrics session management should end a session successfully" time="0.003">
+    </testcase>
+    <testcase classname="useProviderMetrics session management should pause a session successfully" name="useProviderMetrics session management should pause a session successfully" time="0.002">
+    </testcase>
+    <testcase classname="useProviderMetrics session management should resume a session successfully" name="useProviderMetrics session management should resume a session successfully" time="0.003">
+    </testcase>
+    <testcase classname="useProviderMetrics session state helpers should correctly identify active session" name="useProviderMetrics session state helpers should correctly identify active session" time="0.004">
+    </testcase>
+    <testcase classname="useProviderMetrics session state helpers should correctly identify paused session" name="useProviderMetrics session state helpers should correctly identify paused session" time="0.005">
+    </testcase>
+    <testcase classname="useProviderMetrics session state helpers should correctly identify no session state" name="useProviderMetrics session state helpers should correctly identify no session state" time="0.001">
+    </testcase>
+    <testcase classname="useProviderMetrics error handling should handle session service errors" name="useProviderMetrics error handling should handle session service errors" time="0.031">
+    </testcase>
+    <testcase classname="useProviderMetrics error handling should handle start session errors" name="useProviderMetrics error handling should handle start session errors" time="0.004">
+    </testcase>
+    <testcase classname="useProviderMetrics error handling should handle end session errors" name="useProviderMetrics error handling should handle end session errors" time="0.011">
+    </testcase>
+    <testcase classname="useProviderMetrics refresh functionality should refresh data when called" name="useProviderMetrics refresh functionality should refresh data when called" time="0.003">
+    </testcase>
+    <testcase classname="useProviderMetrics session duration tracking should track session duration for active sessions" name="useProviderMetrics session duration tracking should track session duration for active sessions" time="0.004">
+    </testcase>
+    <testcase classname="useProviderMetrics session duration tracking should not track duration for non-active sessions" name="useProviderMetrics session duration tracking should not track duration for non-active sessions" time="0.006">
+    </testcase>
+  </testsuite>
+  <testsuite name="FeedbackForm" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:47" time="0.711" tests="3">
+    <testcase classname="FeedbackForm renders the form correctly" name="FeedbackForm renders the form correctly" time="0.124">
+    </testcase>
+    <testcase classname="FeedbackForm submits valid data" name="FeedbackForm submits valid data" time="0.087">
+    </testcase>
+    <testcase classname="FeedbackForm validates required fields" name="FeedbackForm validates required fields" time="0.053">
+    </testcase>
+  </testsuite>
+  <testsuite name="SchoolList Component" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:47" time="0.758" tests="13">
+    <testcase classname="SchoolList Component renders school list when schools are loaded" name="SchoolList Component renders school list when schools are loaded" time="0.045">
+    </testcase>
+    <testcase classname="SchoolList Component renders empty state when no schools assigned" name="SchoolList Component renders empty state when no schools assigned" time="0.004">
+    </testcase>
+    <testcase classname="SchoolList Component shows search functionality" name="SchoolList Component shows search functionality" time="0.011">
+    </testcase>
+    <testcase classname="SchoolList Component shows distance when available" name="SchoolList Component shows distance when available" time="0.011">
+    </testcase>
+    <testcase classname="SchoolList Component shows check-in buttons when explicitly enabled" name="SchoolList Component shows check-in buttons when explicitly enabled" time="0.061">
+    </testcase>
+    <testcase classname="SchoolList Component does not show check-in buttons when showCheckInButtons is false (provider auto mode)" name="SchoolList Component does not show check-in buttons when showCheckInButtons is false (provider auto mode)" time="0.028">
+    </testcase>
+    <testcase classname="SchoolList Component does not show check-in buttons by default" name="SchoolList Component does not show check-in buttons by default" time="0.024">
+    </testcase>
+    <testcase classname="SchoolList Component handles search input" name="SchoolList Component handles search input" time="0.023">
+    </testcase>
+    <testcase classname="SchoolList Component handles missing location gracefully" name="SchoolList Component handles missing location gracefully" time="0.021">
+    </testcase>
+    <testcase classname="SchoolList Component shows error state when assignments fail to load" name="SchoolList Component shows error state when assignments fail to load" time="0.009">
+    </testcase>
+    <testcase classname="SchoolList Component shows empty search state when no schools match query" name="SchoolList Component shows empty search state when no schools match query" time="0.014">
+    </testcase>
+    <testcase classname="SchoolList Component shows loading state initially" name="SchoolList Component shows loading state initially" time="0.003">
+    </testcase>
+    <testcase classname="SchoolList Component calls onSchoolSelect when school is clicked" name="SchoolList Component calls onSchoolSelect when school is clicked" time="0.03">
+    </testcase>
+  </testsuite>
+  <testsuite name="AdminDashboard" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.68" tests="6">
+    <testcase classname="AdminDashboard renders dashboard header with user greeting" name="AdminDashboard renders dashboard header with user greeting" time="0.165">
+    </testcase>
+    <testcase classname="AdminDashboard renders dashboard with user greeting" name="AdminDashboard renders dashboard with user greeting" time="0.015">
+    </testcase>
+    <testcase classname="AdminDashboard shows correct activity types with appropriate styling" name="AdminDashboard shows correct activity types with appropriate styling" time="0.039">
+    </testcase>
+    <testcase classname="AdminDashboard displays average session duration" name="AdminDashboard displays average session duration" time="0.017">
+    </testcase>
+    <testcase classname="AdminDashboard renders action buttons" name="AdminDashboard renders action buttons" time="0.018">
+    </testcase>
+    <testcase classname="AdminDashboard handles empty recent activity" name="AdminDashboard handles empty recent activity" time="0.02">
+    </testcase>
+  </testsuite>
+  <testsuite name="SessionDetailModal Component" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.689" tests="9">
+    <testcase classname="SessionDetailModal Component renders nothing when session is null" name="SessionDetailModal Component renders nothing when session is null" time="0.008">
+    </testcase>
+    <testcase classname="SessionDetailModal Component renders modal with completed session details" name="SessionDetailModal Component renders modal with completed session details" time="0.131">
+    </testcase>
+    <testcase classname="SessionDetailModal Component renders modal with active session details" name="SessionDetailModal Component renders modal with active session details" time="0.023">
+    </testcase>
+    <testcase classname="SessionDetailModal Component displays coordinates correctly" name="SessionDetailModal Component displays coordinates correctly" time="0.046">
+    </testcase>
+    <testcase classname="SessionDetailModal Component displays user ID correctly" name="SessionDetailModal Component displays user ID correctly" time="0.019">
+    </testcase>
+    <testcase classname="SessionDetailModal Component shows unknown school when schoolName is not provided" name="SessionDetailModal Component shows unknown school when schoolName is not provided" time="0.013">
+    </testcase>
+    <testcase classname="SessionDetailModal Component does not show notes section when notes are not provided" name="SessionDetailModal Component does not show notes section when notes are not provided" time="0.015">
+    </testcase>
+    <testcase classname="SessionDetailModal Component calls onClose when close button is clicked" name="SessionDetailModal Component calls onClose when close button is clicked" time="0.025">
+    </testcase>
+    <testcase classname="SessionDetailModal Component formats timestamps correctly" name="SessionDetailModal Component formats timestamps correctly" time="0.014">
+    </testcase>
+  </testsuite>
+  <testsuite name="SessionTimerDisplay" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.428" tests="3">
+    <testcase classname="SessionTimerDisplay renders with basic props" name="SessionTimerDisplay renders with basic props" time="0.03">
+    </testcase>
+    <testcase classname="SessionTimerDisplay renders in compact mode" name="SessionTimerDisplay renders in compact mode" time="0.002">
+    </testcase>
+    <testcase classname="SessionTimerDisplay handles completed sessions" name="SessionTimerDisplay handles completed sessions" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="PWAInstallPrompt" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.458" tests="5">
+    <testcase classname="PWAInstallPrompt renders nothing when no install prompt event is available" name="PWAInstallPrompt renders nothing when no install prompt event is available" time="0.011">
+    </testcase>
+    <testcase classname="PWAInstallPrompt renders install prompt when beforeinstallprompt event is triggered" name="PWAInstallPrompt renders install prompt when beforeinstallprompt event is triggered" time="0.034">
+    </testcase>
+    <testcase classname="PWAInstallPrompt handles install button click" name="PWAInstallPrompt handles install button click" time="0.012">
+    </testcase>
+    <testcase classname="PWAInstallPrompt handles dismiss button click" name="PWAInstallPrompt handles dismiss button click" time="0.011">
+    </testcase>
+    <testcase classname="PWAInstallPrompt does not show prompt when user has dismissed it in current session" name="PWAInstallPrompt does not show prompt when user has dismissed it in current session" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="SessionStatus Component" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.532" tests="13">
+    <testcase classname="SessionStatus Component renders no session state correctly" name="SessionStatus Component renders no session state correctly" time="0.023">
+    </testcase>
+    <testcase classname="SessionStatus Component renders active session correctly" name="SessionStatus Component renders active session correctly" time="0.042">
+    </testcase>
+    <testcase classname="SessionStatus Component shows end session button for active session" name="SessionStatus Component shows end session button for active session" time="0.028">
+    </testcase>
+    <testcase classname="SessionStatus Component calls onEndSession when end session button is clicked" name="SessionStatus Component calls onEndSession when end session button is clicked" time="0.011">
+    </testcase>
+    <testcase classname="SessionStatus Component renders completed session correctly" name="SessionStatus Component renders completed session correctly" time="0.01">
+    </testcase>
+    <testcase classname="SessionStatus Component does not show action buttons for completed session" name="SessionStatus Component does not show action buttons for completed session" time="0.006">
+    </testcase>
+    <testcase classname="SessionStatus Component formats duration correctly for hours and minutes" name="SessionStatus Component formats duration correctly for hours and minutes" time="0.006">
+    </testcase>
+    <testcase classname="SessionStatus Component formats duration correctly for minutes only" name="SessionStatus Component formats duration correctly for minutes only" time="0.005">
+    </testcase>
+    <testcase classname="SessionStatus Component displays GPS coordinates correctly" name="SessionStatus Component displays GPS coordinates correctly" time="0.005">
+    </testcase>
+    <testcase classname="SessionStatus Component displays start time correctly" name="SessionStatus Component displays start time correctly" time="0.005">
+    </testcase>
+    <testcase classname="SessionStatus Component applies custom className" name="SessionStatus Component applies custom className" time="0.002">
+    </testcase>
+    <testcase classname="SessionStatus Component shows session status correctly" name="SessionStatus Component shows session status correctly" time="0.005">
+    </testcase>
+    <testcase classname="SessionStatus Component handles undefined callbacks gracefully" name="SessionStatus Component handles undefined callbacks gracefully" time="0.006">
+    </testcase>
+  </testsuite>
+  <testsuite name="OfflineStatusIndicator" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.534" tests="27">
+    <testcase classname="OfflineStatusIndicator Compact Variant shows wifi icon when online" name="OfflineStatusIndicator Compact Variant shows wifi icon when online" time="0.028">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Compact Variant shows offline icon when offline" name="OfflineStatusIndicator Compact Variant shows offline icon when offline" time="0.002">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Compact Variant shows pending count badge when actions are queued" name="OfflineStatusIndicator Compact Variant shows pending count badge when actions are queued" time="0.002">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Banner Variant hides banner when online and no pending actions" name="OfflineStatusIndicator Banner Variant hides banner when online and no pending actions" time="0.001">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Banner Variant shows banner when offline" name="OfflineStatusIndicator Banner Variant shows banner when offline" time="0.002">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Banner Variant shows banner when connection is unstable" name="OfflineStatusIndicator Banner Variant shows banner when connection is unstable" time="0.002">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Banner Variant shows sync button when pending actions exist" name="OfflineStatusIndicator Banner Variant shows sync button when pending actions exist" time="0.004">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Banner Variant triggers sync when sync button is clicked" name="OfflineStatusIndicator Banner Variant triggers sync when sync button is clicked" time="0.006">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Full Variant displays connection status information" name="OfflineStatusIndicator Full Variant displays connection status information" time="0.004">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Full Variant shows progress bar for connection quality" name="OfflineStatusIndicator Full Variant shows progress bar for connection quality" time="0.026">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Full Variant displays queue status information" name="OfflineStatusIndicator Full Variant displays queue status information" time="0.012">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Full Variant shows sync recommendations when sync is not recommended" name="OfflineStatusIndicator Full Variant shows sync recommendations when sync is not recommended" time="0.006">
+    </testcase>
+    <testcase classname="OfflineStatusIndicator Full Variant shows offline message when not connected" name="OfflineStatusIndicator Full Variant shows offline message when not connected" time="0.003">
+    </testcase>
+    <testcase classname="OfflineStatusBar hides status bar when online and no issues" name="OfflineStatusBar hides status bar when online and no issues" time="0.001">
+    </testcase>
+    <testcase classname="OfflineStatusBar shows status bar when offline" name="OfflineStatusBar shows status bar when offline" time="0.003">
+    </testcase>
+    <testcase classname="OfflineStatusBar shows status bar when pending actions exist" name="OfflineStatusBar shows status bar when pending actions exist" time="0.003">
+    </testcase>
+    <testcase classname="OfflineStatusBar always shows in full variant regardless of status" name="OfflineStatusBar always shows in full variant regardless of status" time="0.003">
+    </testcase>
+    <testcase classname="OfflineMessageList shows no messages when everything is normal" name="OfflineMessageList shows no messages when everything is normal" time="0.001">
+    </testcase>
+    <testcase classname="OfflineMessageList shows offline message when disconnected" name="OfflineMessageList shows offline message when disconnected" time="0.001">
+    </testcase>
+    <testcase classname="OfflineMessageList shows unstable connection warning" name="OfflineMessageList shows unstable connection warning" time="0.001">
+    </testcase>
+    <testcase classname="OfflineMessageList shows pending sync message with action button" name="OfflineMessageList shows pending sync message with action button" time="0.002">
+    </testcase>
+    <testcase classname="OfflineMessageList shows failed actions message" name="OfflineMessageList shows failed actions message" time="0.002">
+    </testcase>
+    <testcase classname="OfflineMessageList limits displayed messages to maxVisible" name="OfflineMessageList limits displayed messages to maxVisible" time="0.002">
+    </testcase>
+    <testcase classname="useOfflineMessaging Hook provides connectivity message functions" name="useOfflineMessaging Hook provides connectivity message functions" time="0.001">
+    </testcase>
+    <testcase classname="useOfflineMessaging Hook shows offline connectivity message" name="useOfflineMessaging Hook shows offline connectivity message" time="0.002">
+    </testcase>
+    <testcase classname="useOfflineMessaging Hook shows sync completion message" name="useOfflineMessaging Hook shows sync completion message" time="0.001">
+    </testcase>
+    <testcase classname="useOfflineMessaging Hook shows action success message" name="useOfflineMessaging Hook shows action success message" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="useAutoGeofenceCheck" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.753" tests="23">
+    <testcase classname="useAutoGeofenceCheck Feature flag and initialization should be disabled when feature flag is off" name="useAutoGeofenceCheck Feature flag and initialization should be disabled when feature flag is off" time="0.011">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Feature flag and initialization should be disabled when user is not authenticated" name="useAutoGeofenceCheck Feature flag and initialization should be disabled when user is not authenticated" time="0.002">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Feature flag and initialization should load assigned locations when preference is enabled" name="useAutoGeofenceCheck Feature flag and initialization should load assigned locations when preference is enabled" time="0.016">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Feature flag and initialization should have locationPermission state initialized as unknown" name="useAutoGeofenceCheck Feature flag and initialization should have locationPermission state initialized as unknown" time="0.005">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Location permission tracking should set locationPermission to granted after successful location fetch" name="useAutoGeofenceCheck Location permission tracking should set locationPermission to granted after successful location fetch" time="0.019">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Location permission tracking should set locationPermission to denied when geolocation is denied (error code 1)" name="useAutoGeofenceCheck Location permission tracking should set locationPermission to denied when geolocation is denied (error code 1)" time="0.012">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Location permission tracking should set locationPermission to unavailable when geolocation is not supported (error code 0)" name="useAutoGeofenceCheck Location permission tracking should set locationPermission to unavailable when geolocation is not supported (error code 0)" time="0.007">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck GPS polling behavior should not poll when preference is disabled" name="useAutoGeofenceCheck GPS polling behavior should not poll when preference is disabled" time="0.001">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck GPS polling behavior should poll every 60 seconds when enabled" name="useAutoGeofenceCheck GPS polling behavior should poll every 60 seconds when enabled" time="0.006">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck GPS polling behavior should stop polling when tab becomes hidden" name="useAutoGeofenceCheck GPS polling behavior should stop polling when tab becomes hidden" time="0.018">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck GPS accuracy handling should skip poll when accuracy is worse than 50 meters" name="useAutoGeofenceCheck GPS accuracy handling should skip poll when accuracy is worse than 50 meters" time="0.007">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck GPS accuracy handling should pause after 3 consecutive poor accuracy cycles" name="useAutoGeofenceCheck GPS accuracy handling should pause after 3 consecutive poor accuracy cycles" time="0.012">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck GPS accuracy handling should resume when accuracy improves" name="useAutoGeofenceCheck GPS accuracy handling should resume when accuracy improves" time="0.01">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Geofence state transitions should track outside state when not in any geofence" name="useAutoGeofenceCheck Geofence state transitions should track outside state when not in any geofence" time="0.024">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Geofence state transitions should transition from outside to entering after 1 poll inside" name="useAutoGeofenceCheck Geofence state transitions should transition from outside to entering after 1 poll inside" time="0.016">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Geofence state transitions should trigger check-in after 2 consecutive polls inside (debouncing)" name="useAutoGeofenceCheck Geofence state transitions should trigger check-in after 2 consecutive polls inside (debouncing)" time="0.014">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Auto check-in flow should not trigger check-in when there is an active session" name="useAutoGeofenceCheck Auto check-in flow should not trigger check-in when there is an active session" time="0.008">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Auto check-in flow should cancel check-in countdown when cancelled" name="useAutoGeofenceCheck Auto check-in flow should cancel check-in countdown when cancelled" time="0.022">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Auto check-in flow should complete check-in after countdown expires" name="useAutoGeofenceCheck Auto check-in flow should complete check-in after countdown expires" time="0.032">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Auto check-out flow should trigger check-out when exiting geofence" name="useAutoGeofenceCheck Auto check-out flow should trigger check-out when exiting geofence" time="0.009">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Auto check-out flow should only check-out from currently active session location" name="useAutoGeofenceCheck Auto check-out flow should only check-out from currently active session location" time="0.013">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Multiple overlapping geofences should check in to first school entered, not closest" name="useAutoGeofenceCheck Multiple overlapping geofences should check in to first school entered, not closest" time="0.033">
+    </testcase>
+    <testcase classname="useAutoGeofenceCheck Cooldown after cancellation should not trigger check-in again within cooldown period after cancellation" name="useAutoGeofenceCheck Cooldown after cancellation should not trigger check-in again within cooldown period after cancellation" time="0.017">
+    </testcase>
+  </testsuite>
+  <testsuite name="useAutoGeofencePreference" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.31" tests="8">
+    <testcase classname="useAutoGeofencePreference Role-based auto geofence enablement should enable auto geofence for provider users" name="useAutoGeofencePreference Role-based auto geofence enablement should enable auto geofence for provider users" time="0.008">
+    </testcase>
+    <testcase classname="useAutoGeofencePreference Role-based auto geofence enablement should disable auto geofence for admin users" name="useAutoGeofencePreference Role-based auto geofence enablement should disable auto geofence for admin users" time="0.001">
+    </testcase>
+    <testcase classname="useAutoGeofencePreference Role-based auto geofence enablement should disable auto geofence when user is not authenticated" name="useAutoGeofencePreference Role-based auto geofence enablement should disable auto geofence when user is not authenticated" time="0.001">
+    </testcase>
+    <testcase classname="useAutoGeofencePreference Role-based auto geofence enablement should reflect loading state from auth hook" name="useAutoGeofencePreference Role-based auto geofence enablement should reflect loading state from auth hook" time="0">
+    </testcase>
+    <testcase classname="useAutoGeofencePreference Role-based auto geofence enablement should update enabled state when user role changes" name="useAutoGeofencePreference Role-based auto geofence enablement should update enabled state when user role changes" time="0.002">
+    </testcase>
+    <testcase classname="useAutoGeofencePreference Role-based auto geofence enablement should handle undefined role as disabled" name="useAutoGeofencePreference Role-based auto geofence enablement should handle undefined role as disabled" time="0">
+    </testcase>
+    <testcase classname="useAutoGeofencePreference Hook return value shape should return expected interface shape" name="useAutoGeofencePreference Hook return value shape should return expected interface shape" time="0.002">
+    </testcase>
+    <testcase classname="useAutoGeofencePreference Hook return value shape should not have setEnabled method (role-based, not configurable)" name="useAutoGeofencePreference Hook return value shape should not have setEnabled method (role-based, not configurable)" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="SessionManagement Component" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.493" tests="3">
+    <testcase classname="SessionManagement Component renders session management dashboard" name="SessionManagement Component renders session management dashboard" time="0.034">
+    </testcase>
+    <testcase classname="SessionManagement Component shows no sessions message when empty" name="SessionManagement Component shows no sessions message when empty" time="0.01">
+    </testcase>
+    <testcase classname="SessionManagement Component renders session management description" name="SessionManagement Component renders session management description" time="0.006">
+    </testcase>
+  </testsuite>
+  <testsuite name="UserProfile" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.567" tests="6">
+    <testcase classname="UserProfile renders user profile information correctly" name="UserProfile renders user profile information correctly" time="0.027">
+    </testcase>
+    <testcase classname="UserProfile displays loading state when user data is loading" name="UserProfile displays loading state when user data is loading" time="0.002">
+    </testcase>
+    <testcase classname="UserProfile displays loading when no user is authenticated" name="UserProfile displays loading when no user is authenticated" time="0.001">
+    </testcase>
+    <testcase classname="UserProfile updates profile successfully" name="UserProfile updates profile successfully" time="0.053">
+    </testcase>
+    <testcase classname="UserProfile shows validation error for short display name" name="UserProfile shows validation error for short display name" time="0.02">
+    </testcase>
+    <testcase classname="UserProfile shows success message after successful update" name="UserProfile shows success message after successful update" time="0.017">
+    </testcase>
+  </testsuite>
+  <testsuite name="SessionHistoryPage" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:48" time="0.492" tests="1">
+    <testcase classname="SessionHistoryPage fetches completed sessions and renders them" name="SessionHistoryPage fetches completed sessions and renders them" time="0.082">
+    </testcase>
+  </testsuite>
+  <testsuite name="useTheme" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.352" tests="2">
+    <testcase classname="useTheme normalizes system theme to concrete values" name="useTheme normalizes system theme to concrete values" time="0.008">
+    </testcase>
+    <testcase classname="useTheme toggles between light and dark themes" name="useTheme toggles between light and dark themes" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="CacheStrategy" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.331" tests="19">
+    <testcase classname="CacheStrategy initCacheDB should initialize the cache database" name="CacheStrategy initCacheDB should initialize the cache database" time="0.001">
+    </testcase>
+    <testcase classname="CacheStrategy initCacheDB should return existing database instance if already initialized" name="CacheStrategy initCacheDB should return existing database instance if already initialized" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy cacheData should cache data with metadata" name="CacheStrategy cacheData should cache data with metadata" time="0.003">
+    </testcase>
+    <testcase classname="CacheStrategy cacheData should use default cache strategy if none provided" name="CacheStrategy cacheData should use default cache strategy if none provided" time="0.001">
+    </testcase>
+    <testcase classname="CacheStrategy cacheData should add cache metadata to each item" name="CacheStrategy cacheData should add cache metadata to each item" time="0.001">
+    </testcase>
+    <testcase classname="CacheStrategy getCachedData should return cached data with staleness info" name="CacheStrategy getCachedData should return cached data with staleness info" time="0.002">
+    </testcase>
+    <testcase classname="CacheStrategy getCachedData should filter data when filter function is provided" name="CacheStrategy getCachedData should filter data when filter function is provided" time="0.002">
+    </testcase>
+    <testcase classname="CacheStrategy getCachedData should handle expired cache correctly" name="CacheStrategy getCachedData should handle expired cache correctly" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy clearExpiredCache should remove expired cache entries" name="CacheStrategy clearExpiredCache should remove expired cache entries" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy clearExpiredCache should skip metadata store during cleanup" name="CacheStrategy clearExpiredCache should skip metadata store during cleanup" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy getCacheStats should return comprehensive cache statistics" name="CacheStrategy getCacheStats should return comprehensive cache statistics" time="0.001">
+    </testcase>
+    <testcase classname="CacheStrategy getCacheStats should calculate staleness correctly" name="CacheStrategy getCacheStats should calculate staleness correctly" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy preloadCriticalData should preload schools and sessions data for user" name="CacheStrategy preloadCriticalData should preload schools and sessions data for user" time="0.016">
+    </testcase>
+    <testcase classname="CacheStrategy preloadCriticalData should handle preload errors gracefully" name="CacheStrategy preloadCriticalData should handle preload errors gracefully" time="0.017">
+    </testcase>
+    <testcase classname="CacheStrategy CACHE_CONFIG should have valid expiration times" name="CacheStrategy CACHE_CONFIG should have valid expiration times" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy CACHE_CONFIG should have reasonable size limits" name="CacheStrategy CACHE_CONFIG should have reasonable size limits" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy CACHE_CONFIG should have valid refresh strategies" name="CacheStrategy CACHE_CONFIG should have valid refresh strategies" time="0.001">
+    </testcase>
+    <testcase classname="CacheStrategy Cache Store Constants should have all required cache stores" name="CacheStrategy Cache Store Constants should have all required cache stores" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy Cache Store Constants should have unique store names" name="CacheStrategy Cache Store Constants should have unique store names" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="useCachedAuth" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.404" tests="3">
+    <testcase classname="useCachedAuth returns mock auth state when bypass is enabled" name="useCachedAuth returns mock auth state when bypass is enabled" time="0.012">
+    </testcase>
+    <testcase classname="useCachedAuth subscribes to auth state and sets provider role from Firestore" name="useCachedAuth subscribes to auth state and sets provider role from Firestore" time="0.036">
+    </testcase>
+    <testcase classname="useCachedAuth handles sign-out by clearing user" name="useCachedAuth handles sign-out by clearing user" time="0.004">
+    </testcase>
+  </testsuite>
+  <testsuite name="useStartupLogging" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.382" tests="2">
+    <testcase classname="useStartupLogging logs hydration and post-hydration readiness metadata" name="useStartupLogging logs hydration and post-hydration readiness metadata" time="0.027">
+    </testcase>
+    <testcase classname="useStartupLogging reports a warning when metadata collection fails" name="useStartupLogging reports a warning when metadata collection fails" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="Session Utilities" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.318" tests="35">
+    <testcase classname="Session Utilities calculateSessionDuration returns 0 when no checkOutTime provided" name="Session Utilities calculateSessionDuration returns 0 when no checkOutTime provided" time="0.001">
+    </testcase>
+    <testcase classname="Session Utilities calculateSessionDuration calculates duration in minutes correctly" name="Session Utilities calculateSessionDuration calculates duration in minutes correctly" time="0.001">
+    </testcase>
+    <testcase classname="Session Utilities calculateSessionDuration rounds to nearest minute" name="Session Utilities calculateSessionDuration rounds to nearest minute" time="0">
+    </testcase>
+    <testcase classname="Session Utilities formatDuration formats 0 minutes correctly" name="Session Utilities formatDuration formats 0 minutes correctly" time="0">
+    </testcase>
+    <testcase classname="Session Utilities formatDuration formats minutes under 60 correctly" name="Session Utilities formatDuration formats minutes under 60 correctly" time="0">
+    </testcase>
+    <testcase classname="Session Utilities formatDuration formats hours correctly" name="Session Utilities formatDuration formats hours correctly" time="0">
+    </testcase>
+    <testcase classname="Session Utilities formatDuration formats hours and minutes correctly" name="Session Utilities formatDuration formats hours and minutes correctly" time="0.001">
+    </testcase>
+    <testcase classname="Session Utilities formatDurationDetailed formats 0 minutes correctly" name="Session Utilities formatDurationDetailed formats 0 minutes correctly" time="0.001">
+    </testcase>
+    <testcase classname="Session Utilities formatDurationDetailed formats single minute correctly" name="Session Utilities formatDurationDetailed formats single minute correctly" time="0">
+    </testcase>
+    <testcase classname="Session Utilities formatDurationDetailed formats multiple minutes correctly" name="Session Utilities formatDurationDetailed formats multiple minutes correctly" time="0">
+    </testcase>
+    <testcase classname="Session Utilities formatDurationDetailed formats single hour correctly" name="Session Utilities formatDurationDetailed formats single hour correctly" time="0">
+    </testcase>
+    <testcase classname="Session Utilities formatDurationDetailed formats multiple hours correctly" name="Session Utilities formatDurationDetailed formats multiple hours correctly" time="0.001">
+    </testcase>
+    <testcase classname="Session Utilities formatDurationDetailed formats hours and minutes correctly" name="Session Utilities formatDurationDetailed formats hours and minutes correctly" time="0">
+    </testcase>
+    <testcase classname="Session Utilities formatSessionTime formats timestamp to locale string" name="Session Utilities formatSessionTime formats timestamp to locale string" time="0.014">
+    </testcase>
+    <testcase classname="Session Utilities getSessionStatusColor returns correct color for active status" name="Session Utilities getSessionStatusColor returns correct color for active status" time="0">
+    </testcase>
+    <testcase classname="Session Utilities getSessionStatusColor returns correct color for completed status" name="Session Utilities getSessionStatusColor returns correct color for completed status" time="0">
+    </testcase>
+    <testcase classname="Session Utilities getSessionStatusColor returns correct color for paused status" name="Session Utilities getSessionStatusColor returns correct color for paused status" time="0">
+    </testcase>
+    <testcase classname="Session Utilities getSessionStatusColor returns correct color for error status" name="Session Utilities getSessionStatusColor returns correct color for error status" time="0">
+    </testcase>
+    <testcase classname="Session Utilities getSessionStatusColor returns correct color for cancelled status" name="Session Utilities getSessionStatusColor returns correct color for cancelled status" time="0">
+    </testcase>
+    <testcase classname="Session Utilities getSessionStatusColor returns default color for unknown status" name="Session Utilities getSessionStatusColor returns default color for unknown status" time="0">
+    </testcase>
+    <testcase classname="Session Utilities getSessionStatusConfig returns correct config for active status" name="Session Utilities getSessionStatusConfig returns correct config for active status" time="0.003">
+    </testcase>
+    <testcase classname="Session Utilities getSessionStatusConfig returns correct config for completed status" name="Session Utilities getSessionStatusConfig returns correct config for completed status" time="0">
+    </testcase>
+    <testcase classname="Session Utilities getSessionStatusConfig returns correct config for unknown status" name="Session Utilities getSessionStatusConfig returns correct config for unknown status" time="0">
+    </testcase>
+    <testcase classname="Session Utilities validateSessionData returns no errors for valid session data" name="Session Utilities validateSessionData returns no errors for valid session data" time="0.001">
+    </testcase>
+    <testcase classname="Session Utilities validateSessionData returns errors for missing userId" name="Session Utilities validateSessionData returns errors for missing userId" time="0">
+    </testcase>
+    <testcase classname="Session Utilities validateSessionData returns errors for missing schoolId" name="Session Utilities validateSessionData returns errors for missing schoolId" time="0">
+    </testcase>
+    <testcase classname="Session Utilities validateSessionData returns errors for missing checkInLocation" name="Session Utilities validateSessionData returns errors for missing checkInLocation" time="0">
+    </testcase>
+    <testcase classname="Session Utilities validateSessionData returns errors for missing checkInTime" name="Session Utilities validateSessionData returns errors for missing checkInTime" time="0">
+    </testcase>
+    <testcase classname="Session Utilities validateSessionData returns multiple errors when multiple fields are missing" name="Session Utilities validateSessionData returns multiple errors when multiple fields are missing" time="0.001">
+    </testcase>
+    <testcase classname="Session Utilities isSessionStillActive returns true for recent session within default limit" name="Session Utilities isSessionStillActive returns true for recent session within default limit" time="0">
+    </testcase>
+    <testcase classname="Session Utilities isSessionStillActive returns false for old session beyond default limit" name="Session Utilities isSessionStillActive returns false for old session beyond default limit" time="0">
+    </testcase>
+    <testcase classname="Session Utilities isSessionStillActive respects custom max hours limit" name="Session Utilities isSessionStillActive respects custom max hours limit" time="0">
+    </testcase>
+    <testcase classname="Session Utilities createSessionSummary calculates summary statistics correctly" name="Session Utilities createSessionSummary calculates summary statistics correctly" time="0.001">
+    </testcase>
+    <testcase classname="Session Utilities createSessionSummary handles empty session array" name="Session Utilities createSessionSummary handles empty session array" time="0">
+    </testcase>
+    <testcase classname="Session Utilities createSessionSummary handles sessions without duration" name="Session Utilities createSessionSummary handles sessions without duration" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="DashboardPage" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.529" tests="2">
+    <testcase classname="DashboardPage loads assigned locations for the current user via useProviderLocations" name="DashboardPage loads assigned locations for the current user via useProviderLocations" time="0.053">
+    </testcase>
+    <testcase classname="DashboardPage shows a View all link for recent activity history" name="DashboardPage shows a View all link for recent activity history" time="0.019">
+    </testcase>
+  </testsuite>
+  <testsuite name="PWAStatus" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.48" tests="13">
+    <testcase classname="PWAStatus shows online status when connected" name="PWAStatus shows online status when connected" time="0.022">
+    </testcase>
+    <testcase classname="PWAStatus shows offline status when disconnected" name="PWAStatus shows offline status when disconnected" time="0.003">
+    </testcase>
+    <testcase classname="PWAStatus shows sync status when syncing" name="PWAStatus shows sync status when syncing" time="0.002">
+    </testcase>
+    <testcase classname="PWAStatus shows last sync time when available" name="PWAStatus shows last sync time when available" time="0.002">
+    </testcase>
+    <testcase classname="PWAStatus does not show last sync time when syncing" name="PWAStatus does not show last sync time when syncing" time="0.002">
+    </testcase>
+    <testcase classname="PWAStatus shows PWA mode when running as PWA" name="PWAStatus shows PWA mode when running as PWA" time="0.006">
+    </testcase>
+    <testcase classname="PWAStatus shows installable status when PWA can be installed" name="PWAStatus shows installable status when PWA can be installed" time="0.003">
+    </testcase>
+    <testcase classname="PWAStatus does not show installable status when running as PWA" name="PWAStatus does not show installable status when running as PWA" time="0.005">
+    </testcase>
+    <testcase classname="PWAStatus shows not-supported status when PWA is not supported" name="PWAStatus shows not-supported status when PWA is not supported" time="0.002">
+    </testcase>
+    <testcase classname="PWAStatus handles navigator.standalone for iOS PWA detection" name="PWAStatus handles navigator.standalone for iOS PWA detection" time="0.006">
+    </testcase>
+    <testcase classname="PWAStatus handles android-app referrer for Android PWA detection" name="PWAStatus handles android-app referrer for Android PWA detection" time="0.01">
+    </testcase>
+    <testcase classname="PWAStatus renders all status badges correctly" name="PWAStatus renders all status badges correctly" time="0.005">
+    </testcase>
+    <testcase classname="PWAStatus handles missing lastSyncTime gracefully" name="PWAStatus handles missing lastSyncTime gracefully" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="useAuth" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.458" tests="3">
+    <testcase classname="useAuth uses auth bypass when enabled" name="useAuth uses auth bypass when enabled" time="0.009">
+    </testcase>
+    <testcase classname="useAuth subscribes to Firebase auth and sets user role" name="useAuth subscribes to Firebase auth and sets user role" time="0.057">
+    </testcase>
+    <testcase classname="useAuth handles signed-out state" name="useAuth handles signed-out state" time="0.003">
+    </testcase>
+  </testsuite>
+  <testsuite name="ProtectedRoute" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.424" tests="4">
+    <testcase classname="ProtectedRoute displays loading state" name="ProtectedRoute displays loading state" time="0.017">
+    </testcase>
+    <testcase classname="ProtectedRoute redirects unauthenticated users" name="ProtectedRoute redirects unauthenticated users" time="0.011">
+    </testcase>
+    <testcase classname="ProtectedRoute redirects unauthorized users" name="ProtectedRoute redirects unauthorized users" time="0.006">
+    </testcase>
+    <testcase classname="ProtectedRoute renders content for authorized users" name="ProtectedRoute renders content for authorized users" time="0.003">
+    </testcase>
+  </testsuite>
+  <testsuite name="Firebase Auth Utilities" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.323" tests="16">
+    <testcase classname="Firebase Auth Utilities signInWithMicrosoft calls signInWithPopup with Microsoft provider" name="Firebase Auth Utilities signInWithMicrosoft calls signInWithPopup with Microsoft provider" time="0.008">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities signInWithMicrosoft creates user document after successful sign-in" name="Firebase Auth Utilities signInWithMicrosoft creates user document after successful sign-in" time="0.001">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities signInWithMicrosoft throws error when Microsoft sign-in fails" name="Firebase Auth Utilities signInWithMicrosoft throws error when Microsoft sign-in fails" time="0.01">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities signInWithMicrosoft returns UserCredential on successful authentication" name="Firebase Auth Utilities signInWithMicrosoft returns UserCredential on successful authentication" time="0.001">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities logOut calls signOut successfully" name="Firebase Auth Utilities logOut calls signOut successfully" time="0.001">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities logOut throws error when sign out fails" name="Firebase Auth Utilities logOut throws error when sign out fails" time="0">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities getCurrentUser returns current user when authenticated" name="Firebase Auth Utilities getCurrentUser returns current user when authenticated" time="0">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities getCurrentUser returns null when no user is authenticated" name="Firebase Auth Utilities getCurrentUser returns null when no user is authenticated" time="0">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities syncUserFromM365 throws error when user is not authenticated" name="Firebase Auth Utilities syncUserFromM365 throws error when user is not authenticated" time="0.005">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities syncUserFromM365 calls syncUserFromM365 cloud function for authenticated user" name="Firebase Auth Utilities syncUserFromM365 calls syncUserFromM365 cloud function for authenticated user" time="0.001">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities syncUserFromM365 returns admin role when user is in DMDL Office group" name="Firebase Auth Utilities syncUserFromM365 returns admin role when user is in DMDL Office group" time="0.001">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities syncUserFromM365 returns provider role with assigned locations when user is not in DMDL Office" name="Firebase Auth Utilities syncUserFromM365 returns provider role with assigned locations when user is not in DMDL Office" time="0.003">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities syncUserFromM365 propagates errors from cloud function" name="Firebase Auth Utilities syncUserFromM365 propagates errors from cloud function" time="0.001">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities syncUserFromM365 includes removed locations when user is unassigned from schools" name="Firebase Auth Utilities syncUserFromM365 includes removed locations when user is unassigned from schools" time="0">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities waitForUserDocument resolves when a user document with role is found" name="Firebase Auth Utilities waitForUserDocument resolves when a user document with role is found" time="0">
+    </testcase>
+    <testcase classname="Firebase Auth Utilities waitForUserDocument throws after exhausting retries" name="Firebase Auth Utilities waitForUserDocument throws after exhausting retries" time="0.004">
+    </testcase>
+  </testsuite>
+  <testsuite name="feedbackService" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.305" tests="3">
+    <testcase classname="feedbackService submitFeedback should add a new feedback document" name="feedbackService submitFeedback should add a new feedback document" time="0.002">
+    </testcase>
+    <testcase classname="feedbackService getAllFeedback should fetch and map feedback documents" name="feedbackService getAllFeedback should fetch and map feedback documents" time="0.001">
+    </testcase>
+    <testcase classname="feedbackService updateStatus should update the status field" name="feedbackService updateStatus should update the status field" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="CacheManager" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.377" tests="12">
+    <testcase classname="CacheManager Singleton Instance should have a shared cache manager instance" name="CacheManager Singleton Instance should have a shared cache manager instance" time="0.017">
+    </testcase>
+    <testcase classname="CacheManager Cache Operations should cache schools data" name="CacheManager Cache Operations should cache schools data" time="0.001">
+    </testcase>
+    <testcase classname="CacheManager Cache Operations should cache sessions data" name="CacheManager Cache Operations should cache sessions data" time="0">
+    </testcase>
+    <testcase classname="CacheManager Cache Operations should retrieve cached schools" name="CacheManager Cache Operations should retrieve cached schools" time="0.012">
+    </testcase>
+    <testcase classname="CacheManager Cache Operations should retrieve cached sessions with filter" name="CacheManager Cache Operations should retrieve cached sessions with filter" time="0.001">
+    </testcase>
+    <testcase classname="CacheManager Background Operations should preload offline data" name="CacheManager Background Operations should preload offline data" time="0">
+    </testcase>
+    <testcase classname="CacheManager Background Operations should handle preload errors gracefully" name="CacheManager Background Operations should handle preload errors gracefully" time="0">
+    </testcase>
+    <testcase classname="CacheManager Background Operations should get cache statistics" name="CacheManager Background Operations should get cache statistics" time="0.001">
+    </testcase>
+    <testcase classname="CacheManager Cache Strategy Configuration should use appropriate cache strategy for schools" name="CacheManager Cache Strategy Configuration should use appropriate cache strategy for schools" time="0">
+    </testcase>
+    <testcase classname="CacheManager Cache Strategy Configuration should use appropriate cache strategy for sessions" name="CacheManager Cache Strategy Configuration should use appropriate cache strategy for sessions" time="0">
+    </testcase>
+    <testcase classname="CacheManager Error Handling should handle cache operation failures" name="CacheManager Error Handling should handle cache operation failures" time="0.001">
+    </testcase>
+    <testcase classname="CacheManager Error Handling should handle retrieval failures" name="CacheManager Error Handling should handle retrieval failures" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="QueueManager" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.374" tests="9">
+    <testcase classname="QueueManager Check-in Operations queues check-in when offline" name="QueueManager Check-in Operations queues check-in when offline" time="0.002">
+    </testcase>
+    <testcase classname="QueueManager Check-in Operations falls back to queue when online check-in fails" name="QueueManager Check-in Operations falls back to queue when online check-in fails" time="0">
+    </testcase>
+    <testcase classname="QueueManager Check-in Operations returns failure when queuing check-in throws" name="QueueManager Check-in Operations returns failure when queuing check-in throws" time="0.001">
+    </testcase>
+    <testcase classname="QueueManager Check-out Operations queues check-out when offline" name="QueueManager Check-out Operations queues check-out when offline" time="0">
+    </testcase>
+    <testcase classname="QueueManager Check-out Operations returns failure when queuing check-out throws" name="QueueManager Check-out Operations returns failure when queuing check-out throws" time="0">
+    </testcase>
+    <testcase classname="QueueManager Manual Sync processes queue when online" name="QueueManager Manual Sync processes queue when online" time="0.001">
+    </testcase>
+    <testcase classname="QueueManager Manual Sync returns null when sync processing fails" name="QueueManager Manual Sync returns null when sync processing fails" time="0">
+    </testcase>
+    <testcase classname="QueueManager Manual Sync skips sync when offline" name="QueueManager Manual Sync skips sync when offline" time="0">
+    </testcase>
+    <testcase classname="QueueManager Queue statistics returns stats when initialized" name="QueueManager Queue statistics returns stats when initialized" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="time utilities" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.394" tests="7">
+    <testcase classname="time utilities converts timestamps and dates to the app timezone" name="time utilities converts timestamps and dates to the app timezone" time="0.002">
+    </testcase>
+    <testcase classname="time utilities generates day keys for dates and timestamps" name="time utilities generates day keys for dates and timestamps" time="0.001">
+    </testcase>
+    <testcase classname="time utilities builds correct current and arbitrary week ranges" name="time utilities builds correct current and arbitrary week ranges" time="0">
+    </testcase>
+    <testcase classname="time utilities returns accurate daily ranges and last-n-days ranges" name="time utilities returns accurate daily ranges and last-n-days ranges" time="0">
+    </testcase>
+    <testcase classname="time utilities formats timestamps and dates for display" name="time utilities formats timestamps and dates for display" time="0.001">
+    </testcase>
+    <testcase classname="time utilities calculates durations with and without pauses" name="time utilities calculates durations with and without pauses" time="0.001">
+    </testcase>
+    <testcase classname="time utilities detects today and this week boundaries" name="time utilities detects today and this week boundaries" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="locationNormalizer" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.416" tests="7">
+    <testcase classname="locationNormalizer normalizes geo and radius fields" name="locationNormalizer normalizes geo and radius fields" time="0.002">
+    </testcase>
+    <testcase classname="locationNormalizer falls back to coordinates when geo is missing" name="locationNormalizer falls back to coordinates when geo is missing" time="0.001">
+    </testcase>
+    <testcase classname="locationNormalizer builds write data with defaults" name="locationNormalizer builds write data with defaults" time="0">
+    </testcase>
+    <testcase classname="locationNormalizer builds update data with coordinate changes" name="locationNormalizer builds update data with coordinate changes" time="0.001">
+    </testcase>
+    <testcase classname="locationNormalizer computes activeProviders from assignedProviders array length" name="locationNormalizer computes activeProviders from assignedProviders array length" time="0">
+    </testcase>
+    <testcase classname="locationNormalizer handles empty assignedProviders array" name="locationNormalizer handles empty assignedProviders array" time="0">
+    </testcase>
+    <testcase classname="locationNormalizer handles missing assignedProviders field" name="locationNormalizer handles missing assignedProviders field" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="locationService" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.457" tests="7">
+    <testcase classname="locationService returns assigned locations for provider" name="locationService returns assigned locations for provider" time="0.002">
+    </testcase>
+    <testcase classname="locationService gets location by id when it exists" name="locationService gets location by id when it exists" time="0.001">
+    </testcase>
+    <testcase classname="locationService returns null when location does not exist" name="locationService returns null when location does not exist" time="0">
+    </testcase>
+    <testcase classname="locationService calculates distance and radius checks" name="locationService calculates distance and radius checks" time="0">
+    </testcase>
+    <testcase classname="locationService adds and sorts by distance" name="locationService adds and sorts by distance" time="0.001">
+    </testcase>
+    <testcase classname="locationService assigns and removes provider from location" name="locationService assigns and removes provider from location" time="0">
+    </testcase>
+    <testcase classname="locationService replaces location providers" name="locationService replaces location providers" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="Location Utils" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.384" tests="31">
+    <testcase classname="Location Utils calculateDistance calculates distance between same coordinates as 0" name="Location Utils calculateDistance calculates distance between same coordinates as 0" time="0.001">
+    </testcase>
+    <testcase classname="Location Utils calculateDistance calculates distance between different coordinates" name="Location Utils calculateDistance calculates distance between different coordinates" time="0.001">
+    </testcase>
+    <testcase classname="Location Utils calculateDistance calculates short distances accurately" name="Location Utils calculateDistance calculates short distances accurately" time="0">
+    </testcase>
+    <testcase classname="Location Utils calculateDistance handles edge cases with extreme coordinates" name="Location Utils calculateDistance handles edge cases with extreme coordinates" time="0">
+    </testcase>
+    <testcase classname="Location Utils isWithinRadius returns true when user is at exact school location" name="Location Utils isWithinRadius returns true when user is at exact school location" time="0">
+    </testcase>
+    <testcase classname="Location Utils isWithinRadius returns true when user is within radius" name="Location Utils isWithinRadius returns true when user is within radius" time="0">
+    </testcase>
+    <testcase classname="Location Utils isWithinRadius returns false when user is outside radius" name="Location Utils isWithinRadius returns false when user is outside radius" time="0">
+    </testcase>
+    <testcase classname="Location Utils isWithinRadius works with different radius values" name="Location Utils isWithinRadius works with different radius values" time="0">
+    </testcase>
+    <testcase classname="Location Utils isWithinRadius handles zero radius correctly" name="Location Utils isWithinRadius handles zero radius correctly" time="0">
+    </testcase>
+    <testcase classname="Location Utils getLocationErrorMessage returns correct message for permission denied error" name="Location Utils getLocationErrorMessage returns correct message for permission denied error" time="0">
+    </testcase>
+    <testcase classname="Location Utils getLocationErrorMessage returns correct message for position unavailable error" name="Location Utils getLocationErrorMessage returns correct message for position unavailable error" time="0">
+    </testcase>
+    <testcase classname="Location Utils getLocationErrorMessage returns correct message for timeout error" name="Location Utils getLocationErrorMessage returns correct message for timeout error" time="0.001">
+    </testcase>
+    <testcase classname="Location Utils getLocationErrorMessage returns default message for unknown error codes" name="Location Utils getLocationErrorMessage returns default message for unknown error codes" time="0">
+    </testcase>
+    <testcase classname="Location Utils formatCoordinates formats coordinates with default precision" name="Location Utils formatCoordinates formats coordinates with default precision" time="0">
+    </testcase>
+    <testcase classname="Location Utils formatCoordinates formats coordinates with custom precision" name="Location Utils formatCoordinates formats coordinates with custom precision" time="0">
+    </testcase>
+    <testcase classname="Location Utils formatCoordinates handles zero precision" name="Location Utils formatCoordinates handles zero precision" time="0">
+    </testcase>
+    <testcase classname="Location Utils formatCoordinates handles negative coordinates" name="Location Utils formatCoordinates handles negative coordinates" time="0">
+    </testcase>
+    <testcase classname="Location Utils isValidCoordinates validates correct coordinates" name="Location Utils isValidCoordinates validates correct coordinates" time="0.001">
+    </testcase>
+    <testcase classname="Location Utils isValidCoordinates rejects invalid latitudes" name="Location Utils isValidCoordinates rejects invalid latitudes" time="0">
+    </testcase>
+    <testcase classname="Location Utils isValidCoordinates rejects invalid longitudes" name="Location Utils isValidCoordinates rejects invalid longitudes" time="0">
+    </testcase>
+    <testcase classname="Location Utils isValidCoordinates rejects coordinates with invalid types" name="Location Utils isValidCoordinates rejects coordinates with invalid types" time="0">
+    </testcase>
+    <testcase classname="Location Utils locationService.getCurrentLocation resolves with coordinates when geolocation succeeds" name="Location Utils locationService.getCurrentLocation resolves with coordinates when geolocation succeeds" time="0.001">
+    </testcase>
+    <testcase classname="Location Utils locationService.getCurrentLocation rejects with error when geolocation fails" name="Location Utils locationService.getCurrentLocation rejects with error when geolocation fails" time="0">
+    </testcase>
+    <testcase classname="Location Utils locationService.getCurrentLocation uses custom options when provided" name="Location Utils locationService.getCurrentLocation uses custom options when provided" time="0.001">
+    </testcase>
+    <testcase classname="Location Utils locationService.getCurrentLocation merges custom options with defaults" name="Location Utils locationService.getCurrentLocation merges custom options with defaults" time="0">
+    </testcase>
+    <testcase classname="Location Utils locationService.getCurrentLocation rejects when geolocation is not supported" name="Location Utils locationService.getCurrentLocation rejects when geolocation is not supported" time="0">
+    </testcase>
+    <testcase classname="Location Utils locationService.getCurrentLocation includes accuracy in result when available" name="Location Utils locationService.getCurrentLocation includes accuracy in result when available" time="0">
+    </testcase>
+    <testcase classname="Location Utils locationService.getCurrentLocation handles missing accuracy gracefully" name="Location Utils locationService.getCurrentLocation handles missing accuracy gracefully" time="0.001">
+    </testcase>
+    <testcase classname="Location Utils Edge cases and error handling handles very large distances" name="Location Utils Edge cases and error handling handles very large distances" time="0">
+    </testcase>
+    <testcase classname="Location Utils Edge cases and error handling handles coordinates at international date line" name="Location Utils Edge cases and error handling handles coordinates at international date line" time="0">
+    </testcase>
+    <testcase classname="Location Utils Edge cases and error handling calculates distance across equator" name="Location Utils Edge cases and error handling calculates distance across equator" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="Location Validation Service" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.285" tests="23">
+    <testcase classname="Location Validation Service validateCoordinates should validate correct coordinates" name="Location Validation Service validateCoordinates should validate correct coordinates" time="0.001">
+    </testcase>
+    <testcase classname="Location Validation Service validateCoordinates should reject invalid latitude" name="Location Validation Service validateCoordinates should reject invalid latitude" time="0.001">
+    </testcase>
+    <testcase classname="Location Validation Service validateCoordinates should reject invalid longitude" name="Location Validation Service validateCoordinates should reject invalid longitude" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service validateCoordinates should detect zero coordinates" name="Location Validation Service validateCoordinates should detect zero coordinates" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service validateCoordinates should assess coordinate precision" name="Location Validation Service validateCoordinates should assess coordinate precision" time="0.004">
+    </testcase>
+    <testcase classname="Location Validation Service validateCoordinates should normalize coordinates" name="Location Validation Service validateCoordinates should normalize coordinates" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service validateAddress should validate complete address" name="Location Validation Service validateAddress should validate complete address" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service validateAddress should reject empty address" name="Location Validation Service validateAddress should reject empty address" time="0.001">
+    </testcase>
+    <testcase classname="Location Validation Service validateAddress should warn about short address" name="Location Validation Service validateAddress should warn about short address" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service validateAddress should assess address confidence" name="Location Validation Service validateAddress should assess address confidence" time="0.002">
+    </testcase>
+    <testcase classname="Location Validation Service validateLocation should validate complete location" name="Location Validation Service validateLocation should validate complete location" time="0.001">
+    </testcase>
+    <testcase classname="Location Validation Service validateLocation should warn about small radius" name="Location Validation Service validateLocation should warn about small radius" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service validateLocation should warn about large radius" name="Location Validation Service validateLocation should warn about large radius" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service validateLocation should provide suggestions" name="Location Validation Service validateLocation should provide suggestions" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service calculateDistance should calculate distance between coordinates" name="Location Validation Service calculateDistance should calculate distance between coordinates" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service calculateDistance should return zero for identical coordinates" name="Location Validation Service calculateDistance should return zero for identical coordinates" time="0.001">
+    </testcase>
+    <testcase classname="Location Validation Service geocodeAddress should geocode valid address" name="Location Validation Service geocodeAddress should geocode valid address" time="0.001">
+    </testcase>
+    <testcase classname="Location Validation Service geocodeAddress should handle invalid address" name="Location Validation Service geocodeAddress should handle invalid address" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service geocodeAddress should return appropriate confidence level" name="Location Validation Service geocodeAddress should return appropriate confidence level" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service reverseGeocode should reverse geocode valid coordinates" name="Location Validation Service reverseGeocode should reverse geocode valid coordinates" time="0.001">
+    </testcase>
+    <testcase classname="Location Validation Service reverseGeocode should handle invalid coordinates" name="Location Validation Service reverseGeocode should handle invalid coordinates" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service validateCoordinateAddressMatch should validate matching address and coordinates" name="Location Validation Service validateCoordinateAddressMatch should validate matching address and coordinates" time="0">
+    </testcase>
+    <testcase classname="Location Validation Service validateCoordinateAddressMatch should detect non-matching address and coordinates" name="Location Validation Service validateCoordinateAddressMatch should detect non-matching address and coordinates" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="CSV Utilities" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.427" tests="21">
+    <testcase classname="CSV Utilities toCSV should return empty string for empty array" name="CSV Utilities toCSV should return empty string for empty array" time="0.004">
+    </testcase>
+    <testcase classname="CSV Utilities toCSV should convert simple data to CSV format" name="CSV Utilities toCSV should convert simple data to CSV format" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities toCSV should handle null and undefined values" name="CSV Utilities toCSV should handle null and undefined values" time="0.001">
+    </testcase>
+    <testcase classname="CSV Utilities toCSV should escape values containing commas" name="CSV Utilities toCSV should escape values containing commas" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities toCSV should escape values containing quotes" name="CSV Utilities toCSV should escape values containing quotes" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities toCSV should escape values containing newlines" name="CSV Utilities toCSV should escape values containing newlines" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities toCSV should use custom headers when provided" name="CSV Utilities toCSV should use custom headers when provided" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities downloadCSV should create blob with correct CSV content" name="CSV Utilities downloadCSV should create blob with correct CSV content" time="0.002">
+    </testcase>
+    <testcase classname="CSV Utilities downloadCSV should create download link with correct attributes" name="CSV Utilities downloadCSV should create download link with correct attributes" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities downloadCSV should trigger download and cleanup resources" name="CSV Utilities downloadCSV should trigger download and cleanup resources" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should return empty string for empty sessions array" name="CSV Utilities sessionsToCSV should return empty string for empty sessions array" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should convert session to CSV with all data included" name="CSV Utilities sessionsToCSV should convert session to CSV with all data included" time="0.014">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should exclude user data when includeUserData is false" name="CSV Utilities sessionsToCSV should exclude user data when includeUserData is false" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should exclude location data when includeLocationData is false" name="CSV Utilities sessionsToCSV should exclude location data when includeLocationData is false" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should handle missing optional data gracefully" name="CSV Utilities sessionsToCSV should handle missing optional data gracefully" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should format dates with America/Chicago timezone" name="CSV Utilities sessionsToCSV should format dates with America/Chicago timezone" time="0.001">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should handle Firestore Timestamp objects" name="CSV Utilities sessionsToCSV should handle Firestore Timestamp objects" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should calculate duration in hours correctly" name="CSV Utilities sessionsToCSV should calculate duration in hours correctly" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should handle multiple sessions" name="CSV Utilities sessionsToCSV should handle multiple sessions" time="0.001">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should escape special characters in session data" name="CSV Utilities sessionsToCSV should escape special characters in session data" time="0">
+    </testcase>
+    <testcase classname="CSV Utilities sessionsToCSV should filter out empty columns from headers" name="CSV Utilities sessionsToCSV should filter out empty columns from headers" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="Firestore Utilities" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.477" tests="20">
+    <testcase classname="Firestore Utilities COLLECTIONS exports correct collection names" name="Firestore Utilities COLLECTIONS exports correct collection names" time="0.001">
+    </testcase>
+    <testcase classname="Firestore Utilities createDocument creates document and returns ID" name="Firestore Utilities createDocument creates document and returns ID" time="0.002">
+    </testcase>
+    <testcase classname="Firestore Utilities createDocument throws error when creation fails" name="Firestore Utilities createDocument throws error when creation fails" time="0.011">
+    </testcase>
+    <testcase classname="Firestore Utilities getDocument returns document data when document exists" name="Firestore Utilities getDocument returns document data when document exists" time="0.002">
+    </testcase>
+    <testcase classname="Firestore Utilities getDocument returns null when document does not exist" name="Firestore Utilities getDocument returns null when document does not exist" time="0.001">
+    </testcase>
+    <testcase classname="Firestore Utilities getDocument throws error when get operation fails" name="Firestore Utilities getDocument throws error when get operation fails" time="0">
+    </testcase>
+    <testcase classname="Firestore Utilities updateDocument updates document successfully" name="Firestore Utilities updateDocument updates document successfully" time="0.001">
+    </testcase>
+    <testcase classname="Firestore Utilities updateDocument throws error when update fails" name="Firestore Utilities updateDocument throws error when update fails" time="0">
+    </testcase>
+    <testcase classname="Firestore Utilities deleteDocument deletes document successfully" name="Firestore Utilities deleteDocument deletes document successfully" time="0.001">
+    </testcase>
+    <testcase classname="Firestore Utilities deleteDocument throws error when deletion fails" name="Firestore Utilities deleteDocument throws error when deletion fails" time="0">
+    </testcase>
+    <testcase classname="Firestore Utilities getCollection returns all documents in collection" name="Firestore Utilities getCollection returns all documents in collection" time="0.001">
+    </testcase>
+    <testcase classname="Firestore Utilities getCollection returns empty array when no documents exist" name="Firestore Utilities getCollection returns empty array when no documents exist" time="0">
+    </testcase>
+    <testcase classname="Firestore Utilities getCollection throws error when query fails" name="Firestore Utilities getCollection throws error when query fails" time="0.001">
+    </testcase>
+    <testcase classname="Firestore Utilities getUserByEmail returns user when found by email" name="Firestore Utilities getUserByEmail returns user when found by email" time="0">
+    </testcase>
+    <testcase classname="Firestore Utilities getUserByEmail returns null when user not found" name="Firestore Utilities getUserByEmail returns null when user not found" time="0">
+    </testcase>
+    <testcase classname="Firestore Utilities getUserByEmail throws error when query fails" name="Firestore Utilities getUserByEmail throws error when query fails" time="0">
+    </testcase>
+    <testcase classname="Firestore Utilities getLocationsByProvider returns locations assigned to provider" name="Firestore Utilities getLocationsByProvider returns locations assigned to provider" time="0.001">
+    </testcase>
+    <testcase classname="Firestore Utilities getLocationsByProvider returns empty array when no locations found" name="Firestore Utilities getLocationsByProvider returns empty array when no locations found" time="0">
+    </testcase>
+    <testcase classname="Firestore Utilities getActiveSessions returns active sessions" name="Firestore Utilities getActiveSessions returns active sessions" time="0">
+    </testcase>
+    <testcase classname="Firestore Utilities getActiveSessions returns empty array when no active sessions" name="Firestore Utilities getActiveSessions returns empty array when no active sessions" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="CacheStrategy Constants" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.329" tests="8">
+    <testcase classname="CacheStrategy Constants CACHE_CONFIG should have valid expiration times" name="CacheStrategy Constants CACHE_CONFIG should have valid expiration times" time="0.001">
+    </testcase>
+    <testcase classname="CacheStrategy Constants CACHE_CONFIG should have reasonable size limits" name="CacheStrategy Constants CACHE_CONFIG should have reasonable size limits" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy Constants CACHE_CONFIG should have valid refresh strategies" name="CacheStrategy Constants CACHE_CONFIG should have valid refresh strategies" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy Constants Cache Store Constants should have all required cache stores" name="CacheStrategy Constants Cache Store Constants should have all required cache stores" time="0.001">
+    </testcase>
+    <testcase classname="CacheStrategy Constants Cache Store Constants should have unique store names" name="CacheStrategy Constants Cache Store Constants should have unique store names" time="0.002">
+    </testcase>
+    <testcase classname="CacheStrategy Constants Cache Store Constants should have descriptive store names" name="CacheStrategy Constants Cache Store Constants should have descriptive store names" time="0.001">
+    </testcase>
+    <testcase classname="CacheStrategy Constants Configuration Validation should have consistent configuration between stores and expiration" name="CacheStrategy Constants Configuration Validation should have consistent configuration between stores and expiration" time="0">
+    </testcase>
+    <testcase classname="CacheStrategy Constants Configuration Validation should have reasonable configuration values" name="CacheStrategy Constants Configuration Validation should have reasonable configuration values" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="ActionQueue Constants" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.327" tests="20">
+    <testcase classname="ActionQueue Constants QUEUE_ACTIONS should have all required action types" name="ActionQueue Constants QUEUE_ACTIONS should have all required action types" time="0.002">
+    </testcase>
+    <testcase classname="ActionQueue Constants QUEUE_ACTIONS should have unique action type values" name="ActionQueue Constants QUEUE_ACTIONS should have unique action type values" time="0.001">
+    </testcase>
+    <testcase classname="ActionQueue Constants QUEUE_STATUS should have all required status types" name="ActionQueue Constants QUEUE_STATUS should have all required status types" time="0">
+    </testcase>
+    <testcase classname="ActionQueue Constants QUEUE_STATUS should have unique status values" name="ActionQueue Constants QUEUE_STATUS should have unique status values" time="0">
+    </testcase>
+    <testcase classname="ActionQueue Constants QUEUE_CONFIG should have reasonable configuration values" name="ActionQueue Constants QUEUE_CONFIG should have reasonable configuration values" time="0.001">
+    </testcase>
+    <testcase classname="ActionQueue Constants QUEUE_CONFIG should have valid retry configuration" name="ActionQueue Constants QUEUE_CONFIG should have valid retry configuration" time="0">
+    </testcase>
+    <testcase classname="ActionQueue Constants QUEUE_CONFIG should have reasonable sync configuration" name="ActionQueue Constants QUEUE_CONFIG should have reasonable sync configuration" time="0">
+    </testcase>
+    <testcase classname="ActionQueue Constants QUEUE_CONFIG should have reasonable expiration time" name="ActionQueue Constants QUEUE_CONFIG should have reasonable expiration time" time="0">
+    </testcase>
+    <testcase classname="ActionQueue Constants Configuration Consistency should have consistent timing configuration" name="ActionQueue Constants Configuration Consistency should have consistent timing configuration" time="0.001">
+    </testcase>
+    <testcase classname="ActionQueue Constants Configuration Consistency should have reasonable batch processing configuration" name="ActionQueue Constants Configuration Consistency should have reasonable batch processing configuration" time="0">
+    </testcase>
+    <testcase classname="Action Queue Integration Basic Functionality should handle offline scenarios" name="Action Queue Integration Basic Functionality should handle offline scenarios" time="0">
+    </testcase>
+    <testcase classname="Action Queue Integration Basic Functionality should handle online scenarios" name="Action Queue Integration Basic Functionality should handle online scenarios" time="0">
+    </testcase>
+    <testcase classname="Action Queue Integration Configuration Validation should export all required constants" name="Action Queue Integration Configuration Validation should export all required constants" time="0">
+    </testcase>
+    <testcase classname="Action Queue Integration Configuration Validation should have proper TypeScript types" name="Action Queue Integration Configuration Validation should have proper TypeScript types" time="0.001">
+    </testcase>
+    <testcase classname="Action Queue Integration Mock Integration should work with mocked dependencies" name="Action Queue Integration Mock Integration should work with mocked dependencies" time="0">
+    </testcase>
+    <testcase classname="Action Queue Integration Mock Integration should handle mock cache stores" name="Action Queue Integration Mock Integration should handle mock cache stores" time="0.001">
+    </testcase>
+    <testcase classname="Action Queue Integration Error Handling should handle invalid action types gracefully" name="Action Queue Integration Error Handling should handle invalid action types gracefully" time="0">
+    </testcase>
+    <testcase classname="Action Queue Integration Error Handling should handle invalid status types gracefully" name="Action Queue Integration Error Handling should handle invalid status types gracefully" time="0">
+    </testcase>
+    <testcase classname="Action Queue Integration Performance Considerations should have reasonable performance settings" name="Action Queue Integration Performance Considerations should have reasonable performance settings" time="0">
+    </testcase>
+    <testcase classname="Action Queue Integration Performance Considerations should have exponential backoff configuration" name="Action Queue Integration Performance Considerations should have exponential backoff configuration" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="BulkSchoolOperationsService" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:49" time="0.345" tests="2">
+    <testcase classname="BulkSchoolOperationsService parseCSVImport should correctly parse CSV with commas inside quotes" name="BulkSchoolOperationsService parseCSVImport should correctly parse CSV with commas inside quotes" time="0.002">
+    </testcase>
+    <testcase classname="BulkSchoolOperationsService parseCSVImport should correctly parse CSV with escaped quotes" name="BulkSchoolOperationsService parseCSVImport should correctly parse CSV with escaped quotes" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="authBypass helpers" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:50" time="0.337" tests="4">
+    <testcase classname="authBypass helpers detects when auth bypass is enabled" name="authBypass helpers detects when auth bypass is enabled" time="0.001">
+    </testcase>
+    <testcase classname="authBypass helpers detects when auth bypass is disabled" name="authBypass helpers detects when auth bypass is disabled" time="0">
+    </testcase>
+    <testcase classname="authBypass helpers returns the correct mock admin and provider users" name="authBypass helpers returns the correct mock admin and provider users" time="0">
+    </testcase>
+    <testcase classname="authBypass helpers builds a mock auth state with role helpers" name="authBypass helpers builds a mock auth state with role helpers" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="CacheManager Integration" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:50" time="0.321" tests="5">
+    <testcase classname="CacheManager Integration Public API should have cache manager instance" name="CacheManager Integration Public API should have cache manager instance" time="0.001">
+    </testcase>
+    <testcase classname="CacheManager Integration Public API should have required methods" name="CacheManager Integration Public API should have required methods" time="0.001">
+    </testcase>
+    <testcase classname="CacheManager Integration Public API should handle basic cache operations without throwing" name="CacheManager Integration Public API should handle basic cache operations without throwing" time="0.001">
+    </testcase>
+    <testcase classname="CacheManager Integration Public API should handle async operations gracefully" name="CacheManager Integration Public API should handle async operations gracefully" time="0.001">
+    </testcase>
+    <testcase classname="CacheManager Integration Cache Configuration should be properly configured" name="CacheManager Integration Cache Configuration should be properly configured" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="assignmentService" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:50" time="0.319" tests="5">
+    <testcase classname="assignmentService builds assignments from locations and provider lookups" name="assignmentService builds assignments from locations and provider lookups" time="0.002">
+    </testcase>
+    <testcase classname="assignmentService assigns a provider to a school after verifying user exists" name="assignmentService assigns a provider to a school after verifying user exists" time="0.001">
+    </testcase>
+    <testcase classname="assignmentService removes provider and soft deletes schedules" name="assignmentService removes provider and soft deletes schedules" time="0.001">
+    </testcase>
+    <testcase classname="assignmentService bulk assigns providers without duplicates" name="assignmentService bulk assigns providers without duplicates" time="0">
+    </testcase>
+    <testcase classname="assignmentService bulk removes providers and updates assignments + schedules" name="assignmentService bulk removes providers and updates assignments + schedules" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="sessionHistory utils" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:50" time="0.285" tests="3">
+    <testcase classname="sessionHistory utils falls back to start/end when durationMinutes missing" name="sessionHistory utils falls back to start/end when durationMinutes missing" time="0.001">
+    </testcase>
+    <testcase classname="sessionHistory utils aggregates hours by location and buckets extra into Other" name="sessionHistory utils aggregates hours by location and buckets extra into Other" time="0.001">
+    </testcase>
+    <testcase classname="sessionHistory utils builds duration histogram across bins" name="sessionHistory utils builds duration histogram across bins" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="pushReminders helpers" errors="0" failures="0" skipped="0" timestamp="2026-01-15T16:40:50" time="0.321" tests="6">
+    <testcase classname="pushReminders helpers reports unsupported when push primitives are not present" name="pushReminders helpers reports unsupported when push primitives are not present" time="0.001">
+    </testcase>
+    <testcase classname="pushReminders helpers subscribes and caches subscription when permission is granted" name="pushReminders helpers subscribes and caches subscription when permission is granted" time="0.001">
+    </testcase>
+    <testcase classname="pushReminders helpers returns null if permission is not granted" name="pushReminders helpers returns null if permission is not granted" time="0">
+    </testcase>
+    <testcase classname="pushReminders helpers unsubscribes when a subscription exists and clears local cache" name="pushReminders helpers unsubscribes when a subscription exists and clears local cache" time="0.001">
+    </testcase>
+    <testcase classname="pushReminders helpers saves/removes push subscription in Firebase using default subscriptionId = &apos;default&apos;" name="pushReminders helpers saves/removes push subscription in Firebase using default subscriptionId = &apos;default&apos;" time="0.001">
+    </testcase>
+    <testcase classname="pushReminders helpers uses adminAlerts subscriptionId for admin alert helpers" name="pushReminders helpers uses adminAlerts subscriptionId for admin alert helpers" time="0">
+    </testcase>
+  </testsuite>
+</testsuites>
