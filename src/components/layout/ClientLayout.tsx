@@ -98,13 +98,6 @@ function Header() {
                   <PWAStatus />
                 </div>
                 <ThemeToggle />
-                <Link
-                  href="/profile"
-                  className="touch-target text-sm sm:text-base text-foreground/80 hover:text-foreground transition-colors focus-ring"
-                  aria-label="User profile"
-                >
-                  Profile
-                </Link>
                 <Button
                   variant="outline"
                   onClick={handleSignOut}
