@@ -6,7 +6,6 @@ import {
   ExpirationPlugin,
   type PrecacheEntry,
 } from "serwist";
-import { openDB } from "idb";
 
 // ============================================
 // Background Sync Constants
@@ -15,50 +14,6 @@ const GEOFENCE_CHECK_TAG = "geofence-check";
 const CHECK_IN_SYNC_TAG = "check-in-sync";
 const CHECK_OUT_SYNC_TAG = "check-out-sync";
 const SESSION_SYNC_TAG = "session-sync";
-
-// IndexedDB constants - MUST match src/lib/offline/dbSchema.ts
-// These are duplicated here because SW context cannot use module imports
-// from the main app bundle. Keep in sync with dbSchema.ts!
-const DB_NAME = "schools-in-offline";
-const DB_VERSION = 2;
-const STORES = {
-  SCHOOLS: "schools",
-  SESSIONS: "sessions",
-  PENDING_ACTIONS: "pending-actions",
-  USER_DATA: "user-data",
-  GEOFENCE_CONFIG: "geofence-config",
-} as const;
-
-/**
- * Upgrade callback for IndexedDB in SW context
- * Must match the schema in src/lib/offline/dbSchema.ts
- */
-function upgradeOfflineDBForSW(db: import("idb").IDBPDatabase<unknown>): void {
-  if (!db.objectStoreNames.contains(STORES.SCHOOLS)) {
-    const schoolsStore = db.createObjectStore(STORES.SCHOOLS, { keyPath: "id" });
-    schoolsStore.createIndex("name", "name");
-  }
-  if (!db.objectStoreNames.contains(STORES.SESSIONS)) {
-    const sessionsStore = db.createObjectStore(STORES.SESSIONS, { keyPath: "id" });
-    sessionsStore.createIndex("userId", "userId");
-    sessionsStore.createIndex("schoolId", "schoolId");
-    sessionsStore.createIndex("startTime", "startTime");
-  }
-  if (!db.objectStoreNames.contains(STORES.PENDING_ACTIONS)) {
-    const pendingStore = db.createObjectStore(STORES.PENDING_ACTIONS, {
-      keyPath: "id",
-      autoIncrement: true,
-    });
-    pendingStore.createIndex("timestamp", "timestamp");
-    pendingStore.createIndex("type", "type");
-  }
-  if (!db.objectStoreNames.contains(STORES.USER_DATA)) {
-    db.createObjectStore(STORES.USER_DATA, { keyPath: "id" });
-  }
-  if (!db.objectStoreNames.contains(STORES.GEOFENCE_CONFIG)) {
-    db.createObjectStore(STORES.GEOFENCE_CONFIG, { keyPath: "id" });
-  }
-}
 
 // This declares the value of `injectionPoint` to TypeScript.
 // `injectionPoint` is the string that will be replaced by the
@@ -229,86 +184,12 @@ async function handlePeriodicGeofenceCheck(): Promise<void> {
       // Client has access to Geolocation API, SW does not
       clients[0].postMessage({ type: "GEOFENCE_CHECK_REQUESTED" });
       console.log("[SW] Geofence check requested via client message");
-    } else {
-      // No active client - check if we should show notification
-      const shouldNotify = await checkShouldShowGeofenceNotification();
-      if (shouldNotify.show) {
-        await showGeofenceReminderNotification(
-          shouldNotify.action,
-          shouldNotify.locationName
-        );
-      }
     }
   } catch (error) {
     console.error("[SW] Periodic geofence check failed:", error);
   }
 }
 
-async function checkShouldShowGeofenceNotification(): Promise<{
-  show: boolean;
-  action: "check-in" | "check-out" | "none";
-  locationName: string | null;
-}> {
-  try {
-    const db = await openDB(DB_NAME, DB_VERSION, {
-      upgrade: upgradeOfflineDBForSW,
-    });
-    const config = await db.get(STORES.GEOFENCE_CONFIG, "current");
-
-    if (!config || !config.autoGeofenceEnabled) {
-      return { show: false, action: "none", locationName: null };
-    }
-
-    // Check if we have a stale location that might need attention
-    if (config.lastCheckAt) {
-      const ageMs = Date.now() - config.lastCheckAt;
-      const staleThresholdMs = 30 * 60 * 1000; // 30 minutes
-
-      if (ageMs > staleThresholdMs) {
-        // Location data is stale, prompt user to open app
-        if (config.activeSessionId) {
-          // Has active session but hasn't checked in a while
-          const location = config.assignedLocations?.find(
-            (loc: any) => loc.id === config.activeSessionLocationId
-          );
-          return {
-            show: true,
-            action: "check-out",
-            locationName: location?.name || null,
-          };
-        }
-      }
-    }
-
-    return { show: false, action: "none", locationName: null };
-  } catch {
-    return { show: false, action: "none", locationName: null };
-  }
-}
-
-async function showGeofenceReminderNotification(
-  action: "check-in" | "check-out" | "none",
-  locationName: string | null
-): Promise<void> {
-  const title =
-    action === "check-in" ? "Check-in Reminder" : "Check-out Reminder";
-
-  const body =
-    action === "check-in"
-      ? "Open CampusAccess to check in at your location"
-      : locationName
-        ? `Are you still at ${locationName}?`
-        : "Open CampusAccess to update your session";
-
-  await self.registration.showNotification(title, {
-    body,
-    icon: "/icons/icon-192x192.png",
-    badge: "/icons/icon-72x72.png",
-    tag: "geofence-reminder",
-    requireInteraction: true,
-    data: { action, locationName },
-  });
-}
 
 // ============================================
 // Background Sync Handler (Offline Actions)
@@ -438,7 +319,7 @@ async function notifyClientsToProcessActionQueue(
 // ============================================
 // Push Notification Handler
 // ============================================
-// Handles push events from the server for geofence reminders
+// Handles push events from the server
 
 self.addEventListener("push", (event: PushEvent) => {
   if (!event.data) {
@@ -463,14 +344,6 @@ self.addEventListener("push", (event: PushEvent) => {
       data: payload.data || {},
     };
 
-    // Add actions if this is a geofence reminder
-    if (payload.data?.action === "check-in" || payload.data?.action === "check-out") {
-      options.actions = [
-        { action: "open", title: "Open App" },
-        { action: "dismiss", title: "Dismiss" },
-      ];
-    }
-
     event.waitUntil(self.registration.showNotification(title, options));
 
     console.log("[SW] Push notification shown:", title);
@@ -494,11 +367,7 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
     return;
   }
 
-  // Determine URL based on notification type
   let urlToOpen = "/provider";
-  if (data?.action === "check-in" || data?.action === "check-out") {
-    urlToOpen = "/provider";
-  }
 
   event.waitUntil(
     self.clients

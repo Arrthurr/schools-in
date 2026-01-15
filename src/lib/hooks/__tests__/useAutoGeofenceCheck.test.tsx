@@ -106,7 +106,6 @@ describe("useAutoGeofenceCheck", () => {
       config: {
         pollIntervalMs: 60000,
         debouncePolls: 2,
-        usePushReminders: false,
         useWakeLock: false,
       },
       limitations: [],

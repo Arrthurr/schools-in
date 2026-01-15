@@ -26,13 +26,6 @@ import {
   unregisterPeriodicGeofenceSync,
   setupGeofenceCheckListener,
 } from "@/lib/pwa/periodicBackgroundSync";
-import {
-  initializePushReminders,
-  cleanupPushReminders,
-  showCheckInReminder,
-  showCheckOutReminder,
-  isReminderTime,
-} from "@/lib/pwa/pushReminders";
 import type { GeofenceStrategy } from "@/lib/pwa/capabilities";
 
 type GeofenceState = "idle" | "outside" | "entering" | "inside" | "exiting";
@@ -82,8 +75,6 @@ const POOR_ACCURACY_LIMIT = 3;
 const COUNTDOWN_MS = 15_000;
 const CANCEL_COOLDOWN_MS = 5 * 60_000;
 const FEATURE_FLAG = process.env.NEXT_PUBLIC_FEATURE_AUTO_GEOFENCE !== "false";
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
-
 export function useAutoGeofenceCheck(): AutoGeofenceState {
   const { user } = useCachedAuth();
   const { enabled: prefEnabled } = useAutoGeofencePreference();
@@ -114,8 +105,6 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     useState<AutoGeofenceState["activeCountdown"]>(null);
   const [locationPermission, setLocationPermission] =
     useState<LocationPermission>("unknown");
-  const [pushRemindersInitialized, setPushRemindersInitialized] =
-    useState(false);
   const [adaptivePollIntervalMs, setAdaptivePollIntervalMs] = useState(
     strategyConfig.pollIntervalMs
   );
@@ -435,55 +424,6 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       unregisterPeriodicGeofenceSync();
     };
   }, [prefEnabled, featureEnabled, strategy, switchToFallback]);
-
-  // ============================================
-  // Initialize push reminders for fallback strategies
-  // ============================================
-  useEffect(() => {
-    if (!prefEnabled || !featureEnabled || !user?.uid) {
-      return;
-    }
-
-    // Only initialize push reminders for strategies that need them
-    if (!strategyConfig.usePushReminders || !VAPID_PUBLIC_KEY) {
-      return;
-    }
-
-    if (pushRemindersInitialized) {
-      return;
-    }
-
-    initializePushReminders({
-      userId: user.uid,
-      vapidPublicKey: VAPID_PUBLIC_KEY,
-      onPermissionDenied: () => {
-        appLogger.warn("Push permission denied for geofence reminders");
-      },
-      onSubscriptionFailed: (error) => {
-        appLogger.error("Push subscription failed", { error });
-      },
-    }).then((success) => {
-      if (success) {
-        setPushRemindersInitialized(true);
-        appLogger.info("Push reminders initialized for geofence", { strategy });
-      }
-    });
-
-    return () => {
-      // Only cleanup if we're disabling the feature
-      if (!prefEnabled && user?.uid) {
-        cleanupPushReminders(user.uid);
-        setPushRemindersInitialized(false);
-      }
-    };
-  }, [
-    prefEnabled,
-    featureEnabled,
-    user?.uid,
-    strategy,
-    strategyConfig.usePushReminders,
-    pushRemindersInitialized,
-  ]);
 
   // ============================================
   // Listen for SW geofence check requests
@@ -1017,35 +957,6 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
         if (nowVisible) {
           runPoll();
-
-          // For strategies with push reminders, show reminder on return if appropriate
-          if (strategyConfig.usePushReminders && isReminderTime()) {
-            if (activeSession) {
-              const activeLoc = assignedLocations.find(
-                (loc) => loc.id === activeSession.locationId
-              );
-
-              const startTime =
-                activeSession.startTime?.toDate?.() ??
-                activeSession.checkInTime?.toDate?.();
-
-              const durationMinutes =
-                startTime instanceof Date
-                  ? Math.max(
-                      1,
-                      Math.round((Date.now() - startTime.getTime()) / 60_000)
-                    )
-                  : undefined;
-
-              void showCheckOutReminder(
-                activeLoc?.name,
-                durationMinutes ? formatDuration(durationMinutes) : undefined
-              );
-            } else if (assignedLocations.length > 0) {
-              const nextLocation = assignedLocations[0];
-              void showCheckInReminder(nextLocation.name);
-            }
-          }
         }
       };
 
@@ -1074,7 +985,6 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     clearPollTimer,
     clearCountdowns,
     adaptivePollIntervalMs,
-    strategyConfig.usePushReminders,
   ]);
 
   return useMemo(

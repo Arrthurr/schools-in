@@ -408,7 +408,6 @@ export function shouldSuggestInstall(): boolean {
 export function getStrategyConfig(strategy: GeofenceStrategy): {
   pollIntervalMs: number;
   useWakeLock: boolean;
-  usePushReminders: boolean;
   debouncePolls: number;
 } {
   switch (strategy) {
@@ -416,7 +415,6 @@ export function getStrategyConfig(strategy: GeofenceStrategy): {
       return {
         pollIntervalMs: 60_000, // 1 minute when app is open
         useWakeLock: true,
-        usePushReminders: false, // Background sync handles it
         debouncePolls: 2,
       };
 
@@ -424,7 +422,6 @@ export function getStrategyConfig(strategy: GeofenceStrategy): {
       return {
         pollIntervalMs: 30_000, // More frequent polling needed
         useWakeLock: true,
-        usePushReminders: true, // Need reminders when app closed
         debouncePolls: 2,
       };
 
@@ -432,7 +429,6 @@ export function getStrategyConfig(strategy: GeofenceStrategy): {
       return {
         pollIntervalMs: 60_000,
         useWakeLock: false,
-        usePushReminders: true,
         debouncePolls: 2,
       };
 
@@ -440,7 +436,6 @@ export function getStrategyConfig(strategy: GeofenceStrategy): {
       return {
         pollIntervalMs: 0, // No polling
         useWakeLock: false,
-        usePushReminders: true, // Reminders are primary mechanism
         debouncePolls: 1,
       };
   }
