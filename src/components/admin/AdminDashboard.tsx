@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { httpsCallable } from "firebase/functions";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useAdminMetrics } from "@/lib/hooks/useAdminMetrics";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ import {
   saveAdminAlertSubscriptionToFirebase,
   removeAdminAlertSubscriptionFromFirebase,
 } from "@/lib/pwa/pushReminders";
-import { db } from "../../../firebase.config";
+import { db, functions } from "../../../firebase.config";
 import { doc, getDoc } from "firebase/firestore";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
 
@@ -56,7 +57,9 @@ export function AdminDashboard() {
     "idle" | "enabling" | "enabled" | "error"
   >("idle");
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
-  const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+  const [vapidPublicKey, setVapidPublicKey] = useState<string>(
+    () => process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ""
+  );
 
   // Accessibility hooks
   // const { announce } = useAnnouncement();
@@ -89,13 +92,40 @@ export function AdminDashboard() {
 
   useEffect(() => {
     let cancelled = false;
+    const loadVapidKey = async () => {
+      if (vapidPublicKey) return;
+
+      try {
+        const getVapidPublicKey = httpsCallable(functions, "getVapidPublicKey");
+        const result = await getVapidPublicKey();
+        const data = result.data as { vapidPublicKey?: string };
+
+        if (!cancelled && data?.vapidPublicKey) {
+          setVapidPublicKey(data.vapidPublicKey);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to fetch VAPID public key", err);
+        }
+      }
+    };
+
+    loadVapidKey();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [vapidPublicKey]);
+
+  useEffect(() => {
+    let cancelled = false;
     const checkAdminAlertSubscription = async () => {
       if (!user?.uid) {
         setAlertStatus("idle");
         return;
       }
 
-      if (!isPushSupported() || !VAPID_PUBLIC_KEY) {
+      if (!isPushSupported() || !vapidPublicKey) {
         setAlertStatus("idle");
         return;
       }
@@ -132,7 +162,7 @@ export function AdminDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [user?.uid, VAPID_PUBLIC_KEY]);
+  }, [user?.uid, vapidPublicKey]);
 
   const enableAdminAlerts = async () => {
     if (!user?.uid) {
@@ -147,9 +177,11 @@ export function AdminDashboard() {
       return;
     }
 
-    if (!VAPID_PUBLIC_KEY) {
+    if (!vapidPublicKey) {
       setAlertStatus("error");
-      setAlertMessage("Push notifications are not configured (missing VAPID key).");
+      setAlertMessage(
+        "Push notifications are not configured (missing VAPID key)."
+      );
       return;
     }
 
@@ -168,7 +200,7 @@ export function AdminDashboard() {
         return;
       }
 
-      const subscription = await subscribeToPush(VAPID_PUBLIC_KEY);
+      const subscription = await subscribeToPush(vapidPublicKey);
 
       if (!subscription) {
         setAlertStatus("error");
@@ -413,7 +445,9 @@ export function AdminDashboard() {
               {alertMessage && (
                 <p
                   className={`text-sm ${
-                    alertStatus === "error" ? "text-destructive" : "text-green-700"
+                    alertStatus === "error"
+                      ? "text-destructive"
+                      : "text-green-700"
                   }`}
                 >
                   {alertMessage}
@@ -428,7 +462,9 @@ export function AdminDashboard() {
                   disabled={alertStatus === "enabling"}
                 >
                   <Bell className="h-4 w-4 mr-2" />
-                  {alertStatus === "enabled" ? "Re-enable alerts" : "Enable alerts"}
+                  {alertStatus === "enabled"
+                    ? "Re-enable alerts"
+                    : "Enable alerts"}
                 </Button>
                 {alertStatus === "enabled" && (
                   <Button
