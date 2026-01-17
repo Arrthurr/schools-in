@@ -27,10 +27,10 @@ export function generateMetadata(): Metadata {
     },
     icons: {
       icon: [
-        { url: "/PROPEL-rocket-blue.png", sizes: "768x975", type: "image/png" },
+        { url: "/PROPEL-rocket_1024.png", sizes: "1024x1024", type: "image/png" },
       ],
       apple: [
-        { url: "/PROPEL-rocket-blue.png", sizes: "768x975", type: "image/png" },
+        { url: "/PROPEL-rocket_1024.png", sizes: "1024x1024", type: "image/png" },
       ],
     },
   };

@@ -12,8 +12,8 @@
   "categories": ["productivity", "business"],
   "icons": [
     {
-      "src": "/PROPEL-rocket-blue.png",
-      "sizes": "768x975",
+      "src": "/PROPEL-rocket_1024.png",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
     }
@@ -24,14 +24,14 @@
       "short_name": "Check In",
       "description": "Quick check-in to assigned school",
       "url": "/dashboard",
-      "icons": [{ "src": "/PROPEL-rocket-blue.png", "sizes": "768x975" }]
+      "icons": [{ "src": "/PROPEL-rocket_1024.png", "sizes": "1024x1024" }]
     },
     {
       "name": "Session History",
       "short_name": "History",
       "description": "View session history",
       "url": "/dashboard/history",
-      "icons": [{ "src": "/PROPEL-rocket-blue.png", "sizes": "768x975" }]
+      "icons": [{ "src": "/PROPEL-rocket_1024.png", "sizes": "1024x1024" }]
     }
   ],
   "screenshots": [
