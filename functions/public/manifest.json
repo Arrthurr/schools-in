@@ -12,8 +12,8 @@
   "categories": ["productivity", "business"],
   "icons": [
     {
-      "src": "/DMDL_logo_alpha.png",
-      "sizes": "280x60",
+      "src": "/PROPEL-rocket_1024.png",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"
     }
@@ -24,14 +24,14 @@
       "short_name": "Check In",
       "description": "Quick check-in to assigned school",
       "url": "/dashboard",
-      "icons": [{ "src": "/DMDL_logo.png", "sizes": "280x60" }]
+      "icons": [{ "src": "/PROPEL-rocket_1024.png", "sizes": "1024x1024" }]
     },
     {
       "name": "Session History",
       "short_name": "History",
       "description": "View session history",
       "url": "/dashboard/history",
-      "icons": [{ "src": "/DMDL_logo.png", "sizes": "280x60" }]
+      "icons": [{ "src": "/PROPEL-rocket_1024.png", "sizes": "1024x1024" }]
     }
   ],
   "screenshots": [

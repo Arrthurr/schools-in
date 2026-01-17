@@ -27,10 +27,10 @@ export function generateMetadata(): Metadata {
     },
     icons: {
       icon: [
-        { url: "/DMDL_logo_alpha.png", sizes: "280x60", type: "image/png" },
+        { url: "/PROPEL-rocket_1024.png", sizes: "1024x1024", type: "image/png" },
       ],
       apple: [
-        { url: "/DMDL_logo_alpha.png", sizes: "280x60", type: "image/png" },
+        { url: "/PROPEL-rocket_1024.png", sizes: "1024x1024", type: "image/png" },
       ],
     },
   };
