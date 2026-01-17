@@ -12,10 +12,10 @@
   "categories": ["productivity", "business"],
   "icons": [
     {
-      "src": "/DMDL_logo_alpha.png",
-      "sizes": "280x60",
+      "src": "/PROPEL-rocket-blue.png",
+      "sizes": "768x975",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "shortcuts": [
@@ -24,14 +24,14 @@
       "short_name": "Check In",
       "description": "Quick check-in to assigned school",
       "url": "/dashboard",
-      "icons": [{ "src": "/DMDL_logo_alpha.png", "sizes": "280x60" }]
+      "icons": [{ "src": "/PROPEL-rocket-blue.png", "sizes": "768x975" }]
     },
     {
       "name": "Session History",
       "short_name": "History",
       "description": "View session history",
       "url": "/dashboard/history",
-      "icons": [{ "src": "/DMDL_logo_alpha.png", "sizes": "280x60" }]
+      "icons": [{ "src": "/PROPEL-rocket-blue.png", "sizes": "768x975" }]
     }
   ],
   "screenshots": [
