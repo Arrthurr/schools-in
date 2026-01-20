@@ -150,10 +150,18 @@ describe("LoginForm", () => {
       
       // Verify the mock was called, indicating the button interaction worked
       expect(mockSignInWithMicrosoft).toHaveBeenCalledTimes(1);
+      
+      // Wait for the full sign-in flow to complete to prevent async leakage
+      await waitFor(() => {
+        expect(mockSyncUserFromM365).toHaveBeenCalled();
+      });
     });
   });
 
   describe("M365 Group Sync Integration", () => {
+    beforeEach(() => {
+      mockSyncUserFromM365.mockClear();
+    });
     it("calls syncUserFromM365 after successful Microsoft sign-in", async () => {
       const user = userEvent.setup();
       mockSignInWithMicrosoft.mockResolvedValue({
