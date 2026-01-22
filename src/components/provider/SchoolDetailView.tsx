@@ -54,6 +54,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
   const { location, loading: locationLoading, getLocation } = useLocation();
   const [withinRadius, setWithinRadius] = useState<boolean | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
+  const [copiedDiagnostics, setCopiedDiagnostics] = useState(false);
 
   const getSchoolCoordinates = () => {
     const lat = school?.geo?.latitude ?? (school as any)?.latitude;
@@ -144,6 +145,26 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
   const handleCheckIn = () => {
     if (onCheckIn && withinRadius) {
       onCheckIn(school);
+    }
+  };
+
+  const handleCopyDiagnostics = async () => {
+    const coords = location
+      ? `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
+      : "unknown";
+    const payload = {
+      schoolId: school.id,
+      schoolCoords: getSchoolCoordinates(),
+      userCoords: coords,
+      accuracy: location?.accuracy ?? null,
+      distanceMeters: distance,
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      setCopiedDiagnostics(true);
+      setTimeout(() => setCopiedDiagnostics(false), 2000);
+    } catch {
+      setCopiedDiagnostics(false);
     }
   };
 
@@ -398,6 +419,51 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
             </CardContent>
           </Card>
         )}
+
+        {/* Location Diagnostics */}
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle className="text-base">Location Diagnostics (beta)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <Navigation className="h-4 w-4 text-muted-foreground" />
+              <span>
+                Current location:{" "}
+                {location
+                  ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
+                  : "Not available"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Ruler className="h-4 w-4 text-muted-foreground" />
+              <span>
+                Accuracy:{" "}
+                {location?.accuracy !== undefined
+                  ? `${Math.round(location.accuracy)}m`
+                  : "Unknown"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              <span>
+                Distance to school:{" "}
+                {distance ? formatDistance(distance) : "Unknown"}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyDiagnostics}
+              className="mt-2"
+            >
+              Copy debug info
+            </Button>
+            {copiedDiagnostics && (
+              <p className="text-xs text-green-600">Copied to clipboard</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

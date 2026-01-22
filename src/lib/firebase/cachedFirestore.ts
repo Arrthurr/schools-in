@@ -25,6 +25,7 @@ import { User, Location, Session } from "./types";
 import { FirebaseCache, CacheTracker } from "../cache/FirebaseCache";
 import { COLLECTIONS } from "./firestore";
 import { normalizeLocationData } from "@/lib/services/locationNormalizer";
+import { appLogger } from "@/lib/logging/appLogger";
 
 // Re-export types and collections
 export { COLLECTIONS };
@@ -216,9 +217,17 @@ export const getCachedLocationsByProvider = async (
       );
 
       const snap = await getDocs(q);
-      const normalized = snap.docs.map((docSnapshot) =>
-        normalizeLocationData(docSnapshot.id, docSnapshot.data())
-      ) as Location[];
+      const normalized = snap.docs.reduce<Location[]>((acc, docSnapshot) => {
+        const loc = normalizeLocationData(docSnapshot.id, docSnapshot.data());
+        if (loc) {
+          acc.push(loc);
+        } else {
+          appLogger.warn("Invalid location skipped (missing coordinates)", {
+            locationId: docSnapshot.id,
+          });
+        }
+        return acc;
+      }, []);
 
       // Legacy fallback to user.assignedLocations if nothing is found (defensive)
       if (normalized.length === 0) {
@@ -233,12 +242,20 @@ export const getCachedLocationsByProvider = async (
               collection(db, COLLECTIONS.LOCATIONS),
               where("__name__", "in", chunk)
             );
-            const chunkSnap = await getDocs(chunkQuery);
-            results.push(
-              ...chunkSnap.docs.map((docSnapshot) =>
-                normalizeLocationData(docSnapshot.id, docSnapshot.data())
-              )
+          const chunkSnap = await getDocs(chunkQuery);
+          chunkSnap.docs.forEach((docSnapshot) => {
+            const loc = normalizeLocationData(
+              docSnapshot.id,
+              docSnapshot.data()
             );
+            if (loc) {
+              results.push(loc);
+            } else {
+              appLogger.warn("Invalid legacy-assigned location skipped", {
+                locationId: docSnapshot.id,
+              });
+            }
+          });
           }
           return results;
         }

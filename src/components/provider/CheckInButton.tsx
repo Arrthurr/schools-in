@@ -26,6 +26,7 @@ import { formatDuration } from "../../lib/utils/session";
 // import { AnnouncementRegion, useAnnouncement } from "@/lib/accessibility";
 import { ErrorDisplay } from "../common/ErrorDisplay";
 import { Location } from "@/lib/firebase/types";
+import { detectPlatform } from "@/lib/pwa/capabilities";
 
 type School = Location;
 
@@ -68,6 +69,10 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   // const { announce } = useAnnouncement();
   const announce = (_message: string, _priority?: string) => {}; // No-op function placeholder
 
+  const platform = detectPlatform();
+  const isIOS = platform.isIOS;
+  const ACCURACY_HINT_THRESHOLD = 100;
+
   const handleCheckInClick = useCallback(async () => {
     if (!user) {
       setLocationError({ message: "You must be logged in to check in." });
@@ -101,6 +106,13 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       const dist = calculateDistance(location, schoolCoords);
 
       const effectiveRadius = school.radiusMeters ?? 100;
+      const accuracyHint =
+        typeof location.accuracy === "number" &&
+        location.accuracy > ACCURACY_HINT_THRESHOLD
+          ? isIOS
+            ? " Location accuracy is low. Enable Precise Location for Safari/this app in Settings > Privacy & Security > Location Services."
+            : " Location accuracy is low. Try moving outside, enable Wi‑Fi, and wait a few seconds for GPS to lock."
+          : "";
       const inRange = isWithinRadius(
         location,
         schoolCoords,
@@ -116,7 +128,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       } else {
         const errorMessage = `You are too far from the school to check in. You are ${dist.toFixed(
           0
-        )}m away.`;
+        )}m away.${accuracyHint ? ` ${accuracyHint}` : ""}`;
         setLocationError({
           message: errorMessage,
         });

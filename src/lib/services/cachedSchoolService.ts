@@ -19,6 +19,7 @@ import { COLLECTIONS } from "@/lib/firebase/firestore";
 import type { Location } from "@/lib/firebase/types";
 import { FirebaseCache, CacheTracker } from "@/lib/cache/FirebaseCache";
 import { getCachedLocationsByProvider } from "@/lib/firebase/cachedFirestore";
+import { appLogger } from "@/lib/logging/appLogger";
 import {
   normalizeLocationData,
   NormalizedLocation,
@@ -31,7 +32,9 @@ type FirestoreDocSnapshot = {
   data: () => Record<string, any>;
 };
 
-function normalizeSnapshot(docRef: FirestoreDocSnapshot): NormalizedLocation {
+function normalizeSnapshot(
+  docRef: FirestoreDocSnapshot
+): NormalizedLocation | null {
   return normalizeLocationData(docRef.id, docRef.data());
 }
 
@@ -124,8 +127,21 @@ export class CachedSchoolService {
         }
 
         const snapshot = await getDocs(queryRef);
-        let schools = snapshot.docs.map((docSnapshot) =>
-          normalizeSnapshot(docSnapshot as unknown as FirestoreDocSnapshot)
+        let schools = snapshot.docs.reduce<NormalizedLocation[]>(
+          (acc, docSnapshot) => {
+            const normalized = normalizeSnapshot(
+              docSnapshot as unknown as FirestoreDocSnapshot
+            );
+            if (normalized) {
+              acc.push(normalized);
+            } else {
+              appLogger.warn("Invalid location skipped (missing coordinates)", {
+                locationId: docSnapshot.id,
+              });
+            }
+            return acc;
+          },
+          []
         );
 
         // Apply search filter (client-side)
