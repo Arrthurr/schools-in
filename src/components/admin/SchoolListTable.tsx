@@ -86,7 +86,30 @@ export function SchoolListTable({
     onToggleActive(school.id, !school.isActive);
   };
 
+  const isMissingCoords = (school: School) =>
+    !Number.isFinite(school.latitude) ||
+    !Number.isFinite(school.longitude) ||
+    (school.latitude === 0 && school.longitude === 0);
+
+  const formatCoords = (school: School) => {
+    const lat =
+      Number.isFinite(school.latitude) && school.latitude !== 0
+        ? school.latitude
+        : (school as any)?.geo?.latitude ?? (school as any)?.gpsCoordinates?.latitude;
+    const lng =
+      Number.isFinite(school.longitude) && school.longitude !== 0
+        ? school.longitude
+        : (school as any)?.geo?.longitude ?? (school as any)?.gpsCoordinates?.longitude;
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "—";
+    return `${(lat as number).toFixed(4)}, ${(lng as number).toFixed(4)}`;
+  };
+
   const getStatusBadge = (school: School) => {
+    if (isMissingCoords(school)) {
+      return <Badge variant="destructive">Missing Coords</Badge>;
+    }
+
     if (!school.isActive) {
       return <Badge variant="secondary">Inactive</Badge>;
     }
@@ -215,6 +238,13 @@ export function SchoolListTable({
   return (
     <>
       <div className="space-y-4">
+        {schools.some(isMissingCoords) && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+            {schools.filter(isMissingCoords).length} school
+            {schools.filter(isMissingCoords).length > 1 ? "s" : ""} need valid
+            coordinates. Edit the school and set latitude/longitude (use “Get Coords” in the form) to restore auto check-in/out.
+          </div>
+        )}
         {/* Export Controls */}
         <div className="flex justify-between items-center">
           <p className="text-sm text-gray-600">
@@ -257,8 +287,7 @@ export function SchoolListTable({
                         {school.address}
                       </div>
                       <div className="text-gray-500 font-mono text-xs">
-                        {school.latitude.toFixed(4)},{" "}
-                        {school.longitude.toFixed(4)}
+                    {formatCoords(school)}
                       </div>
                     </div>
                   </TableCell>
@@ -409,6 +438,11 @@ export function SchoolListTable({
               <div>
                 <h4 className="font-medium mb-2">Location Information</h4>
                 <div className="space-y-2 text-sm">
+                  {isMissingCoords(selectedSchool) && (
+                    <p className="text-red-600">
+                      Coordinates are missing. Edit this school and set latitude/longitude to enable geofence check-in/out.
+                    </p>
+                  )}
                   <div>
                     <span className="text-gray-600">Address:</span>
                     <span className="ml-2">{selectedSchool.address}</span>

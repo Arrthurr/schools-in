@@ -65,8 +65,69 @@ const getCurrentLocation = (
   });
 };
 
+type BestEffortMode = "default" | "decision";
+
+interface BestEffortLocationOptions {
+  mode?: BestEffortMode;
+  initialOptions?: PositionOptions;
+  highAccuracyOptions?: PositionOptions;
+  accuracyThresholdMeters?: number;
+}
+
+const getBestEffortLocation = async (
+  options: BestEffortLocationOptions = {}
+): Promise<Coordinates> => {
+  const {
+    mode = "default",
+    initialOptions,
+    highAccuracyOptions,
+    accuracyThresholdMeters = 50,
+  } = options;
+
+  const firstAttemptOptions: PositionOptions =
+    mode === "decision"
+      ? {
+          enableHighAccuracy: false,
+          timeout: 5000,
+          maximumAge: 15_000,
+          ...initialOptions,
+        }
+      : {
+          enableHighAccuracy: true,
+          timeout: 10_000,
+          maximumAge: 60_000,
+          ...initialOptions,
+        };
+
+  try {
+    const first = await getCurrentLocation(firstAttemptOptions);
+    const hasActionableAccuracy =
+      typeof first.accuracy !== "number" ||
+      first.accuracy <= accuracyThresholdMeters;
+
+    if (mode !== "decision" || hasActionableAccuracy) {
+      return first;
+    }
+  } catch (error) {
+    // Fall through to high-accuracy attempt
+    if (mode !== "decision") {
+      throw error;
+    }
+  }
+
+  const secondAttemptOptions: PositionOptions = {
+    enableHighAccuracy: true,
+    timeout: Math.max(firstAttemptOptions.timeout ?? 10_000, 15_000),
+    maximumAge: 0,
+    ...highAccuracyOptions,
+  };
+
+  return getCurrentLocation(secondAttemptOptions);
+};
+
 export const locationService = {
   getCurrentLocation,
+  getBestEffortLocation,
 };
 
 // Calculate distance between two coordinates using Haversine formula

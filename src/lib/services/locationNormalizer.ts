@@ -38,7 +38,7 @@ export type NormalizedLocation = Location & {
 export function normalizeLocationData(
   docId: string,
   rawData: Record<string, any>
-): NormalizedLocation {
+): NormalizedLocation | null {
   const baseData = rawData ?? {};
 
   const geoSource: GeoLike =
@@ -99,9 +99,16 @@ export function normalizeLocationData(
       ? baseData.isActive
       : true;
 
-  const fallbackLat = typeof latitude === "number" ? latitude : 0;
-  const fallbackLng = typeof longitude === "number" ? longitude : 0;
-  const resolvedGeo = geoPoint ?? new GeoPoint(fallbackLat, fallbackLng);
+  // If we cannot resolve valid coordinates, treat the document as invalid
+  const hasValidGeo =
+    geoPoint &&
+    typeof geoPoint.latitude === "number" &&
+    typeof geoPoint.longitude === "number";
+  if (!hasValidGeo) {
+    return null;
+  }
+
+  const resolvedGeo = geoPoint;
 
   const location: Partial<NormalizedLocation> = {
     id: docId,
@@ -117,8 +124,8 @@ export function normalizeLocationData(
     isActive,
     active: isActive,
     region: baseData.region,
-    latitude,
-    longitude,
+    latitude: typeof latitude === "number" ? latitude : undefined,
+    longitude: typeof longitude === "number" ? longitude : undefined,
     description: baseData.description,
     totalSessions: baseData.totalSessions,
     activeProviders: assignedProviders.length, // Compute from assignedProviders array

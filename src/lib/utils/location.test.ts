@@ -344,6 +344,79 @@ describe('Location Utils', () => {
     });
   });
 
+  describe('locationService.getBestEffortLocation', () => {
+    it('returns first attempt when accuracy is good', async () => {
+      const mockPosition = {
+        coords: { latitude: 1, longitude: 2, accuracy: 25 },
+      };
+
+      mockGeolocation.getCurrentPosition.mockImplementation((success) => {
+        success(mockPosition);
+      });
+
+      const result = await locationService.getBestEffortLocation({
+        mode: "decision",
+      });
+
+      expect(result).toEqual({
+        latitude: 1,
+        longitude: 2,
+        accuracy: 25,
+      });
+      expect(mockGeolocation.getCurrentPosition).toHaveBeenCalledTimes(1);
+
+      const optionsUsed = mockGeolocation.getCurrentPosition.mock.calls[0][2];
+      expect(optionsUsed.enableHighAccuracy).toBe(false);
+    });
+
+    it('escalates to high accuracy when first accuracy is poor', async () => {
+      const first = { coords: { latitude: 1, longitude: 2, accuracy: 120 } };
+      const second = { coords: { latitude: 1.1, longitude: 2.1, accuracy: 10 } };
+
+      mockGeolocation.getCurrentPosition
+        .mockImplementationOnce((success) => success(first))
+        .mockImplementationOnce((success) => success(second));
+
+      const result = await locationService.getBestEffortLocation({
+        mode: "decision",
+        accuracyThresholdMeters: 50,
+      });
+
+      expect(result).toEqual({
+        latitude: 1.1,
+        longitude: 2.1,
+        accuracy: 10,
+      });
+      expect(mockGeolocation.getCurrentPosition).toHaveBeenCalledTimes(2);
+
+      const firstOptions = mockGeolocation.getCurrentPosition.mock.calls[0][2];
+      const secondOptions = mockGeolocation.getCurrentPosition.mock.calls[1][2];
+      expect(firstOptions.enableHighAccuracy).toBe(false);
+      expect(secondOptions.enableHighAccuracy).toBe(true);
+      expect(secondOptions.maximumAge).toBe(0);
+    });
+
+    it('escalates when first attempt fails', async () => {
+      const error = { code: 3 };
+      const second = { coords: { latitude: 5, longitude: 6, accuracy: 15 } };
+
+      mockGeolocation.getCurrentPosition
+        .mockImplementationOnce((_success, fail) => fail(error))
+        .mockImplementationOnce((success) => success(second));
+
+      const result = await locationService.getBestEffortLocation({
+        mode: "decision",
+      });
+
+      expect(result).toEqual({
+        latitude: 5,
+        longitude: 6,
+        accuracy: 15,
+      });
+      expect(mockGeolocation.getCurrentPosition).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('Edge cases and error handling', () => {
     it('handles very large distances', () => {
       const point1: Coordinates = { latitude: 90, longitude: 0 }; // North Pole

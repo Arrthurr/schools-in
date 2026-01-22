@@ -21,6 +21,8 @@ describe("locationNormalizer", () => {
     };
 
     const normalized = normalizeLocationData("school-1", raw);
+    expect(normalized).not.toBeNull();
+    if (!normalized) return;
 
     expect(normalized.id).toBe("school-1");
     expect(normalized.geo).toMatchObject({ latitude: 41.0, longitude: -87.0 });
@@ -40,6 +42,8 @@ describe("locationNormalizer", () => {
     };
 
     const normalized = normalizeLocationData("school-2", raw);
+    expect(normalized).not.toBeNull();
+    if (!normalized) return;
 
     expect(normalized.radiusMeters).toBe(80);
     expect(normalized.latitude).toBeCloseTo(40.5);
@@ -87,6 +91,8 @@ describe("locationNormalizer", () => {
     };
 
     const normalized = normalizeLocationData("school-3", raw);
+    expect(normalized).not.toBeNull();
+    if (!normalized) return;
 
     expect(normalized.assignedProviders).toEqual(["provider-1", "provider-2", "provider-3"]);
     expect(normalized.activeProviders).toBe(3);
@@ -104,6 +110,8 @@ describe("locationNormalizer", () => {
     };
 
     const normalized = normalizeLocationData("school-4", raw);
+    expect(normalized).not.toBeNull();
+    if (!normalized) return;
 
     expect(normalized.assignedProviders).toEqual([]);
     expect(normalized.activeProviders).toBe(0);
@@ -120,8 +128,25 @@ describe("locationNormalizer", () => {
     };
 
     const normalized = normalizeLocationData("school-5", raw);
+    expect(normalized).not.toBeNull();
+    if (!normalized) return;
 
     expect(normalized.assignedProviders).toEqual([]);
     expect(normalized.activeProviders).toBe(0);
+  });
+
+  it("returns null when coordinates are missing/invalid", () => {
+    const raw = {
+      name: "No Coords School",
+      address: "404 Missing St",
+      assignedProviders: [],
+      radiusMeters: 100,
+      createdAt: { toMillis: () => Timestamp.now().toMillis() },
+      updatedAt: { toMillis: () => Timestamp.now().toMillis() },
+    };
+
+    const normalized = normalizeLocationData("school-missing", raw);
+
+    expect(normalized).toBeNull();
   });
 });

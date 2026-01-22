@@ -87,6 +87,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     config: strategyConfig,
     limitations,
     switchToFallback,
+    platform,
   } = useGeofenceStrategy();
 
   const [assignedLocations, setAssignedLocations] = useState<Location[]>([]);
@@ -594,15 +595,16 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       setPausedReason("poor-accuracy");
       toast({
         title: "Auto check temporarily paused",
-        description:
-          "GPS accuracy is low. We'll resume auto check when location stabilizes.",
+        description: platform?.isIOS
+          ? "GPS accuracy is low. Enable Precise Location for Safari/this app in Settings > Privacy & Security > Location Services, then retry."
+          : "GPS accuracy is low. Try moving outside, enable Wi‑Fi, and wait a moment for location to stabilize.",
         duration: 6000,
       });
       appLogger.warn("Auto geofence paused due to poor accuracy", {
         consecutivePoorAccuracy: count,
       });
     }
-  }, []);
+  }, [platform?.isIOS]);
 
   const handleGoodAccuracy = useCallback(() => {
     if (poorAccuracyCount.current > 0) {
@@ -665,9 +667,18 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       const now = Date.now();
       setIsPolling(true);
       try {
-        const current = await locationService.getCurrentLocation(
-          getLocationOptions()
-        );
+        const baseOptions = getLocationOptions();
+        const current = await locationService.getBestEffortLocation({
+          mode: "decision",
+          initialOptions: baseOptions,
+          highAccuracyOptions: {
+            ...baseOptions,
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: Math.max(baseOptions.timeout ?? 5_000, 15_000),
+          },
+          accuracyThresholdMeters: ACCURACY_THRESHOLD_METERS,
+        });
 
         // Mark permission as granted on successful location fetch
         setLocationPermission("granted");
