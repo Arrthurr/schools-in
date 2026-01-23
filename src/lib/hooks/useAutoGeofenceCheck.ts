@@ -824,16 +824,22 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                   });
                 },
                 onConfirm: async () => {
-                  clearCountdown(countdownKey);
-                  setActiveCountdown(null);
-                  await checkOut(activeSession.id, {
-                    latitude: current.latitude,
-                    longitude: current.longitude,
-                    accuracy: current.accuracy,
-                  });
-                  appLogger.info("Auto checkout completed", {
-                    locationId: activeLoc.id,
-                  });
+                  try {
+                    await checkOut(activeSession.id, {
+                      latitude: current.latitude,
+                      longitude: current.longitude,
+                      accuracy: current.accuracy,
+                    });
+                    appLogger.info("Auto checkout completed", {
+                      locationId: activeLoc.id,
+                    });
+                  } finally {
+                    // Clear countdown AFTER check-out completes (success or failure)
+                    // to prevent duplicate countdowns during the async operation
+                    clearCountdown(countdownKey);
+                    setActiveCountdown(null);
+                    activeCountdownRef.current = null;
+                  }
                 },
               });
             }
@@ -941,16 +947,22 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                   });
                 },
                 onConfirm: async () => {
-                  clearCountdown(countdownKey);
-                  setActiveCountdown(null);
-                  await checkIn(firstInside!.id, {
-                    latitude: current.latitude,
-                    longitude: current.longitude,
-                    accuracy: current.accuracy,
-                  });
-                  appLogger.info("Auto check-in completed", {
-                    locationId: firstInside?.id,
-                  });
+                  try {
+                    await checkIn(firstInside!.id, {
+                      latitude: current.latitude,
+                      longitude: current.longitude,
+                      accuracy: current.accuracy,
+                    });
+                    appLogger.info("Auto check-in completed", {
+                      locationId: firstInside?.id,
+                    });
+                  } finally {
+                    // Clear countdown AFTER check-in completes (success or failure)
+                    // to prevent duplicate countdowns during the async operation
+                    clearCountdown(countdownKey);
+                    setActiveCountdown(null);
+                    activeCountdownRef.current = null;
+                  }
                 },
               });
             }
