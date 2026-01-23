@@ -121,6 +121,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const swListenerCleanupRef = useRef<(() => void) | null>(null);
   const runPollRef = useRef<(() => void) | null>(null);
+  const pollInFlightRef = useRef(false);
   const lastInsideUpdateRef = useRef(0);
   const lastGeofenceConfigRef = useRef<string | null>(null);
   const pendingGeofenceSaveRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -497,6 +498,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       onConfirm,
       onCancel,
     }: CountdownConfig) => {
+      if (countdownCleanup.current[id]) {
+        // Already running this countdown; avoid duplicate toasts
+        return;
+      }
+
       const startedAt = Date.now();
 
       // Request Wake Lock to prevent device sleep during countdown
@@ -658,7 +664,14 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     }
 
     const runPoll = async () => {
+      if (pollInFlightRef.current) {
+        appLogger.debug("Skipping geofence poll because one is already running");
+        return;
+      }
+
+      pollInFlightRef.current = true;
       if (!featureEnabled || document.visibilityState !== "visible") {
+        pollInFlightRef.current = false;
         return;
       }
 
@@ -740,11 +753,23 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               );
             }
 
-            if (
-              outsideStreak.current >= DEBOUNCE_POLLS &&
-              !activeCountdownRef.current
-            ) {
+            if (outsideStreak.current >= DEBOUNCE_POLLS) {
               const countdownKey = `checkout-${activeLoc.id}`;
+
+              // Atomic check-and-set to prevent race condition with overlapping polls
+              if (activeCountdownRef.current) {
+                appLogger.debug("Check-out countdown already active, skipping", {
+                  countdownKey,
+                });
+                setIsPolling(false);
+                pollInFlightRef.current = false;
+                return;
+              }
+              activeCountdownRef.current = {
+                type: "checkout",
+                locationId: activeLoc.id,
+              };
+
               setActiveCountdown({
                 type: "checkout",
                 locationId: activeLoc.id,
@@ -856,11 +881,23 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               insideStreak.current >= DEBOUNCE_POLLS ? "inside" : "entering"
             );
 
-            if (
-              insideStreak.current >= DEBOUNCE_POLLS &&
-              !activeCountdownRef.current
-            ) {
+            if (insideStreak.current >= DEBOUNCE_POLLS) {
               const countdownKey = `checkin-${firstInside.id}`;
+
+              // Atomic check-and-set to prevent race condition with overlapping polls
+              if (activeCountdownRef.current) {
+                appLogger.debug("Check-in countdown already active, skipping", {
+                  countdownKey,
+                });
+                setIsPolling(false);
+                pollInFlightRef.current = false;
+                return;
+              }
+              activeCountdownRef.current = {
+                type: "checkin",
+                locationId: firstInside.id,
+              };
+
               setActiveCountdown({
                 type: "checkin",
                 locationId: firstInside.id,
@@ -933,6 +970,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         }
       } finally {
         setIsPolling(false);
+        pollInFlightRef.current = false;
       }
     };
 

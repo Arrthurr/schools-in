@@ -11,6 +11,7 @@ import { getCachedLocationsByProvider } from "@/lib/firebase/cachedFirestore";
 import { toast } from "@/components/ui/use-toast";
 import { GeoPoint, Timestamp } from "firebase/firestore";
 import type { Location, Session } from "@/lib/firebase/types";
+import { setupGeofenceCheckListener } from "@/lib/pwa/periodicBackgroundSync";
 
 // Mock all dependencies
 jest.mock("@/lib/hooks/useCachedAuth");
@@ -24,6 +25,7 @@ jest.mock("@/lib/firebase/cachedFirestore");
 jest.mock("@/components/ui/use-toast");
 jest.mock("@/lib/logging/appLogger", () => ({
   appLogger: {
+    debug: jest.fn(),
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
@@ -1150,6 +1152,130 @@ describe("useAutoGeofenceCheck", () => {
         (call) => call[0]?.title === "Auto check-in"
       );
       expect(autoCheckInCalls.length).toBe(0);
+    });
+  });
+
+  describe("Concurrency safeguards", () => {
+    it("should not allow duplicate polls when one is already in-flight", async () => {
+      (useAutoGeofencePreference as jest.Mock).mockReturnValue({
+        enabled: true,
+      });
+      (getCachedLocationsByProvider as jest.Mock).mockResolvedValue([mockLocation]);
+      (validateGeofence as jest.Mock).mockReturnValue({
+        distance: 50,
+        isWithinGeofence: true,
+      });
+
+      // First poll will hang until we resolve to simulate in-flight work.
+      let resolveLocation: (value: unknown) => void;
+      const pendingLocation = new Promise((res) => {
+        resolveLocation = res;
+      });
+      (locationService.getCurrentLocation as jest.Mock).mockImplementation(
+        () => pendingLocation
+      );
+
+      const swListeners: Array<() => void> = [];
+      (setupGeofenceCheckListener as jest.Mock).mockImplementation((cb) => {
+        swListeners.push(cb);
+        return () => undefined;
+      });
+
+      renderHook(() => useAutoGeofenceCheck());
+
+      await waitFor(() => {
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
+      });
+
+      // Initial poll started; keep it in-flight.
+      expect(locationService.getCurrentLocation).toHaveBeenCalledTimes(1);
+
+      // Trigger another poll while the first is still running.
+      await act(async () => {
+        swListeners[0]?.();
+      });
+
+      // Still only the original location fetch should be in-flight (second poll blocked).
+      expect(locationService.getCurrentLocation).toHaveBeenCalledTimes(1);
+
+      // Resolve the in-flight poll.
+      await act(async () => {
+        resolveLocation!({
+          latitude: 40.7128,
+          longitude: -74.006,
+          accuracy: 10,
+        });
+        await flushPromises();
+      });
+    });
+
+    it("should not start duplicate check-in countdowns when countdown is already active", async () => {
+      (useAutoGeofencePreference as jest.Mock).mockReturnValue({
+        enabled: true,
+      });
+      (getCachedLocationsByProvider as jest.Mock).mockResolvedValue([mockLocation]);
+      (validateGeofence as jest.Mock).mockReturnValue({
+        distance: 50,
+        isWithinGeofence: true,
+      });
+
+      const toastInstance = {
+        id: "toast-1",
+        dismiss: jest.fn(),
+        update: jest.fn(),
+      };
+      (toast as jest.Mock).mockReturnValue(toastInstance);
+
+      renderHook(() => useAutoGeofenceCheck());
+
+      // Wait for locations to load and initial poll
+      await act(async () => {
+        await flushPromises();
+      });
+
+      await waitFor(() => {
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
+      });
+
+      // First poll completes (insideStreak = 1, entering state)
+      await act(async () => {
+        await flushPromises();
+      });
+
+      // Second poll triggers countdown (insideStreak = 2 >= DEBOUNCE_POLLS)
+      // Advance 60s for the default poll interval
+      await act(async () => {
+        jest.advanceTimersByTime(60000);
+        await flushPromises();
+      });
+
+      // Verify countdown toast was created
+      await waitFor(
+        () => {
+          const toastCalls = (toast as jest.Mock).mock.calls.filter(
+            (call) => call[0]?.title === "Auto check-in"
+          );
+          expect(toastCalls.length).toBe(1);
+        },
+        { timeout: 2000 }
+      );
+
+      // Clear toast mock to count new calls
+      (toast as jest.Mock).mockClear();
+
+      // Third poll while countdown is still active - should NOT trigger another countdown
+      // Once countdown starts, poll interval adapts to 12s (countdownPollIntervalMs)
+      // The countdown is 15s, so a poll at 12s would still be within the countdown
+      await act(async () => {
+        jest.advanceTimersByTime(12000);
+        await flushPromises();
+      });
+
+      // No new countdown toasts should have been created (guard blocks)
+      const newCheckInToasts = (toast as jest.Mock).mock.calls.filter(
+        (call) => call[0]?.title === "Auto check-in"
+      );
+      expect(newCheckInToasts.length).toBe(0);
     });
   });
 });
