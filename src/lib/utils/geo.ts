@@ -4,6 +4,25 @@ import { GeoPoint } from "firebase/firestore";
 const EARTH_RADIUS_METERS = 6371000;
 
 /**
+ * Type for geo coordinates that works with both Firebase GeoPoint instances
+ * and plain objects (which occur after serialization/caching)
+ */
+export type GeoPointLike = GeoPoint | { latitude: number; longitude: number };
+
+/**
+ * Safely extract latitude and longitude from a GeoPoint or plain object
+ * This handles the case where GeoPoint gets serialized to a plain object
+ */
+function extractCoordinates(geo: GeoPointLike): { lat: number; lon: number } {
+  // GeoPoint instance has latitude/longitude as getters, plain objects have them as properties
+  // Both access patterns work the same way in JavaScript
+  return {
+    lat: geo.latitude,
+    lon: geo.longitude,
+  };
+}
+
+/**
  * Haversine distance between two lat/lng pairs in meters
  * This is the primary function for calculating distance between coordinates
  */
@@ -31,15 +50,12 @@ export function haversineDistance(
  * This is the Firebase-friendly version for working with Firestore GeoPoints
  */
 export function calculateDistanceBetweenGeoPoints(
-  point1: GeoPoint,
-  point2: GeoPoint
+  point1: GeoPointLike,
+  point2: GeoPointLike
 ): number {
-  return haversineDistance(
-    point1.latitude,
-    point1.longitude,
-    point2.latitude,
-    point2.longitude
-  );
+  const p1 = extractCoordinates(point1);
+  const p2 = extractCoordinates(point2);
+  return haversineDistance(p1.lat, p1.lon, p2.lat, p2.lon);
 }
 
 /**
@@ -49,14 +65,10 @@ export function calculateDistanceBetweenGeoPoints(
 export function calculateDistanceToLocation(
   userLatitude: number,
   userLongitude: number,
-  locationGeo: GeoPoint
+  locationGeo: GeoPointLike
 ): number {
-  return haversineDistance(
-    userLatitude,
-    userLongitude,
-    locationGeo.latitude,
-    locationGeo.longitude
-  );
+  const loc = extractCoordinates(locationGeo);
+  return haversineDistance(userLatitude, userLongitude, loc.lat, loc.lon);
 }
 
 /**
@@ -80,7 +92,7 @@ export function withinRadius(
 export function isWithinGeofence(
   userLatitude: number,
   userLongitude: number,
-  locationGeo: GeoPoint,
+  locationGeo: GeoPointLike,
   radiusMeters: number = 100 // Default radius from PRD
 ): boolean {
   const distance = calculateDistanceToLocation(
@@ -98,7 +110,7 @@ export function isWithinGeofence(
 export function validateGeofence(
   userLatitude: number,
   userLongitude: number,
-  locationGeo: GeoPoint,
+  locationGeo: GeoPointLike,
   radiusMeters: number = 100
 ): {
   distance: number;
