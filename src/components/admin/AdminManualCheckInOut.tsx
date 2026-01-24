@@ -229,10 +229,18 @@ export function AdminManualCheckInOut({
   const sessionDuration = useMemo(() => {
     if (!activeSession?.startTime) return null;
 
-    const startMs =
-      activeSession.startTime instanceof Date
-        ? activeSession.startTime.getTime()
-        : activeSession.startTime.toMillis();
+    let startMs: number;
+    const st = activeSession.startTime;
+    if (st instanceof Date) {
+      startMs = st.getTime();
+    } else if (typeof st.toMillis === "function") {
+      startMs = st.toMillis();
+    } else if (typeof st.seconds === "number") {
+      // Plain object from Firestore cache
+      startMs = st.seconds * 1000 + (st.nanoseconds || 0) / 1000000;
+    } else {
+      return null;
+    }
 
     const durationMs = Date.now() - startMs;
     const minutes = Math.floor(durationMs / 60000);
