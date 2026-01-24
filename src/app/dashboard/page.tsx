@@ -7,6 +7,7 @@ import { SchoolList } from "../../components/provider/SchoolList";
 import { SessionStatus } from "../../components/provider/SessionStatus";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   PageHeader,
   StatCard,
@@ -21,13 +22,13 @@ import {
   User,
   Bell,
   Menu,
-  X,
   Home,
   History,
   MessageSquare,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { auth } from "../../../firebase.config";
 import { Logo } from "../../components/ui/logo";
@@ -44,7 +45,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { locations: providerLocations } = useProviderLocations(user?.uid);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
   const { enabled: autoGeofenceEnabled } = useAutoGeofencePreference();
   const autoGeofence = useAutoGeofenceCheck();
@@ -167,29 +168,11 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute roles={["provider", "admin"]}>
       <div className="min-h-screen bg-background">
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        <div
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r shadow-lg transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:bg-card lg:border-r lg:shadow-lg">
           <div className="flex h-full flex-col">
-            <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b">
+            <div className="flex h-16 shrink-0 items-center px-4 border-b">
               <Logo size="sm" priority />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="md:hidden"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <X className="h-5 w-5" />
-              </Button>
             </div>
 
             <div className="p-4 border-b">
@@ -210,9 +193,9 @@ export default function DashboardPage() {
 
             <nav className="flex-1 space-y-1 px-2 py-4">
               {navigationItems.map((item) => (
-                <button
+                <Link
                   key={item.name}
-                  onClick={() => router.push(item.href as any)}
+                  href={item.href as any}
                   className={`group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                     item.current
                       ? "bg-brand-primary text-white"
@@ -227,7 +210,7 @@ export default function DashboardPage() {
                     }`}
                   />
                   {item.name}
-                </button>
+                </Link>
               ))}
             </nav>
 
@@ -244,14 +227,77 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="md:ml-64">
+        {/* Mobile Navigation */}
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+          <SheetContent side="left" className="w-64 p-0">
+            <div className="flex h-full flex-col">
+              <div className="flex h-16 shrink-0 items-center px-4 border-b">
+                <Logo size="sm" priority />
+              </div>
+
+              <div className="p-4 border-b">
+                <div className="flex items-center">
+                  <div className="h-10 w-10 rounded-full bg-brand-primary flex items-center justify-center">
+                    <User className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-foreground">
+                      {user?.displayName || user?.email || "Provider User"}
+                    </p>
+                    <Badge variant="secondary" className="text-xs mt-1">
+                      {user?.role || "Provider"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <nav className="flex-1 space-y-1 px-2 py-4">
+                {navigationItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href as any}
+                    className={`group flex items-center w-full px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+                      item.current
+                        ? "bg-brand-primary text-white"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    <item.icon
+                      className={`mr-3 h-5 w-5 ${
+                        item.current
+                          ? "text-white"
+                          : "text-muted-foreground group-hover:text-foreground"
+                      }`}
+                    />
+                    {item.name}
+                  </Link>
+                ))}
+              </nav>
+
+              <div className="p-4 border-t">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="mr-3 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        <div className="lg:pl-64">
           <div className="sticky top-0 z-40 bg-card shadow-sm border-b">
             <div className="flex h-16 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6">
               <Button
                 variant="ghost"
                 size="sm"
-                className="md:hidden"
-                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden"
+                onClick={() => setMobileNavOpen(true)}
+                aria-label="Open sidebar"
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -291,7 +337,7 @@ export default function DashboardPage() {
                                 : "Auto Check Ready"}
                     </Badge>
                   )}
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" aria-label="Notifications">
                     <Bell className="h-5 w-5" />
                   </Button>
                 </div>
