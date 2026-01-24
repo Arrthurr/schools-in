@@ -1,0 +1,236 @@
+"use client";
+
+import { useState } from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Home,
+  History,
+  School,
+  Menu,
+  LogOut,
+  Bell,
+  MessageSquare,
+} from "lucide-react";
+import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
+import { signOut } from "firebase/auth";
+import { auth } from "../../../firebase.config";
+import { useRouter } from "next/navigation";
+import { Logo } from "../ui/logo";
+
+interface ProviderNavigationProps {
+  children: React.ReactNode;
+  headerStatus?: React.ReactNode;
+}
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+  description?: string;
+}
+
+const navigationItems: NavItem[] = [
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: Home,
+    description: "Overview and current status",
+  },
+  {
+    href: "/dashboard/history",
+    label: "Session History",
+    icon: History,
+    description: "View past sessions",
+  },
+  {
+    href: "/dashboard/schools",
+    label: "My Schools",
+    icon: School,
+    description: "Assigned school locations",
+  },
+  {
+    href: "/provider/feedback",
+    label: "Feedback",
+    icon: MessageSquare,
+    description: "Help and support",
+  },
+];
+
+export function ProviderNavigation({
+  children,
+  headerStatus,
+}: ProviderNavigationProps) {
+  const { user } = useCachedAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
+  const isActiveRoute = (href: string) => {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+    return pathname.startsWith(href);
+  };
+
+  const NavigationContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Logo/Brand */}
+      <div className="flex items-center px-6 py-4 border-b">
+        <Link href="/dashboard" className="flex items-center space-x-2">
+          <Logo size="sm" showText={false} priority />
+          <div>
+            <h2 className="text-lg font-semibold">CampusAccess</h2>
+            <p className="text-xs text-muted-foreground">Provider Portal</p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Navigation Items */}
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        {navigationItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = isActiveRoute(item.href);
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href as any}
+              className={`
+                flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
+                ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }
+              `}
+              onClick={() => setMobileNavOpen(false)}
+            >
+              <Icon className="h-4 w-4 mr-3" />
+              {item.label}
+              {item.badge && (
+                <Badge variant="secondary" className="ml-auto">
+                  {item.badge}
+                </Badge>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* User Section */}
+      <div className="px-3 py-4 border-t">
+        <div className="flex items-center px-3 py-2 rounded-lg bg-muted">
+          <div className="flex-1">
+            <p className="text-sm font-medium">
+              {user?.displayName || user?.email}
+            </p>
+            <p className="text-xs text-muted-foreground">Provider</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSignOut}
+            className="h-8 w-8 p-0"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:bg-card lg:border-r">
+        <NavigationContent />
+      </div>
+
+      {/* Mobile Navigation */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="lg:hidden fixed top-4 left-4 z-40"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-64 p-0">
+          <NavigationContent />
+        </SheetContent>
+      </Sheet>
+
+      {/* Main Content */}
+      <div className="lg:pl-64">
+        {/* Top Header */}
+        <header className="sticky top-0 z-40 bg-card border-b shadow-sm px-4 py-3 lg:px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setMobileNavOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+
+              {/* Breadcrumb */}
+              <div className="hidden sm:flex items-center space-x-2 text-sm text-muted-foreground">
+                <Link href="/dashboard" className="hover:text-foreground">
+                  Provider
+                </Link>
+                {pathname !== "/dashboard" && (
+                  <>
+                    <span>/</span>
+                    <span className="text-foreground">
+                      {navigationItems.find(
+                        (item) =>
+                          pathname.startsWith(item.href) &&
+                          item.href !== "/dashboard"
+                      )?.label || "Page"}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {headerStatus}
+              <Button variant="ghost" size="sm">
+                <Bell className="h-4 w-4" />
+              </Button>
+              <div className="hidden sm:flex items-center space-x-2 pl-2 border-l">
+                <div className="text-right">
+                  <p className="text-sm font-medium">
+                    {user?.displayName || user?.email}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Provider</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="p-4 lg:p-6">{children}</main>
+      </div>
+    </div>
+  );
+}
