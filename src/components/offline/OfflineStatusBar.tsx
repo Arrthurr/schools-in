@@ -60,14 +60,11 @@ export function OfflineStatusBar({
 
       case "compact":
         return (
-          <div className="space-y-2">
-            <OfflineStatusIndicator
-              variant="banner"
-              showSyncButton={true}
-              showQueueInfo={false}
-            />
-            {showMessages && <OfflineMessageList maxVisible={1} />}
-          </div>
+          <OfflineStatusIndicator
+            variant="banner"
+            showSyncButton={true}
+            showQueueInfo={false}
+          />
         );
 
       case "full":
