@@ -123,7 +123,11 @@ export default function DashboardPage() {
       href: "/dashboard/history",
       icon: History,
     },
-    { name: "Profile", href: "/profile", icon: User },
+    {
+      name: "My Schools",
+      href: "/dashboard/schools",
+      icon: School,
+    },
     {
       name: "Feedback",
       href: "/provider/feedback",
