@@ -38,8 +38,10 @@ import {
   Monitor,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AdminNavigation } from "@/components/admin/AdminNavigation";
 
-export default function AdminFeedbackList() {
+function FeedbackContent() {
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(
@@ -384,5 +386,15 @@ export default function AdminFeedbackList() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function AdminFeedbackPage() {
+  return (
+    <ProtectedRoute roles={["admin"]}>
+      <AdminNavigation>
+        <FeedbackContent />
+      </AdminNavigation>
+    </ProtectedRoute>
   );
 }
