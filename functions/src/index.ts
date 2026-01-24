@@ -556,8 +556,10 @@ exports.startSession = onCall(async (request: any) => {
 
         // Enforce geofence - must be within radius
         if (distanceFromCenter > radiusMeters) {
+          const distance = Math.round(distanceFromCenter);
           throw new Error(
-            `You must be within ${radiusMeters}m of the location to check in. Current distance: ${Math.round(distanceFromCenter)}m`
+            `You must be within ${radiusMeters}m of the location to check in. ` +
+              `Current distance: ${distance}m`
           );
         }
 
