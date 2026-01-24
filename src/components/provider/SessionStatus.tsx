@@ -64,6 +64,10 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
     if (st instanceof Date) return st;
     if (st instanceof Timestamp) return st.toDate();
     if (typeof st?.toDate === "function") return st.toDate();
+    // Handle plain object from Firestore cache {seconds, nanoseconds}
+    if (typeof st.seconds === "number") {
+      return new Date(st.seconds * 1000 + (st.nanoseconds || 0) / 1000000);
+    }
     return new Date(st);
   }, [currentSession]);
 
@@ -71,37 +75,28 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
     if (!currentSession) return 0;
     const s: any = currentSession as any;
 
-    console.log("Computing duration for session:", {
-      durationMinutes: s.durationMinutes,
-      duration: s.duration,
-      endTime: s.endTime,
-      checkOutTime: s.checkOutTime,
-      startDate,
-      distanceFromCenterAtCheckIn: s.distanceFromCenterAtCheckIn,
-    });
-
     if (typeof s.durationMinutes === "number") {
-      console.log("Using durationMinutes:", s.durationMinutes);
       return s.durationMinutes;
     }
     if (typeof s.duration === "number") {
-      console.log("Using duration:", s.duration);
       return s.duration;
     }
     const endVal = s.endTime || s.checkOutTime;
     if (startDate && endVal) {
-      const endDate =
-        endVal instanceof Timestamp
-          ? endVal.toDate()
-          : typeof endVal?.toDate === "function"
-          ? endVal.toDate()
-          : new Date(endVal);
+      let endDate: Date;
+      if (endVal instanceof Timestamp) {
+        endDate = endVal.toDate();
+      } else if (typeof endVal?.toDate === "function") {
+        endDate = endVal.toDate();
+      } else if (typeof endVal.seconds === "number") {
+        // Handle plain object from Firestore cache {seconds, nanoseconds}
+        endDate = new Date(endVal.seconds * 1000 + (endVal.nanoseconds || 0) / 1000000);
+      } else {
+        endDate = new Date(endVal);
+      }
       const diffMs = endDate.getTime() - startDate.getTime();
-      const minutes = Math.max(0, Math.round(diffMs / 60000));
-      console.log("Calculated duration from timestamps:", { diffMs, minutes });
-      return minutes;
+      return Math.max(0, Math.round(diffMs / 60000));
     }
-    console.log("No duration data available, returning 0");
     return 0;
   }, [currentSession, startDate]);
 
