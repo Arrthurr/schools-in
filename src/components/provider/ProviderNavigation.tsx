@@ -9,7 +9,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Home,
   History,
-  School,
   Menu,
   LogOut,
   Bell,
@@ -46,12 +45,6 @@ const navigationItems: NavItem[] = [
     label: "Session History",
     icon: History,
     description: "View past sessions",
-  },
-  {
-    href: "/dashboard/schools",
-    label: "My Schools",
-    icon: School,
-    description: "Assigned school locations",
   },
   {
     href: "/provider/feedback",
