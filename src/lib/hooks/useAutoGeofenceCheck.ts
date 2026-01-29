@@ -74,6 +74,7 @@ const ACCURACY_THRESHOLD_METERS = GEOFENCE_TUNING.accuracyThresholdMeters;
 const POOR_ACCURACY_LIMIT = 3;
 const COUNTDOWN_MS = 15_000;
 const CANCEL_COOLDOWN_MS = 5 * 60_000;
+const CHECK_IN_GRACE_PERIOD_MS = 60_000; // 60 seconds grace period after check-in
 const FEATURE_FLAG = process.env.NEXT_PUBLIC_FEATURE_AUTO_GEOFENCE !== "false";
 export function useAutoGeofenceCheck(): AutoGeofenceState {
   const { user } = useCachedAuth();
@@ -116,6 +117,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const insideStreak = useRef(0);
   const outsideStreak = useRef(0);
   const targetLocationId = useRef<string | null>(null);
+  const lastCheckInTimeRef = useRef<number>(0);
   const cancelledCheckIn = useRef<Record<string, number>>({});
   const countdownCleanup = useRef<Record<string, () => void>>({});
   const activeCountdownRef = useRef<AutoGeofenceState["activeCountdown"]>(null);
@@ -655,6 +657,37 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     }
   }, [activeSession, activeCountdown, clearCountdown]);
 
+  // Track previous session ID to detect new check-ins
+  // Initialize as null to distinguish "not yet initialized" from "no session"
+  const prevSessionIdRef = useRef<string | null | undefined>(null);
+
+  // Update grace period timer when ANY check-in occurs (auto or manual)
+  // This ensures the grace period is reset for each new session
+  useEffect(() => {
+    const currentSessionId = activeSession?.id;
+    const prevSessionId = prevSessionIdRef.current;
+
+    // On first run (prevSessionId === null), just record the current state
+    // without triggering grace period - we don't want to treat an existing
+    // session on page load as a "new check-in"
+    if (prevSessionId === null) {
+      prevSessionIdRef.current = currentSessionId;
+      return;
+    }
+
+    // Detect transition to a new session (actual check-in occurred)
+    if (currentSessionId && currentSessionId !== prevSessionId) {
+      lastCheckInTimeRef.current = Date.now();
+      outsideStreak.current = 0;
+      appLogger.debug("Grace period reset for new session", {
+        sessionId: currentSessionId,
+        wasManualCheckIn: prevSessionId !== undefined || !activeCountdownRef.current,
+      });
+    }
+
+    prevSessionIdRef.current = currentSessionId;
+  }, [activeSession?.id]);
+
   // Core polling loop
   useEffect(() => {
     if (!prefEnabled || !featureEnabled) {
@@ -765,6 +798,21 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
             }
 
             if (outsideStreak.current >= DEBOUNCE_POLLS) {
+              // Skip checkout if within grace period after check-in
+              // This prevents immediate auto-checkout due to GPS fluctuations
+              const withinGracePeriod =
+                Date.now() - lastCheckInTimeRef.current < CHECK_IN_GRACE_PERIOD_MS;
+
+              if (withinGracePeriod) {
+                appLogger.debug(
+                  "Skipping auto checkout - within grace period after check-in",
+                  { gracePeriodMs: CHECK_IN_GRACE_PERIOD_MS }
+                );
+                setIsPolling(false);
+                pollInFlightRef.current = false;
+                return;
+              }
+
               const countdownKey = `checkout-${activeLoc.id}`;
 
               // Atomic check-and-set to prevent race condition with overlapping polls
@@ -953,6 +1001,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                       longitude: current.longitude,
                       accuracy: current.accuracy,
                     });
+                    // Record check-in time for grace period and reset outsideStreak
+                    // to prevent immediate auto-checkout due to GPS fluctuations
+                    lastCheckInTimeRef.current = Date.now();
+                    outsideStreak.current = 0;
                     appLogger.info("Auto check-in completed", {
                       locationId: firstInside?.id,
                     });

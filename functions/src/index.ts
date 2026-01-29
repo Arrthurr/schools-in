@@ -777,6 +777,10 @@ exports.endSession = onCall(async (request: any) => {
   }
 });
 
+// Grace period for recently-synced offline sessions (15 minutes)
+// Sessions created via offline sync have backdated checkInTime but recent createdAt
+const RECENTLY_CREATED_GRACE_MS = 15 * 60 * 1000;
+
 exports.cleanupStaleSessions = onSchedule(
   {
     schedule: "every 15 minutes",
@@ -792,27 +796,83 @@ exports.cleanupStaleSessions = onSchedule(
         now.toMillis() - sessionLimitInMs
       );
 
-      const staleSessionsQuery = sessionsRef
+      // Run multiple queries to catch all stale sessions
+      // Primary query using checkInTime
+      const staleByCheckInTime = sessionsRef
         .where("status", "in", ["active", "paused"])
         .where("checkInTime", "<", cutoff)
         .limit(_PRODUCTION_CONFIG.maxBatchSize);
 
-      const staleSessionsSnapshot = await staleSessionsQuery.get();
+      // Fallback query for sessions with only startTime (sessions created via useCachedSession)
+      const staleByStartTime = sessionsRef
+        .where("status", "in", ["active", "paused"])
+        .where("startTime", "<", cutoff)
+        .limit(_PRODUCTION_CONFIG.maxBatchSize);
 
-      if (staleSessionsSnapshot.empty) {
+      // Legacy query for sessions with active: true (older schema)
+      const legacyStale = sessionsRef
+        .where("active", "==", true)
+        .where("startTime", "<", cutoff)
+        .limit(100);
+
+      // Execute all queries in parallel
+      const [checkInTimeSnapshot, startTimeSnapshot, legacySnapshot] = await Promise.all([
+        staleByCheckInTime.get(),
+        staleByStartTime.get(),
+        legacyStale.get(),
+      ]);
+
+      // Deduplicate results by session ID
+      const sessionMap = new Map<string, FirebaseFirestore.DocumentSnapshot>();
+
+      checkInTimeSnapshot.forEach((doc: any) => {
+        sessionMap.set(doc.id, doc);
+      });
+      startTimeSnapshot.forEach((doc: any) => {
+        if (!sessionMap.has(doc.id)) {
+          sessionMap.set(doc.id, doc);
+        }
+      });
+      legacySnapshot.forEach((doc: any) => {
+        if (!sessionMap.has(doc.id)) {
+          sessionMap.set(doc.id, doc);
+        }
+      });
+
+      if (sessionMap.size === 0) {
         logger.info("No stale sessions found.");
         return;
       }
+
+      logger.info(`Found ${sessionMap.size} potential stale sessions (checkInTime: ${checkInTimeSnapshot.size}, startTime: ${startTimeSnapshot.size}, legacy: ${legacySnapshot.size})`);
 
       const batch = db.batch();
       const durationMinutes = Math.floor(sessionLimitInMs / 60000);
       const updateTime = admin.firestore.Timestamp.now();
       const staleSessionIds: string[] = [];
+      let skippedRecentlyCreated = 0;
 
-      staleSessionsSnapshot.forEach((doc: any) => {
-        logger.info(`Found stale session: ${doc.id}`);
-        staleSessionIds.push(doc.id);
-        const sessionRef = sessionsRef.doc(doc.id);
+      sessionMap.forEach((doc, docId) => {
+        const data = doc.data();
+        if (!data) return;
+
+        // Skip sessions that were recently created/synced (offline sync grace period)
+        // This prevents offline-synced sessions with backdated checkInTime from being
+        // immediately terminated when they sync
+        const createdAt = data.createdAt?.toMillis?.() || data.updatedAt?.toMillis?.() || 0;
+        const sessionAge = now.toMillis() - createdAt;
+
+        if (sessionAge < RECENTLY_CREATED_GRACE_MS) {
+          logger.info(
+            `Skipping recently-synced session: ${docId} (age: ${Math.round(sessionAge / 1000)}s)`
+          );
+          skippedRecentlyCreated++;
+          return; // Skip this session - give it time to be properly checked out
+        }
+
+        logger.info(`Found stale session: ${docId}`);
+        staleSessionIds.push(docId);
+        const sessionRef = sessionsRef.doc(docId);
         batch.update(sessionRef, {
           status: "error",
           active: false, // Ensures legacy listener drops the session
@@ -829,12 +889,17 @@ exports.cleanupStaleSessions = onSchedule(
         });
       });
 
+      if (staleSessionIds.length === 0) {
+        logger.info(`No sessions to clean up (skipped ${skippedRecentlyCreated} recently-created sessions).`);
+        return;
+      }
+
       await batch.commit();
-      logger.info(`Cleaned up ${staleSessionsSnapshot.size} stale sessions.`);
+      logger.info(`Cleaned up ${staleSessionIds.length} stale sessions (skipped ${skippedRecentlyCreated} recently-created).`);
 
       // Track cleanup metrics
       const metrics = {
-        cleanedSessions: staleSessionsSnapshot.size,
+        cleanedSessions: staleSessionIds.length,
         timestamp: admin.firestore.Timestamp.now(),
         type: "session_cleanup",
       };
