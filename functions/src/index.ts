@@ -1452,7 +1452,15 @@ interface PushSubscription {
 function initializeWebPush() {
   const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
   const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-  const vapidEmail = process.env.VAPID_EMAIL || "mailto:admin@schools-in-check.web.app";
+  let vapidEmail = process.env.VAPID_EMAIL || "mailto:admin@schools-in-check.web.app";
+
+  // Ensure VAPID email is a valid URL (mailto: or https://)
+  if (vapidEmail && !vapidEmail.startsWith("mailto:") && !vapidEmail.startsWith("https://")) {
+    // Assume it's an email address and prepend mailto:
+    if (vapidEmail.includes("@")) {
+      vapidEmail = `mailto:${vapidEmail}`;
+    }
+  }
 
   if (!vapidPublicKey || !vapidPrivateKey) {
     logger.warn("VAPID keys not configured. Push notifications will not work.");
