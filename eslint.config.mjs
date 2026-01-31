@@ -91,6 +91,7 @@ export default [
       "public/**",
       ".firebase/**",
       ".vscode/**",
+      "functions/lib/**",
       "*.d.ts",
       "**/*.min.js",
       "**/vendor/**",
