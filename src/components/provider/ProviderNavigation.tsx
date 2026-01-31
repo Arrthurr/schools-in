@@ -138,6 +138,7 @@ export function ProviderNavigation({
             size="sm"
             onClick={handleSignOut}
             className="h-8 w-8 p-0"
+            aria-label="Sign out"
           >
             <LogOut className="h-4 w-4" />
           </Button>
@@ -160,6 +161,7 @@ export function ProviderNavigation({
             variant="ghost"
             size="sm"
             className="lg:hidden fixed top-4 left-4 z-40"
+            aria-label="Open navigation menu"
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -180,6 +182,7 @@ export function ProviderNavigation({
                 size="sm"
                 className="lg:hidden"
                 onClick={() => setMobileNavOpen(true)}
+                aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -206,7 +209,7 @@ export function ProviderNavigation({
 
             <div className="flex items-center space-x-2">
               {headerStatus}
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" aria-label="Notifications">
                 <Bell className="h-4 w-4" />
               </Button>
               <div className="hidden sm:flex items-center space-x-2 pl-2 border-l">

@@ -2,6 +2,8 @@
 
 Next.js 14 PWA with Firebase backend for school check-in/out via geofencing. Static export to Firebase Hosting.
 
+**Live URL**: https://schools-in-check.web.app
+
 ## Essential Commands
 
 | Task | Command |
@@ -11,10 +13,15 @@ Next.js 14 PWA with Firebase backend for school check-in/out via geofencing. Sta
 | Build | `npm run build` |
 | Typecheck | `npx tsc --noEmit` |
 | Lint | `npm run lint` |
+| Lint + fix | `npm run lint:fix` |
 | Test | `npm test` |
+| Test watch | `npm run test:watch` |
 | E2E | `npm run test:e2e` |
+| E2E headless | `npm run test:e2e:headless` |
+| Firestore rules | `npm run test:firestore-rules` |
+| Storage rules | `npm run test:storage-rules` |
 
-> **Critical**: `npm run build` does NOT typecheck (`ignoreBuildErrors: true`). Always run `npx tsc --noEmit` to verify.
+> **Critical**: Always run `npx tsc --noEmit` before committing. The `next build` command enforces type checking.
 
 ## Static Export Constraint
 
