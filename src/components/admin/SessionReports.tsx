@@ -70,6 +70,9 @@ interface ReportSummary {
   completedSessionsCount: number;
 }
 
+const getSessionLocationId = (session: SessionData) =>
+  session.locationId || session.schoolId;
+
 export function SessionReports() {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
@@ -197,7 +200,7 @@ export function SessionReports() {
       // School filter
       if (filters.schoolId) {
         filteredSessions = filteredSessions.filter(
-          (session) => session.schoolId === filters.schoolId
+          (session) => getSessionLocationId(session) === filters.schoolId
         );
       }
 
@@ -312,7 +315,7 @@ export function SessionReports() {
     const csvData = sessions.map((session) => [
       session.id || "N/A",
       getProviderName(session.userId),
-      getSchoolName(session.schoolId),
+      getSchoolName(getSessionLocationId(session)),
       session.checkInTime
         ? new Date(session.checkInTime.toDate()).toLocaleString()
         : "N/A",
@@ -651,7 +654,7 @@ export function SessionReports() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <School className="h-4 w-4 text-muted-foreground" />
-                            {getSchoolName(session.schoolId)}
+                            {getSchoolName(getSessionLocationId(session))}
                           </div>
                         </TableCell>
                         <TableCell>
