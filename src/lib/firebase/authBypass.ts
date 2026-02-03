@@ -26,9 +26,17 @@ const MOCK_USERS: Record<string, MockUser> = {
 
 // Check if authentication bypass is enabled
 export const isAuthBypassEnabled = (): boolean => {
-  const isCypress =
-    typeof window !== "undefined" && Boolean((window as any).Cypress);
-  return isCypress || process.env.NEXT_PUBLIC_DISABLE_AUTH === "true";
+  const envBypass = process.env.NEXT_PUBLIC_DISABLE_AUTH === "true";
+  if (envBypass) return true;
+
+  if (typeof window === "undefined") return false;
+
+  const cypress = (window as any).Cypress;
+  if (!cypress) return false;
+
+  const cypressEnvBypass =
+    typeof cypress.env === "function" ? cypress.env("authBypass") : undefined;
+  return cypressEnvBypass === true || cypressEnvBypass === "true";
 };
 
 // Get mock user for testing
