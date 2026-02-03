@@ -37,8 +37,9 @@ interface SyncResult {
 function getAdminGroupConfig() {
   return {
     adminGroupId: process.env.DMDL_OFFICE_GROUP_ID?.toLowerCase(),
-    adminGroupName: (process.env.DMDL_OFFICE_GROUP_NAME ||
-      DEFAULT_ADMIN_GROUP_NAME).toLowerCase(),
+    adminGroupName: (
+      process.env.DMDL_OFFICE_GROUP_NAME || DEFAULT_ADMIN_GROUP_NAME
+    ).toLowerCase(),
   };
 }
 
@@ -130,7 +131,7 @@ async function getUserM365Groups(
   while (url) {
     const response = await fetch(url, {
       headers: {
-        "Authorization": `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
     });
@@ -200,7 +201,9 @@ exports.syncUserFromM365 = onCall(
     const shouldSync = forceFlag || resyncRequested || !hasSynced;
 
     if (forceFlag) {
-      logger.info(`Force flag set for M365 sync for user ${userEmail} (${userId}).`);
+      logger.info(
+        `Force flag set for M365 sync for user ${userEmail} (${userId}).`
+      );
     } else if (resyncRequested) {
       logger.info(
         `Resync requested flag detected for user ${userEmail} (${userId}). Proceeding with full sync.`
@@ -208,7 +211,8 @@ exports.syncUserFromM365 = onCall(
     }
 
     if (!shouldSync) {
-      const role: "admin" | "provider" = userData?.role === "admin" ? "admin" : "provider";
+      const role: "admin" | "provider" =
+        userData?.role === "admin" ? "admin" : "provider";
       logger.info(
         `Skipping M365 sync for user ${userEmail} (${userId}) – already synced and no resync requested.`
       );
@@ -295,7 +299,8 @@ exports.syncUserFromM365 = onCall(
               .collection("locations")
               .doc(location.id)
               .update({
-                assignedProviders: admin.firestore.FieldValue.arrayUnion(userId),
+                assignedProviders:
+                  admin.firestore.FieldValue.arrayUnion(userId),
                 updatedAt: admin.firestore.Timestamp.now(),
               });
             logger.info(`Added user ${userId} to location: ${location.name}`);
@@ -310,10 +315,13 @@ exports.syncUserFromM365 = onCall(
               .collection("locations")
               .doc(location.id)
               .update({
-                assignedProviders: admin.firestore.FieldValue.arrayRemove(userId),
+                assignedProviders:
+                  admin.firestore.FieldValue.arrayRemove(userId),
                 updatedAt: admin.firestore.Timestamp.now(),
               });
-            logger.info(`Removed user ${userId} from location: ${location.name}`);
+            logger.info(
+              `Removed user ${userId} from location: ${location.name}`
+            );
             removedLocations.push({ id: location.id, name: location.name });
           }
         }
@@ -360,9 +368,10 @@ exports.requestM365Resync = onCall(async (request: any) => {
   const db = admin.firestore();
   const userRef = db.collection("users").doc(userId);
 
-  const reason = typeof request?.data?.reason === "string" ?
-    request.data.reason.trim().slice(0, 500) :
-    undefined;
+  const reason =
+    typeof request?.data?.reason === "string"
+      ? request.data.reason.trim().slice(0, 500)
+      : undefined;
 
   await userRef.set(
     {
@@ -448,7 +457,9 @@ exports.startSession = onCall(async (request: any) => {
     const validMethods = ["geo", "manual", "offline-sync"];
     if (!validMethods.includes(data.checkInMethod)) {
       throw new Error(
-        `Invalid checkInMethod: ${data.checkInMethod}. Must be one of: ${validMethods.join(", ")}`
+        `Invalid checkInMethod: ${
+          data.checkInMethod
+        }. Must be one of: ${validMethods.join(", ")}`
       );
     }
 
@@ -479,9 +490,7 @@ exports.startSession = onCall(async (request: any) => {
       } else if (userRole === "admin") {
         // Admins can only use manual check-in
         if (data.checkInMethod !== "manual") {
-          throw new Error(
-            "Admins must use manual check-in method."
-          );
+          throw new Error("Admins must use manual check-in method.");
         }
       } else {
         throw new Error("Invalid user role for session creation");
@@ -764,7 +773,9 @@ exports.endSession = onCall(async (request: any) => {
       return updateData;
     });
 
-    logger.info(`Session ended successfully for user ${userId}: ${data.sessionId}`);
+    logger.info(
+      `Session ended successfully for user ${userId}: ${data.sessionId}`
+    );
 
     return {
       success: true,
@@ -816,11 +827,12 @@ exports.cleanupStaleSessions = onSchedule(
         .limit(100);
 
       // Execute all queries in parallel
-      const [checkInTimeSnapshot, startTimeSnapshot, legacySnapshot] = await Promise.all([
-        staleByCheckInTime.get(),
-        staleByStartTime.get(),
-        legacyStale.get(),
-      ]);
+      const [checkInTimeSnapshot, startTimeSnapshot, legacySnapshot] =
+        await Promise.all([
+          staleByCheckInTime.get(),
+          staleByStartTime.get(),
+          legacyStale.get(),
+        ]);
 
       // Deduplicate results by session ID
       const sessionMap = new Map<string, FirebaseFirestore.DocumentSnapshot>();
@@ -844,7 +856,9 @@ exports.cleanupStaleSessions = onSchedule(
         return;
       }
 
-      logger.info(`Found ${sessionMap.size} potential stale sessions (checkInTime: ${checkInTimeSnapshot.size}, startTime: ${startTimeSnapshot.size}, legacy: ${legacySnapshot.size})`);
+      logger.info(
+        `Found ${sessionMap.size} potential stale sessions (checkInTime: ${checkInTimeSnapshot.size}, startTime: ${startTimeSnapshot.size}, legacy: ${legacySnapshot.size})`
+      );
 
       const batch = db.batch();
       const durationMinutes = Math.floor(sessionLimitInMs / 60000);
@@ -859,12 +873,15 @@ exports.cleanupStaleSessions = onSchedule(
         // Skip sessions that were recently created/synced (offline sync grace period)
         // This prevents offline-synced sessions with backdated checkInTime from being
         // immediately terminated when they sync
-        const createdAt = data.createdAt?.toMillis?.() || data.updatedAt?.toMillis?.() || 0;
+        const createdAt =
+          data.createdAt?.toMillis?.() || data.updatedAt?.toMillis?.() || 0;
         const sessionAge = now.toMillis() - createdAt;
 
         if (sessionAge < RECENTLY_CREATED_GRACE_MS) {
           logger.info(
-            `Skipping recently-synced session: ${docId} (age: ${Math.round(sessionAge / 1000)}s)`
+            `Skipping recently-synced session: ${docId} (age: ${Math.round(
+              sessionAge / 1000
+            )}s)`
           );
           skippedRecentlyCreated++;
           return; // Skip this session - give it time to be properly checked out
@@ -890,12 +907,16 @@ exports.cleanupStaleSessions = onSchedule(
       });
 
       if (staleSessionIds.length === 0) {
-        logger.info(`No sessions to clean up (skipped ${skippedRecentlyCreated} recently-created sessions).`);
+        logger.info(
+          `No sessions to clean up (skipped ${skippedRecentlyCreated} recently-created sessions).`
+        );
         return;
       }
 
       await batch.commit();
-      logger.info(`Cleaned up ${staleSessionIds.length} stale sessions (skipped ${skippedRecentlyCreated} recently-created).`);
+      logger.info(
+        `Cleaned up ${staleSessionIds.length} stale sessions (skipped ${skippedRecentlyCreated} recently-created).`
+      );
 
       // Track cleanup metrics
       const metrics = {
@@ -1299,8 +1320,8 @@ exports.notifyOnFeedback = onDocumentCreated(
         <div class="content">
           <div class="info-row">
             <span class="label">From:</span> ${
-  feedback.providerName || "Unknown"
-} 
+              feedback.providerName || "Unknown"
+            } 
             (${feedback.providerEmail || "No email"})
           </div>
           <div class="info-row">
@@ -1310,10 +1331,10 @@ exports.notifyOnFeedback = onDocumentCreated(
             <span class="label">Severity:</span> ${feedback.severity}
           </div>
           ${
-  feedback.url ?
-    `<div class="info-row"><span class="label">URL:</span> ${feedback.url}</div>` :
-    ""
-}
+            feedback.url
+              ? `<div class="info-row"><span class="label">URL:</span> ${feedback.url}</div>`
+              : ""
+          }
           <div class="description">
             <strong>Description:</strong><br>
             ${feedback.description.replace(/\n/g, "<br>")}
@@ -1330,8 +1351,8 @@ exports.notifyOnFeedback = onDocumentCreated(
 
     const emailText = `
 New feedback received from ${feedback.providerName || "Unknown"} (${
-  feedback.providerEmail || "No email"
-}).
+      feedback.providerEmail || "No email"
+    }).
 
 Category: ${feedback.category}
 Severity: ${feedback.severity}
@@ -1452,13 +1473,31 @@ interface PushSubscription {
 function initializeWebPush() {
   const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
   const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-  let vapidEmail = process.env.VAPID_EMAIL || "mailto:admin@schools-in-check.web.app";
+  let vapidEmail = (
+    process.env.VAPID_EMAIL || "mailto:admin@schools-in-check.web.app"
+  ).trim();
 
   // Ensure VAPID email is a valid URL (mailto: or https://)
-  if (vapidEmail && !vapidEmail.startsWith("mailto:") && !vapidEmail.startsWith("https://")) {
+  if (!vapidEmail) {
+    logger.warn(
+      "VAPID email not configured. Push notifications will not work."
+    );
+    return false;
+  }
+
+  const vapidEmailLower = vapidEmail.toLowerCase();
+  if (
+    !vapidEmailLower.startsWith("mailto:") &&
+    !vapidEmailLower.startsWith("https://")
+  ) {
     // Assume it's an email address and prepend mailto:
     if (vapidEmail.includes("@")) {
       vapidEmail = `mailto:${vapidEmail}`;
+    } else {
+      logger.warn(
+        "VAPID email is not a valid URL or email. Push notifications will not work."
+      );
+      return false;
     }
   }
 
@@ -1467,8 +1506,18 @@ function initializeWebPush() {
     return false;
   }
 
-  webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
-  return true;
+  try {
+    webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+    return true;
+  } catch (error) {
+    logger.warn(
+      "Invalid VAPID configuration. Push notifications will not work.",
+      {
+        error,
+      }
+    );
+    return false;
+  }
 }
 
 /**
@@ -1513,7 +1562,6 @@ async function sendPushNotification(
     return false;
   }
 }
-
 
 /**
  * Callable function to register VAPID public key (for client to fetch)
