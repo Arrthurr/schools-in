@@ -14,34 +14,48 @@ const MOCK_USERS: Record<string, MockUser> = {
     uid: "test-admin-123",
     email: "admin@test.com",
     displayName: "Test Admin",
-    role: "admin"
+    role: "admin",
   },
   provider: {
-    uid: "test-provider-456", 
+    uid: "test-provider-456",
     email: "provider@test.com",
     displayName: "Test Provider",
-    role: "provider"
-  }
+    role: "provider",
+  },
 };
 
 // Check if authentication bypass is enabled
 export const isAuthBypassEnabled = (): boolean => {
-  return process.env.NEXT_PUBLIC_DISABLE_AUTH === "true";
+  const envBypass = process.env.NEXT_PUBLIC_DISABLE_AUTH === "true";
+  if (envBypass) return true;
+
+  if (typeof window === "undefined") return false;
+
+  const cypress = (window as any).Cypress;
+  if (!cypress) return false;
+
+  const cypressEnvBypass =
+    typeof cypress.env === "function" ? cypress.env("authBypass") : undefined;
+  return cypressEnvBypass === true || cypressEnvBypass === "true";
 };
 
 // Get mock user for testing
-export const getMockUser = (userType: "admin" | "provider" = "admin"): MockUser => {
+export const getMockUser = (
+  userType: "admin" | "provider" = "admin"
+): MockUser => {
   return MOCK_USERS[userType];
 };
 
 // Mock authentication state
-export const createMockAuthState = (userType: "admin" | "provider" = "admin") => {
+export const createMockAuthState = (
+  userType: "admin" | "provider" = "admin"
+) => {
   return {
     user: getMockUser(userType),
     loading: false,
     error: null,
     isAuthenticated: true,
     isProvider: userType === "provider",
-    isAdmin: userType === "admin"
+    isAdmin: userType === "admin",
   };
 };

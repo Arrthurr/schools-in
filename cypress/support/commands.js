@@ -46,23 +46,26 @@ Cypress.Commands.add("visitAndWaitForLoad", (url) => {
 });
 
 // Enhanced accessibility testing with axe-core
-Cypress.Commands.overwrite("checkA11y", (originalFn, context, options) => {
-  cy.injectAxe();
-  cy.configureAxe({
-    rules: [
-      // WCAG 2.1 AA rules
-      { id: "color-contrast", enabled: true },
-      { id: "focus-order-semantics", enabled: true },
-      { id: "keyboard-navigation", enabled: true },
-      { id: "aria-labels", enabled: true },
-      { id: "heading-order", enabled: true },
-      { id: "landmark-roles", enabled: true },
-    ],
-    tags: ["wcag2a", "wcag2aa", "wcag21aa"],
-  });
+Cypress.Commands.overwrite(
+  "checkA11y",
+  (originalFn, context, options, violationCallback, skipFailures) => {
+    cy.injectAxe();
+    cy.configureAxe({
+      rules: [
+        // WCAG 2.1 AA rules
+        { id: "color-contrast", enabled: true },
+        { id: "focus-order-semantics", enabled: true },
+        { id: "keyboard-navigation", enabled: true },
+        { id: "aria-labels", enabled: true },
+        { id: "heading-order", enabled: true },
+        { id: "landmark-roles", enabled: true },
+      ],
+      tags: ["wcag2a", "wcag2aa", "wcag21aa"],
+    });
 
-  originalFn(context, options);
-});
+    originalFn(context, options, violationCallback, skipFailures);
+  }
+);
 
 // Custom command for mobile viewport testing
 Cypress.Commands.add("setMobileViewport", () => {
@@ -99,7 +102,10 @@ Cypress.Commands.add("waitForPageLoad", () => {
 // Custom command to simulate offline mode
 Cypress.Commands.add("goOffline", () => {
   cy.window().then((win) => {
-    win.navigator.onLine = false;
+    Object.defineProperty(win.navigator, "onLine", {
+      value: false,
+      configurable: true,
+    });
     win.dispatchEvent(new Event("offline"));
   });
 });
@@ -107,7 +113,10 @@ Cypress.Commands.add("goOffline", () => {
 // Custom command to simulate online mode
 Cypress.Commands.add("goOnline", () => {
   cy.window().then((win) => {
-    win.navigator.onLine = true;
+    Object.defineProperty(win.navigator, "onLine", {
+      value: true,
+      configurable: true,
+    });
     win.dispatchEvent(new Event("online"));
   });
 });

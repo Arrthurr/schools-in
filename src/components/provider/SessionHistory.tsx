@@ -91,6 +91,8 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
 
   // Load school names for sessions
   useEffect(() => {
+    let cancelled = false;
+
     const loadSchoolNames = async () => {
       const names = new Map<string, string>();
 
@@ -109,12 +111,18 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
         }
       }
 
-      setSchoolNames(names);
+      if (!cancelled) {
+        setSchoolNames(names);
+      }
     };
 
     if (sessions.length > 0) {
       loadSchoolNames();
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [sessions]);
 
   // Load sessions on component mount and when page changes

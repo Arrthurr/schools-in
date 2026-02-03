@@ -1,7 +1,7 @@
 // Unit tests for AdminDashboard component
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { AdminDashboard } from "./AdminDashboard";
 import { useAuth } from "../../lib/hooks/useAuth";
@@ -17,6 +17,24 @@ jest.mock("../../lib/hooks/useCachedAuth", () => ({
 
 jest.mock("../../lib/hooks/useAdminMetrics", () => ({
   useAdminMetrics: jest.fn(),
+}));
+
+jest.mock("../../lib/services/cachedSchoolService", () => ({
+  CachedSchoolService: {
+    getSchoolStats: jest.fn().mockImplementation(
+      () => new Promise(() => undefined)
+    ),
+  },
+}));
+
+jest.mock("./AdminManualCheckInOut", () => ({
+  AdminManualCheckInOut: () => (
+    <div data-testid="admin-manual-checkinout" />
+  ),
+}));
+
+jest.mock("./ActiveSessionsModal", () => ({
+  ActiveSessionsModal: () => <div data-testid="active-sessions-modal" />,
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -107,6 +125,9 @@ describe("AdminDashboard", () => {
   });
 
   afterEach(() => {
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
     jest.useRealTimers();
   });
 

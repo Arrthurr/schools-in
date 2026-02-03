@@ -20,10 +20,23 @@ export default function LoginPage() {
     }
   }, [loading, user, router]);
 
-  if (!loading && user) return null;
+  if (!loading && user) {
+    return (
+      <div className="flex flex-col items-center justify-center p-4 sm:p-6 lg:p-6">
+        <div className="w-full max-w-sm sm:max-w-md space-y-2 sm:space-y-4 text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Redirecting...
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Taking you to your dashboard.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <main className="flex flex-col items-center justify-center p-4 sm:p-6 lg:p-6">
+    <div className="flex flex-col items-center justify-center p-4 sm:p-6 lg:p-6">
       <div className="w-full max-w-sm sm:max-w-md space-y-2 sm:space-y-4">
         <BrandHeader title="Sign In" subtitle="Welcome back to CampusAccess" />
 
@@ -31,6 +44,6 @@ export default function LoginPage() {
           <LoginForm />
         </Suspense>
       </div>
-    </main>
+    </div>
   );
 }

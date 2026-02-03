@@ -40,6 +40,14 @@ The enhanced school location validation system provides comprehensive GPS coordi
 - Visual feedback for radius sizing
 - Warnings for extreme values
 
+### 6. **Automatic Geofence Check-in/Check-out**
+
+- Continuous GPS monitoring with adaptive polling intervals
+- Automatic check-in when entering a school's geofence
+- Automatic check-out when leaving a school's geofence
+- Debouncing and grace periods to prevent false triggers
+- User-controlled countdowns with cancellation option
+
 ## API Reference
 
 ### Core Validation Functions
@@ -245,6 +253,270 @@ Run tests with:
 ```bash
 npm test -- locationValidationService.test.ts
 ```
+
+## Automatic Check-in/Check-out System
+
+### Overview
+
+The automatic geofence system continuously monitors provider location and automatically triggers check-in/check-out actions when entering or leaving school geofences. This feature is opt-in and can be enabled/disabled by providers in their settings.
+
+### How It Works
+
+#### Polling Mechanism
+
+When auto-geofence is enabled, the app polls the device's GPS location at adaptive intervals based on proximity to geofences:
+
+- **12 seconds**: During active countdowns (check-in/check-out in progress)
+- **30 seconds**: Near geofence boundaries (<250m or 2× radius)
+- **90 seconds**: Far from any geofence (>500m or 4× radius)
+- **180 seconds**: When app is backgrounded (except periodic-sync strategy)
+
+The adaptive polling minimizes battery consumption while maintaining responsiveness.
+
+#### Geofence Validation
+
+Each location poll:
+
+1. Obtains current GPS coordinates with accuracy requirements (≤50m)
+2. Calculates distance to all assigned school locations using Haversine formula
+3. Compares distance against each location's radius (default 100m, configurable 25-500m)
+4. Determines geofence state: `idle`, `outside`, `entering`, `inside`, or `exiting`
+
+### Auto Check-in Process
+
+When a provider approaches a school location:
+
+1. **Detection**: System detects GPS position is within the school's geofence radius
+2. **Debouncing**: Requires **3 consecutive polls** confirming "inside" status (prevents GPS jitter)
+3. **Countdown**: Displays 15-second toast notification:
+   - Title: "Auto check-in"
+   - Description: "Arrived at [School Name] • [distance] away"
+   - Action: "Cancel" button
+4. **User Control**:
+   - Provider can tap "Cancel" to prevent auto check-in
+   - Cancelled location is blocked for 5 minutes (cooldown period)
+5. **Completion**: If countdown expires without cancellation:
+   - Automatically checks in to the location
+   - Records GPS coordinates with the check-in
+   - Starts grace period timer
+
+#### Check-in Safeguards
+
+- **Cooldown period**: 5 minutes after cancellation before re-attempting at same location
+- **Single countdown**: Only one check-in countdown active at a time (atomic state management)
+- **Accuracy threshold**: Requires GPS accuracy ≤50m; pauses after 3 consecutive poor readings
+- **Location locking**: Once entering a specific location, system commits to that location until debounce threshold met
+
+### Auto Check-out Process
+
+When a provider leaves a school location:
+
+1. **Grace Period**: System ignores "outside" detections for **60 seconds** after check-in
+   - Prevents immediate check-out from GPS fluctuations/signal loss
+   - Applies to both auto and manual check-ins
+2. **Detection**: After grace period, detects GPS position is outside the geofence
+3. **Debouncing**: Requires **3 consecutive polls** confirming "outside" status
+4. **Countdown**: Displays 15-second toast notification:
+   - Title: "Auto check-out"
+   - Description: "Leaving [School Name] • Session: [duration]"
+   - Action: "Stay Checked In" button
+5. **User Control**: Provider can tap "Stay Checked In" to cancel auto check-out
+6. **Completion**: If countdown expires without cancellation:
+   - Automatically checks out from the location
+   - Records GPS coordinates with the check-out
+   - Calculates final session duration
+
+#### Check-out Safeguards
+
+- **60-second grace period**: Prevents premature check-out after arrival
+- **Streak reset**: Any poll showing provider back inside cancels the outside streak
+- **Single countdown**: Only one check-out countdown active at a time
+- **Session tracking**: Displays accurate session duration in countdown
+
+### GPS Accuracy Management
+
+#### Accuracy Requirements
+
+- **Actionable accuracy**: GPS accuracy ≤50 meters
+- **Poor accuracy handling**:
+  - Tracks consecutive poor accuracy readings
+  - After 3 consecutive poor readings, pauses auto-check feature
+  - Displays platform-specific guidance:
+    - **iOS**: Enable Precise Location in Settings > Privacy & Security > Location Services
+    - **Android/Other**: Move outside, enable Wi-Fi, wait for stabilization
+- **Automatic resume**: When accuracy improves, feature automatically resumes
+
+#### Location Options
+
+The system adjusts GPS request parameters based on context:
+
+**High Accuracy Mode** (near boundaries or active countdown):
+- `enableHighAccuracy: true`
+- `maximumAge: 15000ms`
+- `timeout: 10000ms`
+
+**Standard Mode** (mid-range distance):
+- `enableHighAccuracy: true`
+- `maximumAge: 60000ms`
+- `timeout: 5000ms`
+
+**Power Saving Mode** (far from locations or backgrounded):
+- `enableHighAccuracy: false`
+- `maximumAge: 180000ms`
+- `timeout: 5000ms`
+
+### Platform Strategies
+
+The system adapts to browser capabilities using different strategies:
+
+1. **Periodic Sync Strategy** (Chrome/Edge with Background Sync API):
+   - Registers service worker periodic background sync
+   - Continues geofence checks when app is closed
+   - Best user experience
+
+2. **Foreground Strategy** (Safari, Firefox):
+   - Active polling when app is visible
+   - Reduced polling when backgrounded
+   - Standard functionality
+
+3. **Background Geolocation Strategy** (PWA with background permissions):
+   - Uses experimental background geolocation APIs
+   - Limited platform support
+
+### State Management
+
+The auto-geofence system maintains several state variables:
+
+- `geofenceState`: Current state (idle/outside/entering/inside/exiting)
+- `isPolling`: Whether a location poll is in progress
+- `lastDistanceMeters`: Distance to nearest/active location
+- `lastAccuracyMeters`: GPS accuracy of last reading
+- `pausedReason`: Why auto-check is paused (e.g., "poor-accuracy")
+- `activeCountdown`: Active check-in/check-out countdown details
+- `locationPermission`: Geolocation permission status
+- `strategy`: Current geofencing strategy being used
+
+### Wake Lock Management
+
+During active countdowns, the system:
+
+- Acquires screen wake lock to prevent device sleep
+- Ensures countdown completes without interruption
+- Releases wake lock after countdown completion or cancellation
+- Gracefully handles platforms without wake lock support
+
+### Background Sync Integration
+
+For supported platforms:
+
+- Geofence configuration synced to IndexedDB
+- Service worker can perform geofence checks when app is closed
+- User location periodically updated in IndexedDB
+- Active session state synchronized for background access
+
+### User Experience Features
+
+#### Toast Notifications
+
+- **Live countdown**: Updates every second showing remaining time
+- **Clear actions**: Single prominent button to cancel auto-action
+- **Context information**: Shows school name, distance, or session duration
+- **Auto-dismiss**: Toast dismisses after countdown completes
+
+#### Visual Indicators
+
+- Geofence state displayed in UI
+- Distance to nearest location shown
+- GPS accuracy status visible
+- Active countdown indicator
+
+#### Settings Control
+
+- Toggle auto-geofence on/off in provider settings
+- Feature respects user preference across app restarts
+- Clear explanation of how feature works
+
+### Performance Optimization
+
+- **Adaptive polling**: Longer intervals when far from locations
+- **In-flight protection**: Prevents overlapping location polls
+- **Debounced persistence**: Batches IndexedDB writes
+- **Conditional high accuracy**: Only requests high accuracy when needed
+- **Visibility handling**: Reduces activity when app is backgrounded
+
+### Security & Privacy
+
+- Location access requires explicit user permission
+- GPS coordinates stored only with check-in/check-out records
+- No continuous location tracking (only periodic polls)
+- User can disable feature at any time
+- Location data never shared with third parties
+
+### Testing
+
+Comprehensive test coverage includes:
+
+- Debouncing logic (streak tracking)
+- Grace period enforcement
+- Countdown lifecycle management
+- GPS accuracy handling
+- Platform strategy selection
+- State transitions
+
+Run auto-geofence tests:
+
+```bash
+npm test -- useAutoGeofenceCheck.test.tsx
+```
+
+### Configuration Constants
+
+Key tuning parameters defined in `useAutoGeofenceCheck.ts`:
+
+```typescript
+const GEOFENCE_TUNING = {
+  accuracyThresholdMeters: 50,      // Maximum acceptable GPS error
+  nearDistanceMeters: 250,           // Distance considered "near" boundary
+  farDistanceMeters: 500,            // Distance considered "far" from location
+  countdownPollIntervalMs: 12_000,   // Poll interval during countdown
+  nearPollIntervalMs: 30_000,        // Poll interval near boundary
+  farPollIntervalMs: 90_000,         // Poll interval far from location
+};
+
+const COUNTDOWN_MS = 15_000;                    // Countdown duration
+const CANCEL_COOLDOWN_MS = 5 * 60_000;          // Cancellation cooldown
+const CHECK_IN_GRACE_PERIOD_MS = 60_000;        // Post check-in grace period
+const DEBOUNCE_POLLS = 3;                       // Required consecutive polls
+const POOR_ACCURACY_LIMIT = 3;                  // Poor accuracy tolerance
+```
+
+### Troubleshooting
+
+#### Auto check-in not triggering
+
+1. Check that auto-geofence is enabled in settings
+2. Verify location permissions are granted
+3. Ensure GPS accuracy is ≤50m
+4. Check that location hasn't been cancelled recently (5-min cooldown)
+5. Confirm provider is within school geofence radius
+
+#### Immediate check-out after check-in
+
+- Should not occur due to 60-second grace period
+- If happening, check GPS accuracy and stability
+- Verify geofence radius is appropriate for location (minimum 25m)
+
+#### Auto-check paused
+
+- Usually due to poor GPS accuracy
+- Follow platform-specific guidance to improve accuracy
+- Feature will auto-resume when accuracy improves
+
+#### Battery drain concerns
+
+- Adaptive polling reduces battery impact when far from locations
+- Consider disabling when not actively working
+- Backgrounded apps use longer poll intervals
 
 ## Future Enhancements
 

@@ -1,3 +1,4 @@
+// Playwright spec (not run by Cypress)
 // PWA Installation and Offline Scenario Tests
 // Task 11.7: Comprehensive testing of PWA installation and offline functionality
 

@@ -6,14 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import {
-  Home,
-  History,
-  Menu,
-  LogOut,
-  Bell,
-  MessageSquare,
-} from "lucide-react";
+import { Home, History, Menu, LogOut, Bell, MessageSquare } from "lucide-react";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { signOut } from "firebase/auth";
 import { auth } from "../../../firebase.config";
@@ -93,7 +86,10 @@ export function ProviderNavigation({
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav
+        className="flex-1 px-3 py-4 space-y-1"
+        aria-label="Provider navigation"
+      >
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const isActive = isActiveRoute(item.href);
@@ -225,7 +221,7 @@ export function ProviderNavigation({
         </header>
 
         {/* Page Content */}
-        <main className="p-4 lg:p-6">{children}</main>
+        <div className="p-4 lg:p-6">{children}</div>
       </div>
     </div>
   );

@@ -112,7 +112,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Admin navigation">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const isActive = isActiveRoute(item.href);
@@ -243,7 +243,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
         </header>
 
         {/* Page Content */}
-        <main className="p-4 lg:p-6">{children}</main>
+        <div className="p-4 lg:p-6">{children}</div>
       </div>
     </div>
   );

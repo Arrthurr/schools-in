@@ -22,6 +22,29 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const getAuthErrorMessage = (error: unknown): string => {
+    if (typeof error !== "object" || error === null) {
+      return "Sign-in failed";
+    }
+
+    const authError = error as { message?: string; code?: string };
+    const message = authError.message?.toLowerCase() ?? "";
+    const code = authError.code?.toLowerCase() ?? "";
+
+    if (
+      code === "auth/missing-initial-state" ||
+      message.includes("missing initial state")
+    ) {
+      return (
+        "We couldn't complete sign-in in this browser. Close this tab, go back to " +
+        "the app login page, and sign in again using a full browser (Chrome/Edge/" +
+        "Firefox/Safari). Avoid in-app or private browsing."
+      );
+    }
+
+    return authError.message || "Sign-in failed";
+  };
+
   const handleMicrosoftSignIn = async () => {
     setLoading(true);
     setError(null);
@@ -29,7 +52,7 @@ export function LoginForm() {
     try {
       const credential = await signInWithMicrosoft();
       const redirectTo = searchParams.get("redirectTo");
-      
+
       // Sync user role and school assignments from Microsoft 365 groups
       // This updates the user's role (admin/provider) and assigns them to schools
       // based on their M365 group memberships
@@ -39,23 +62,24 @@ export function LoginForm() {
 
       // Ensure user document has been written with the latest role and metadata
       await waitForUserDocument(credential.user.uid);
-      
+
       // Wait for Firebase Auth state to propagate before redirecting
       // This ensures onAuthStateChanged listeners fire on the destination page
       await waitForAuthStatePropagation();
-      
+
       // Redirect based on user role (use syncResult.role which is authoritative from M365)
       if (!redirectTo) {
         console.log("✅ Sign-in successful. User role:", syncResult.role);
-        const defaultRoute = syncResult.role === "admin" ? "/admin" : "/dashboard";
+        const defaultRoute =
+          syncResult.role === "admin" ? "/admin" : "/dashboard";
         router.replace(defaultRoute as Route);
       } else {
         router.replace(redirectTo as Route);
       }
 
       // announce("Successfully signed in with Microsoft", "polite");
-    } catch (error: any) {
-      const errorMessage = error?.message || "Sign-in failed";
+    } catch (error: unknown) {
+      const errorMessage = getAuthErrorMessage(error);
 
       console.error("Sign-in error:", errorMessage);
       setError(errorMessage);
@@ -71,16 +95,16 @@ export function LoginForm() {
    */
   async function waitForAuthStatePropagation(): Promise<void> {
     const { auth } = await import("../../../firebase.config");
-    
+
     // Wait for currentUser to be set (synchronous indicator of auth state)
     for (let i = 0; i < 10; i++) {
       if (auth.currentUser) {
         console.log("✅ Auth state propagated, currentUser available");
         return;
       }
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
-    
+
     console.warn("⚠️ Auth state not propagated after 500ms, proceeding anyway");
   }
 
@@ -102,9 +126,7 @@ export function LoginForm() {
           id={errorId}
         >
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription className="break-words">
-            {error}
-          </AlertDescription>
+          <AlertDescription className="break-words">{error}</AlertDescription>
         </Alert>
       )}
 

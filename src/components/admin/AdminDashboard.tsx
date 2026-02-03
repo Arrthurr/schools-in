@@ -57,6 +57,7 @@ export function AdminDashboard() {
     "idle" | "enabling" | "enabled" | "error"
   >("idle");
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [relativeNowMs, setRelativeNowMs] = useState<number | null>(null);
   const [vapidPublicKey, setVapidPublicKey] = useState<string>(
     () => process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ""
   );
@@ -69,6 +70,10 @@ export function AdminDashboard() {
       // announce("Dashboard data loaded successfully", "polite");
     }
   }, [loading, error]);
+
+  useEffect(() => {
+    setRelativeNowMs(Date.now());
+  }, []);
 
   // Load total schools
   useEffect(() => {
@@ -236,8 +241,8 @@ export function AdminDashboard() {
     }
   };
 
-  const formatRelativeTime = (date: Date) => {
-    const now = new Date();
+  const formatRelativeTime = (date: Date, nowMs: number) => {
+    const now = new Date(nowMs);
     const diffInMinutes = Math.floor(
       (now.getTime() - date.getTime()) / (1000 * 60)
     );
@@ -327,7 +332,9 @@ export function AdminDashboard() {
       id: activity.id,
       icon: getActivityIcon(activity.type),
       title: message,
-      timestamp: formatRelativeTime(activity.timestamp as any),
+      timestamp: relativeNowMs
+        ? formatRelativeTime(activity.timestamp as any, relativeNowMs)
+        : "",
     };
   });
 

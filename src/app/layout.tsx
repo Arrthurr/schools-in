@@ -5,8 +5,6 @@ import { AuthProvider } from "@/components/provider/AuthProvider";
 import ClientLayout from "@/components/layout/ClientLayout";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 
-import { NetworkStatusIndicator } from "@/components/common/NetworkStatusIndicator";
-
 export function generateMetadata(): Metadata {
   return {
     metadataBase: new URL(
@@ -27,10 +25,18 @@ export function generateMetadata(): Metadata {
     },
     icons: {
       icon: [
-        { url: "/PROPEL-rocket_1024.png", sizes: "1024x1024", type: "image/png" },
+        {
+          url: "/PROPEL-rocket_1024.png",
+          sizes: "1024x1024",
+          type: "image/png",
+        },
       ],
       apple: [
-        { url: "/PROPEL-rocket_1024.png", sizes: "1024x1024", type: "image/png" },
+        {
+          url: "/PROPEL-rocket_1024.png",
+          sizes: "1024x1024",
+          type: "image/png",
+        },
       ],
     },
   };
@@ -55,19 +61,18 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body
-      className={`${inter.className} h-full bg-background text-foreground antialiased`}
-      suppressHydrationWarning
+        className={`${inter.className} h-full bg-background text-foreground antialiased`}
+        suppressHydrationWarning
       >
-      <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <AuthProvider>
             <div className="min-h-full safe-area-inset">
               <ClientLayout>{children}</ClientLayout>
-              <NetworkStatusIndicator />
             </div>
           </AuthProvider>
         </ThemeProvider>

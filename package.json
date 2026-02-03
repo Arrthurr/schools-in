@@ -27,7 +27,7 @@
     "lighthouse:local": "start-server-and-test dev http://localhost:3000 'lhci autorun'",
     "export": "next build && next export",
     "test:firestore-rules": "firebase emulators:exec --only firestore \"jest --config jest.rules.config.js --runTestsByPath tests/firestore.rules.test.js\"",
-    "test:storage-rules": "firebase emulators:exec --only storage \"jest --config jest.rules.config.js --runTestsByPath tests/storage.rules.test.js\"",
+    "test:storage-rules": "firebase emulators:exec --only firestore,storage \"jest --config jest.rules.config.js --runTestsByPath tests/storage.rules.test.js\"",
     "test:ci": "jest --coverage --watchAll=false --ci --reporters=default --reporters=jest-junit",
     "firebase:emulators": "firebase emulators:start",
     "firebase:emulators:ui": "firebase emulators:start --only auth,firestore,storage",

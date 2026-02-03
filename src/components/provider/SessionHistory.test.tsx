@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { act, render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { SessionHistory } from "./SessionHistory";
 import * as useAuthModule from "../../lib/hooks/useAuth";
@@ -83,6 +83,9 @@ const mockLoadSessions = jest.fn();
 describe("SessionHistory Component", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
@@ -102,7 +105,19 @@ describe("SessionHistory Component", () => {
       clearError: jest.fn(),
     });
 
-    mockSchoolService.mockResolvedValue(mockSchool);
+    mockSchoolService.mockImplementation(() => Promise.resolve(mockSchool));
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    (console.error as jest.Mock).mockRestore();
+    jest.useRealTimers();
   });
 
   it("renders loading state correctly", () => {
@@ -148,7 +163,7 @@ describe("SessionHistory Component", () => {
     expect(screen.getByText("Retry")).toBeInTheDocument();
   });
 
-  it("renders empty state when no completed sessions", () => {
+  it("renders empty state when no completed sessions", async () => {
     mockUseSession.mockReturnValue({
       currentSession: null,
       sessions: [mockActiveSession], // Only active session
@@ -169,6 +184,10 @@ describe("SessionHistory Component", () => {
     expect(
       screen.getByText(/View your past check-in sessions/)
     ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(mockSchoolService).toHaveBeenCalledWith("school-2");
+    });
   });
 
   it("renders completed sessions correctly", async () => {
@@ -195,6 +214,10 @@ describe("SessionHistory Component", () => {
     // Wait for school name to load
     await waitFor(() => {
       expect(screen.getByText("Walter Payton High School")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(mockSchoolService).toHaveBeenCalledWith("school-1");
     });
 
     expect(screen.getByText("1h 30m")).toBeInTheDocument();
@@ -293,6 +316,10 @@ describe("SessionHistory Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Unknown School")).toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(mockSchoolService).toHaveBeenCalledWith("school-1");
+    });
   });
 
   it("handles school service error gracefully", async () => {
@@ -315,6 +342,10 @@ describe("SessionHistory Component", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Unknown School")).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(mockSchoolService).toHaveBeenCalledWith("school-1");
     });
   });
 

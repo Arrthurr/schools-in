@@ -275,6 +275,18 @@ As a beta tester, your feedback is invaluable. Here are some tips:
 
 ## Troubleshooting Common Issues
 
+### Sign-In Error: "Missing Initial State"
+
+**Problem**: After a password reset or sign-in attempt, you see an error that says "Unable to process request due to missing initial state."
+
+**Solution**:
+
+1. Close the error tab (it often shows a `__/auth/handler` URL)
+2. Go back to the main login page: https://schools-in-check.web.app
+3. Click **"Sign in with Microsoft"** again
+4. Use a full browser (Chrome, Edge, Firefox, or Safari)
+5. Avoid in-app browsers and private/incognito windows
+
 ### Location Permission Denied
 
 **Problem**: The app says it can't access your location.
