@@ -58,14 +58,14 @@ const QUALITY_THRESHOLDS = {
 
 export function useNetworkStatus(): UseNetworkStatusReturn {
   const [status, setStatus] = useState<NetworkStatus>(() => ({
-    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-    isConnected: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    isOnline: true,
+    isConnected: true,
     connectionType: "unknown",
     effectiveType: "unknown",
     downlink: 0,
     rtt: 0,
     saveData: false,
-    connectivityScore: typeof navigator !== 'undefined' ? (navigator.onLine ? 50 : 0) : 50,
+    connectivityScore: 50,
   }));
 
   const [listeners, setListeners] = useState<{
@@ -205,12 +205,14 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
       // Check Firebase connectivity by attempting to read a minimal document
       // This is a lightweight check that works with static export
       const { db } = await import("../../../firebase.config");
-      const { collection, getDocs, limit, query } = await import("firebase/firestore");
-      
+      const { collection, getDocs, limit, query } = await import(
+        "firebase/firestore"
+      );
+
       // Try to read a single document to verify connectivity
       const testQuery = query(collection(db, "system"), limit(1));
       await getDocs(testQuery);
-      
+
       const end = Date.now();
 
       const isConnected = true;
@@ -246,11 +248,13 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
       const start = performance.now();
       // Use Firebase Firestore as a connectivity test
       const { db } = await import("../../../firebase.config");
-      const { collection, getDocs, limit, query } = await import("firebase/firestore");
-      
+      const { collection, getDocs, limit, query } = await import(
+        "firebase/firestore"
+      );
+
       const testQuery = query(collection(db, "system"), limit(1));
       await getDocs(testQuery);
-      
+
       const end = performance.now();
       return Math.round(end - start);
     } catch (error) {

@@ -3,6 +3,15 @@
 // Import commands.js using ES2015 syntax:
 import "./commands.js";
 
+// Force light theme for deterministic a11y checks
+Cypress.on("window:before:load", (win) => {
+  try {
+    win.localStorage.setItem("theme", "light");
+  } catch {
+    // Ignore storage access issues in test environments
+  }
+});
+
 // Custom command type declarations
 declare global {
   namespace Cypress {

@@ -32,7 +32,7 @@ export function Toaster() {
           </Toast>
         );
       })}
-      <ToastViewport />
+      <ToastViewport aria-label="Notifications" />
     </ToastProvider>
   );
 }

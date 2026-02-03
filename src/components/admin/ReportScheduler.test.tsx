@@ -2,6 +2,24 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ReportScheduler } from "./ReportScheduler";
 
+jest.mock("@/lib/hooks/useCachedAuth", () => ({
+  useCachedAuth: () => ({
+    user: { email: "admin@schoolsin.com" },
+  }),
+}));
+
+jest.mock("@/lib/services/reportScheduleService", () => ({
+  reportScheduleService: {
+    getAll: jest.fn().mockImplementation(
+      () => new Promise(() => undefined)
+    ),
+    create: jest.fn().mockResolvedValue(undefined),
+    update: jest.fn().mockResolvedValue(undefined),
+    remove: jest.fn().mockResolvedValue(undefined),
+    runNow: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 describe("ReportScheduler", () => {
   it("renders scheduler dashboard", () => {
     render(<ReportScheduler />);

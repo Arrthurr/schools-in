@@ -78,6 +78,8 @@ export function SessionAnalytics() {
 
   // Load initial data
   useEffect(() => {
+    let cancelled = false;
+
     const loadInitialData = async () => {
       try {
         setLoading(true);
@@ -87,20 +89,29 @@ export function SessionAnalytics() {
           getCollection(COLLECTIONS.SESSIONS),
         ]);
 
+        if (cancelled) return;
+
         setSchools(schoolsData as School[]);
         setProviders(
           (usersData as User[]).filter((user: User) => user.role === "provider")
         );
         setSessions(sessionsData as SessionData[]);
       } catch (err) {
+        if (cancelled) return;
         console.error("Error loading analytics data:", err);
         setError("Failed to load analytics data");
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadInitialData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Filter sessions by date range

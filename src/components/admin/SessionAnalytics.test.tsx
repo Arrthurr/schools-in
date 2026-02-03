@@ -101,6 +101,7 @@ const mockSessions = [
 
 describe("SessionAnalytics", () => {
   beforeEach(() => {
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
     mockGetCollection.mockImplementation((collection: string) => {
       switch (collection) {
         case "locations":
@@ -117,6 +118,7 @@ describe("SessionAnalytics", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    (console.error as jest.Mock).mockRestore();
   });
 
   it("renders analytics dashboard", async () => {
@@ -167,7 +169,9 @@ describe("SessionAnalytics", () => {
 
   it("handles error state", async () => {
     // Mock error
-    mockGetCollection.mockRejectedValue(new Error("Failed to load data"));
+    mockGetCollection.mockImplementationOnce(() =>
+      Promise.reject(new Error("Failed to load data"))
+    );
 
     render(<SessionAnalytics />);
 

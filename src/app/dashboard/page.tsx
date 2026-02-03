@@ -32,6 +32,8 @@ export default function DashboardPage() {
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
   const { enabled: autoGeofenceEnabled } = useAutoGeofencePreference();
   const autoGeofence = useAutoGeofenceCheck();
+  const [todayLabel, setTodayLabel] = useState("");
+  const [relativeNowMs, setRelativeNowMs] = useState<number | null>(null);
 
   // New state for recent activity
   const [recentSessions, setRecentSessions] = useState<Session[]>([]);
@@ -47,6 +49,17 @@ export default function DashboardPage() {
     });
     setLocationsMap(map);
   }, [providerLocations]);
+
+  useEffect(() => {
+    setTodayLabel(
+      new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      })
+    );
+    setRelativeNowMs(Date.now());
+  }, []);
 
   // Fetch recent sessions
   useEffect(() => {
@@ -73,12 +86,11 @@ export default function DashboardPage() {
 
   // Helper for relative time
   const getRelativeTime = (dateString: any) => {
-    if (!dateString) return "";
+    if (!dateString || !relativeNowMs) return "";
     const date = new Date(
       typeof dateString.toDate === "function" ? dateString.toDate() : dateString
     );
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
+    const diffMs = relativeNowMs - date.getTime();
     const diffMin = Math.floor(diffMs / 60000);
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
@@ -127,10 +139,10 @@ export default function DashboardPage() {
         autoGeofence.locationPermission === "unavailable"
           ? "destructive"
           : autoGeofence.pausedReason
-            ? "destructive"
-            : autoGeofence.locationPermission === "granted"
-              ? "secondary"
-              : "outline"
+          ? "destructive"
+          : autoGeofence.locationPermission === "granted"
+          ? "secondary"
+          : "outline"
       }
       className="flex items-center gap-2"
     >
@@ -138,14 +150,14 @@ export default function DashboardPage() {
       {autoGeofence.locationPermission === "denied"
         ? "Location Access Denied"
         : autoGeofence.locationPermission === "unavailable"
-          ? "Location Unavailable"
-          : autoGeofence.locationPermission !== "granted"
-            ? "Enable Location"
-            : autoGeofence.pausedReason
-              ? "Auto Check Paused (GPS)"
-              : autoGeofence.isPolling
-                ? "Auto Check Active"
-                : "Auto Check Ready"}
+        ? "Location Unavailable"
+        : autoGeofence.locationPermission !== "granted"
+        ? "Enable Location"
+        : autoGeofence.pausedReason
+        ? "Auto Check Paused (GPS)"
+        : autoGeofence.isPolling
+        ? "Auto Check Active"
+        : "Auto Check Ready"}
     </Badge>
   ) : null;
 
@@ -155,17 +167,18 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-7xl">
           {/* Mobile-first: Header with date */}
           <PageHeader
-            title={`Welcome back, ${user?.displayName?.split(" ")[0] || "Provider"}!`}
+            title={`Welcome back, ${
+              user?.displayName?.split(" ")[0] || "Provider"
+            }!`}
             description="Here's what's happening with your schools today."
             actions={
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Today</p>
-                <p className="text-lg font-semibold text-foreground">
-                  {new Date().toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                <p
+                  className="text-lg font-semibold text-foreground"
+                  suppressHydrationWarning
+                >
+                  {todayLabel}
                 </p>
               </div>
             }
@@ -216,7 +229,9 @@ export default function DashboardPage() {
               />
               <StatCard
                 title="Total Hours"
-                value={`${(metrics.weeklyMetrics?.weeklyTotalHours || 0).toFixed(1)}`}
+                value={`${(
+                  metrics.weeklyMetrics?.weeklyTotalHours || 0
+                ).toFixed(1)}`}
                 description="This week"
                 icon={Clock}
               />
@@ -244,8 +259,7 @@ export default function DashboardPage() {
                 items={recentSessions.map((session) => ({
                   id: session.id,
                   icon: History,
-                  title:
-                    locationsMap[session.locationId] || "Unknown Location",
+                  title: locationsMap[session.locationId] || "Unknown Location",
                   timestamp: getRelativeTime(session.startTime),
                   metadata: getStatusBadge(session.status),
                 }))}

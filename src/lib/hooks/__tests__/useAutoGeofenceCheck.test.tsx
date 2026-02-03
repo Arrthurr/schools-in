@@ -114,7 +114,7 @@ describe("useAutoGeofenceCheck", () => {
       switchToFallback: jest.fn(),
     });
     (toast as jest.Mock).mockImplementation(mockToast);
-    (locationService.getCurrentLocation as jest.Mock).mockResolvedValue({
+    (locationService.getBestEffortLocation as jest.Mock).mockResolvedValue({
       latitude: 40.7128,
       longitude: -74.006,
       accuracy: 10,
@@ -184,7 +184,7 @@ describe("useAutoGeofenceCheck", () => {
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
         enabled: true,
       });
-      (locationService.getCurrentLocation as jest.Mock).mockResolvedValue({
+      (locationService.getBestEffortLocation as jest.Mock).mockResolvedValue({
         latitude: 40.7128,
         longitude: -74.006,
         accuracy: 10,
@@ -208,7 +208,7 @@ describe("useAutoGeofenceCheck", () => {
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
         enabled: true,
       });
-      (locationService.getCurrentLocation as jest.Mock).mockRejectedValue({
+      (locationService.getBestEffortLocation as jest.Mock).mockRejectedValue({
         code: 1,
         message: "User denied geolocation",
       });
@@ -231,7 +231,7 @@ describe("useAutoGeofenceCheck", () => {
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
         enabled: true,
       });
-      (locationService.getCurrentLocation as jest.Mock).mockRejectedValue({
+      (locationService.getBestEffortLocation as jest.Mock).mockRejectedValue({
         code: 0,
         message: "Geolocation is not supported",
       });
@@ -261,7 +261,7 @@ describe("useAutoGeofenceCheck", () => {
 
       jest.advanceTimersByTime(60000);
 
-      expect(locationService.getCurrentLocation).not.toHaveBeenCalled();
+      expect(locationService.getBestEffortLocation).not.toHaveBeenCalled();
     });
 
     it("should poll every 60 seconds when enabled", async () => {
@@ -283,7 +283,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       // Clear previous calls to count only new ones
-      (locationService.getCurrentLocation as jest.Mock).mockClear();
+      (locationService.getBestEffortLocation as jest.Mock).mockClear();
 
       // After 60 seconds - advance timers and wait for async operations
       await act(async () => {
@@ -294,7 +294,7 @@ describe("useAutoGeofenceCheck", () => {
 
       // Wait for the async poll to complete
       await waitFor(() => {
-        expect(locationService.getCurrentLocation).toHaveBeenCalled();
+        expect(locationService.getBestEffortLocation).toHaveBeenCalled();
       });
     });
 
@@ -329,7 +329,7 @@ describe("useAutoGeofenceCheck", () => {
         await flushPromises();
       });
 
-      const callCountBefore = (locationService.getCurrentLocation as jest.Mock).mock
+      const callCountBefore = (locationService.getBestEffortLocation as jest.Mock).mock
         .calls.length;
 
       await act(async () => {
@@ -338,7 +338,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       // Should not poll when hidden
-      const callCountAfterHidden = (locationService.getCurrentLocation as jest.Mock).mock
+      const callCountAfterHidden = (locationService.getBestEffortLocation as jest.Mock).mock
         .calls.length;
       expect(callCountAfterHidden).toBe(callCountBefore);
 
@@ -355,7 +355,7 @@ describe("useAutoGeofenceCheck", () => {
       // Should poll again when visible - wait for at least one more call
       await waitFor(() => {
         expect(
-          (locationService.getCurrentLocation as jest.Mock).mock.calls.length
+          (locationService.getBestEffortLocation as jest.Mock).mock.calls.length
         ).toBeGreaterThan(callCountBefore);
       });
     });
@@ -366,7 +366,7 @@ describe("useAutoGeofenceCheck", () => {
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
         enabled: true,
       });
-      (locationService.getCurrentLocation as jest.Mock).mockResolvedValue({
+      (locationService.getBestEffortLocation as jest.Mock).mockResolvedValue({
         latitude: 40.7128,
         longitude: -74.006,
         accuracy: 60, // Poor accuracy
@@ -392,7 +392,7 @@ describe("useAutoGeofenceCheck", () => {
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
         enabled: true,
       });
-      (locationService.getCurrentLocation as jest.Mock).mockResolvedValue({
+      (locationService.getBestEffortLocation as jest.Mock).mockResolvedValue({
         latitude: 40.7128,
         longitude: -74.006,
         accuracy: 60, // Poor accuracy
@@ -433,7 +433,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       // Start with poor accuracy
-      (locationService.getCurrentLocation as jest.Mock).mockResolvedValue({
+      (locationService.getBestEffortLocation as jest.Mock).mockResolvedValue({
         latitude: 40.7128,
         longitude: -74.006,
         accuracy: 60,
@@ -469,7 +469,7 @@ describe("useAutoGeofenceCheck", () => {
       );
 
       // Improve accuracy
-      (locationService.getCurrentLocation as jest.Mock).mockResolvedValue({
+      (locationService.getBestEffortLocation as jest.Mock).mockResolvedValue({
         latitude: 40.7128,
         longitude: -74.006,
         accuracy: 10,
@@ -610,6 +610,19 @@ describe("useAutoGeofenceCheck", () => {
 
   describe("Auto check-in flow", () => {
     it("should not trigger check-in when there is an active session", async () => {
+      const initialSession: Session = {
+        id: "session-0",
+        userId: "user-1",
+        locationId: "loc-1",
+        status: "active",
+        checkInTime: Timestamp.now(),
+        startTime: Timestamp.now(),
+        checkInMethod: "geo",
+        distanceFromCenterAtCheckIn: 50,
+        dayKey: "2024-01-01",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      };
       const mockSession: Session = {
         id: "session-1",
         userId: "user-1",
@@ -627,15 +640,21 @@ describe("useAutoGeofenceCheck", () => {
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
         enabled: true,
       });
-      (useCachedSession as jest.Mock).mockReturnValue({
-        activeSession: mockSession,
-      });
+      (useCachedSession as jest.Mock)
+        .mockReturnValueOnce({ activeSession: initialSession })
+        .mockReturnValue({ activeSession: mockSession });
       (validateGeofence as jest.Mock).mockReturnValue({
         distance: 50,
         isWithinGeofence: true,
       });
 
-      renderHook(() => useAutoGeofenceCheck());
+      const { rerender } = renderHook(() => useAutoGeofenceCheck());
+
+      // Simulate a new session starting after initial render so grace period is set.
+      await act(async () => {
+        rerender();
+        await flushPromises();
+      });
 
       await waitFor(() => {
         expect(getCachedLocationsByProvider).toHaveBeenCalled();
@@ -878,6 +897,19 @@ describe("useAutoGeofenceCheck", () => {
     });
 
     it("should skip check-out if within grace period after check-in", async () => {
+      const initialSession: Session = {
+        id: "session-0",
+        userId: "user-1",
+        locationId: "loc-1",
+        status: "active",
+        checkInTime: Timestamp.now(),
+        startTime: Timestamp.now(),
+        checkInMethod: "geo",
+        distanceFromCenterAtCheckIn: 50,
+        dayKey: "2024-01-01",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      };
       const mockSession: Session = {
         id: "session-1",
         userId: "user-1",
@@ -895,9 +927,9 @@ describe("useAutoGeofenceCheck", () => {
       (useAutoGeofencePreference as jest.Mock).mockReturnValue({
         enabled: true,
       });
-      (useCachedSession as jest.Mock).mockReturnValue({
-        activeSession: mockSession,
-      });
+      (useCachedSession as jest.Mock)
+        .mockReturnValueOnce({ activeSession: initialSession })
+        .mockReturnValue({ activeSession: mockSession });
 
       // Start inside
       (validateGeofence as jest.Mock).mockReturnValue({
@@ -905,7 +937,13 @@ describe("useAutoGeofenceCheck", () => {
         isWithinGeofence: true,
       });
 
-      renderHook(() => useAutoGeofenceCheck());
+      const { rerender } = renderHook(() => useAutoGeofenceCheck());
+
+      // Simulate a new session starting so grace period is set.
+      await act(async () => {
+        rerender();
+        await flushPromises();
+      });
 
       // Wait for locations to load and initial poll
       await act(async () => {
@@ -924,12 +962,15 @@ describe("useAutoGeofenceCheck", () => {
         isWithinGeofence: false,
       });
 
+      // Clear toast calls after initial polling
+      (toast as jest.Mock).mockClear();
+
       // Advance time but stay within 60s grace period (e.g. 30s)
       await act(async () => {
         jest.advanceTimersByTime(30000);
         await flushPromises();
       });
-      
+
       // Should not trigger check-out toast
       expect(toast).not.toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1248,7 +1289,7 @@ describe("useAutoGeofenceCheck", () => {
       const pendingLocation = new Promise((res) => {
         resolveLocation = res;
       });
-      (locationService.getCurrentLocation as jest.Mock).mockImplementation(
+      (locationService.getBestEffortLocation as jest.Mock).mockImplementation(
         () => pendingLocation
       );
 
@@ -1265,7 +1306,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       // Initial poll started; keep it in-flight.
-      expect(locationService.getCurrentLocation).toHaveBeenCalledTimes(1);
+      expect(locationService.getBestEffortLocation).toHaveBeenCalledTimes(1);
 
       // Trigger another poll while the first is still running.
       await act(async () => {
@@ -1273,7 +1314,7 @@ describe("useAutoGeofenceCheck", () => {
       });
 
       // Still only the original location fetch should be in-flight (second poll blocked).
-      expect(locationService.getCurrentLocation).toHaveBeenCalledTimes(1);
+      expect(locationService.getBestEffortLocation).toHaveBeenCalledTimes(1);
 
       // Resolve the in-flight poll.
       await act(async () => {

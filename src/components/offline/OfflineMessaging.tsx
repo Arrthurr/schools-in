@@ -6,18 +6,9 @@ import { useNetworkStatus } from "@/lib/hooks/useNetworkStatus";
 import { useEnhancedOfflineQueue } from "@/lib/hooks/useEnhancedOfflineQueue";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  ToastAction,
-  ToastProvider,
-  ToastViewport,
-} from "@/components/ui/toast";
+import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  CheckCircle,
-  AlertTriangle,
-  Info,
-  X,
-} from "lucide-react";
+import { CheckCircle, AlertTriangle, Info, X } from "lucide-react";
 
 export interface OfflineMessage {
   id: string;
@@ -223,12 +214,7 @@ export function OfflineMessagingProvider({
     setMessages((prev) => prev.filter((msg) => msg.id !== id));
   };
 
-  return (
-    <ToastProvider>
-      {children}
-      <ToastViewport />
-    </ToastProvider>
-  );
+  return <>{children}</>;
 }
 
 // Message display component for showing persistent messages

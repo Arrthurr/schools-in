@@ -16,6 +16,11 @@ jest.mock("@/lib/services/cachedSchoolService");
 jest.mock("@/lib/services/cachedSessionService");
 jest.mock("@/lib/utils/location");
 jest.mock("@/lib/utils/geo");
+jest.mock("@/components/ui/use-toast", () => ({
+  useToast: () => ({
+    toast: jest.fn(),
+  }),
+}));
 jest.mock("@/lib/utils/time", () => ({
   getDayKey: jest.fn(() => "2024-01-15"),
 }));
@@ -67,6 +72,8 @@ describe("AdminManualCheckInOut Component", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+
     mockUseCachedAuth.mockReturnValue({
       user: mockAdminUser,
       loading: false,
@@ -104,6 +111,10 @@ describe("AdminManualCheckInOut Component", () => {
     expect(
       screen.getByText(/As an admin, you can manually check in and out/)
     ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(mockCachedSchoolService.getAllSchools).toHaveBeenCalled();
+    });
   });
 
   it("loads and displays schools in the dropdown", async () => {
@@ -294,5 +305,8 @@ describe("AdminManualCheckInOut Component", () => {
       expect(mockLocationService.getCurrentLocation).toHaveBeenCalled();
     });
   });
-});
 
+  afterEach(() => {
+    (console.error as jest.Mock).mockRestore();
+  });
+});
