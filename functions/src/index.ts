@@ -794,7 +794,7 @@ const RECENTLY_CREATED_GRACE_MS = 15 * 60 * 1000;
 
 exports.cleanupStaleSessions = onSchedule(
   {
-    schedule: "every 15 minutes",
+    schedule: "every 30 minutes",
     secrets: ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL"],
   },
   async (_event: any) => {
