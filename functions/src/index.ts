@@ -945,7 +945,16 @@ exports.cleanupStaleSessions = onSchedule(
         });
 
       // Notify subscribed admins via push
-      if (initializeWebPush()) {
+      let pushEnabled = false;
+      try {
+        pushEnabled = initializeWebPush();
+      } catch (error) {
+        logger.warn("Failed to initialize web push. Skipping admin alerts.", {
+          error,
+        });
+      }
+
+      if (pushEnabled) {
         const adminsSnapshot = await db
           .collection("users")
           .where("role", "==", "admin")
