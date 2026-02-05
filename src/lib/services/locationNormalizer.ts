@@ -74,7 +74,7 @@ export function normalizeLocationData(
       ? baseData.radiusMeters
       : typeof baseData.radius === "number"
       ? baseData.radius
-      : 100;
+      : 500;
 
   const assignedProviders = Array.isArray(baseData.assignedProviders)
     ? baseData.assignedProviders.filter((id: unknown) => typeof id === "string")

@@ -288,7 +288,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
               <Ruler className="h-4 w-4 text-muted-foreground mt-1" />
               <div>
                 <p className="font-medium text-foreground">Check-in Radius</p>
-                <p className="text-muted-foreground">{school.radius || 100} meters</p>
+                <p className="text-muted-foreground">{school.radius || 500} meters</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   You must be within this range to check in
                 </p>
@@ -410,7 +410,7 @@ export const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({
                     Move Closer to Check In
                   </p>
                   <p className="text-brand-primary/80 text-sm">
-                    You need to be within {school.radius || 100} meters of the
+                    You need to be within {school.radius || 500} meters of the
                     school to check in. You're currently{" "}
                     {distance && formatDistance(distance)} away.
                   </p>

@@ -105,7 +105,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
       };
       const dist = calculateDistance(location, schoolCoords);
 
-      const effectiveRadius = school.radiusMeters ?? 100;
+      const effectiveRadius = school.radiusMeters ?? 500;
       const accuracyHint =
         typeof location.accuracy === "number" &&
         location.accuracy > ACCURACY_HINT_THRESHOLD

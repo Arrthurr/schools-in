@@ -117,7 +117,7 @@ export function isWithinRadius(
     location.geo.longitude
   );
   
-  const allowedRadius = location.radiusMeters ?? 100; // Default 100m
+  const allowedRadius = location.radiusMeters ?? 500; // Default 500m
   return distance <= allowedRadius;
 }
 
