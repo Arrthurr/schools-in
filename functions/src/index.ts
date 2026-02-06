@@ -913,9 +913,16 @@ exports.cleanupStaleSessions = onSchedule(
             if (success) {
               warnSent++;
               // Mark session so we don't send duplicate warnings
-              await sessionsRef.doc(sessionId).update({
-                warningNotificationSent: true,
-              });
+              try {
+                await sessionsRef.doc(sessionId).update({
+                  warningNotificationSent: true,
+                });
+              } catch (updateErr) {
+                logger.warn(
+                  `Failed to mark session ${sessionId} as warned — may re-notify next cycle`,
+                  { error: updateErr }
+                );
+              }
             } else {
               warnFailed++;
             }

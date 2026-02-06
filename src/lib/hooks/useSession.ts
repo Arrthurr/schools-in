@@ -310,6 +310,8 @@ export const useSession = (): UseSessionReturn => {
     // only clears currentSession when *neither* listener has a session.
     let primaryHasSession = false;
     let legacyHasSession = false;
+    let pendingNullTimeout: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
     const activeQ = query(
       collection(db, COLLECTIONS.SESSIONS),
@@ -332,10 +334,12 @@ export const useSession = (): UseSessionReturn => {
         primaryHasSession = false;
         // Don't immediately null out -- let legacy listener fill in if applicable.
         // Use a short delay so the legacy listener has a chance to fire first.
-        setTimeout(() => {
+        if (pendingNullTimeout !== null) clearTimeout(pendingNullTimeout);
+        pendingNullTimeout = setTimeout(() => {
+          pendingNullTimeout = null;
           // Only clear if neither listener has found a session by the time
-          // this callback runs. Read both flags once, on the main thread.
-          if (!primaryHasSession && !legacyHasSession) {
+          // this callback runs AND the effect hasn't been cleaned up.
+          if (!cancelled && !primaryHasSession && !legacyHasSession) {
             setCurrentSession(null);
           }
         }, 100);
@@ -370,6 +374,11 @@ export const useSession = (): UseSessionReturn => {
     });
 
     return () => {
+      cancelled = true;
+      if (pendingNullTimeout !== null) {
+        clearTimeout(pendingNullTimeout);
+        pendingNullTimeout = null;
+      }
       unsubNew();
       unsubLegacy();
     };
