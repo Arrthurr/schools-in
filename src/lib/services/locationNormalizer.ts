@@ -13,6 +13,8 @@ function extractLatitude(geo: GeoLike, fallback?: number): number | undefined {
   if (geo instanceof GeoPoint) return geo.latitude;
   if (typeof (geo as any).latitude === "number") return (geo as any).latitude;
   if (typeof (geo as any).lat === "number") return (geo as any).lat;
+  // Handle spread GeoPoint objects that expose internal _lat property
+  if (typeof (geo as any)._lat === "number") return (geo as any)._lat;
   return fallback;
 }
 
@@ -21,6 +23,8 @@ function extractLongitude(geo: GeoLike, fallback?: number): number | undefined {
   if (geo instanceof GeoPoint) return geo.longitude;
   if (typeof (geo as any).longitude === "number") return (geo as any).longitude;
   if (typeof (geo as any).lng === "number") return (geo as any).lng;
+  // Handle spread GeoPoint objects that expose internal _long property
+  if (typeof (geo as any)._long === "number") return (geo as any)._long;
   return fallback;
 }
 
@@ -161,8 +165,8 @@ export function buildLocationWriteData(
   return {
     name: data.name,
     address: data.address,
-    geo: { ...geoPoint },
-    gpsCoordinates: { ...geoPoint },
+    geo: geoPoint,
+    gpsCoordinates: geoPoint,
     radiusMeters: data.radiusMeters,
     radius: data.radiusMeters,
     assignedProviders:
@@ -197,8 +201,8 @@ export function buildLocationUpdateData(
   }
   if (data.latitude !== undefined && data.longitude !== undefined) {
     const geo = new GeoPoint(data.latitude, data.longitude);
-    updates.geo = { ...geo };
-    updates.gpsCoordinates = { ...geo };
+    updates.geo = geo;
+    updates.gpsCoordinates = geo;
     updates.latitude = data.latitude;
     updates.longitude = data.longitude;
   }
