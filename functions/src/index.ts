@@ -546,7 +546,7 @@ exports.startSession = onCall(async (request: any) => {
 
       // Calculate distance from center and enforce geofence for both roles
       let distanceFromCenter = data.distanceFromCenterAtCheckIn || 0;
-      const radiusMeters = locationData.radiusMeters || 100;
+      const radiusMeters = locationData.radiusMeters || 300;
 
       // If checkInLocation is provided, calculate distance server-side
       if (
@@ -807,6 +807,128 @@ exports.cleanupStaleSessions = onSchedule(
         now.toMillis() - sessionLimitInMs
       );
 
+      // --- Warning pass: notify users with sessions approaching timeout (90-120 min) ---
+      const warningWindowMs = 90 * 60 * 1000; // 90 minutes
+      const warningCutoff = admin.firestore.Timestamp.fromMillis(
+        now.toMillis() - warningWindowMs
+      );
+
+      // Find sessions that started between 90 and 120 minutes ago (approaching timeout)
+      const warnByCheckInTime = sessionsRef
+        .where("status", "in", ["active", "paused"])
+        .where("checkInTime", "<", warningCutoff)
+        .where("checkInTime", ">=", cutoff)
+        .limit(_PRODUCTION_CONFIG.maxBatchSize);
+
+      const warnByStartTime = sessionsRef
+        .where("status", "in", ["active", "paused"])
+        .where("startTime", "<", warningCutoff)
+        .where("startTime", ">=", cutoff)
+        .limit(_PRODUCTION_CONFIG.maxBatchSize);
+
+      const [warnCheckInSnap, warnStartSnap] = await Promise.all([
+        warnByCheckInTime.get(),
+        warnByStartTime.get(),
+      ]);
+
+      // Deduplicate warning sessions
+      const warnSessionMap = new Map<string, FirebaseFirestore.DocumentSnapshot>();
+      warnCheckInSnap.forEach((doc: any) => warnSessionMap.set(doc.id, doc));
+      warnStartSnap.forEach((doc: any) => {
+        if (!warnSessionMap.has(doc.id)) warnSessionMap.set(doc.id, doc);
+      });
+
+      if (warnSessionMap.size > 0) {
+        logger.info(
+          `Found ${warnSessionMap.size} sessions approaching timeout - sending reminders`
+        );
+
+        let pushEnabledForWarning = false;
+        try {
+          pushEnabledForWarning = initializeWebPush();
+        } catch (error) {
+          logger.warn(
+            "Failed to initialize web push for warning notifications.",
+            { error }
+          );
+        }
+
+        if (pushEnabledForWarning) {
+          let warnSent = 0;
+          let warnFailed = 0;
+          let warnMissing = 0;
+
+          for (const [sessionId, doc] of warnSessionMap) {
+            const data = doc.data();
+            if (!data) continue;
+
+            // Skip sessions already warned (check for warningNotificationSent flag)
+            if (data.warningNotificationSent) continue;
+
+            const userId = data.userId;
+            if (!userId) continue;
+
+            // Look up user's push subscription
+            const userSubDoc = await db
+              .collection("users")
+              .doc(userId)
+              .collection("pushSubscriptions")
+              .doc("sessionAlerts")
+              .get();
+
+            // Fall back to adminAlerts subscription if sessionAlerts doesn't exist
+            const subDoc = userSubDoc.exists
+              ? userSubDoc
+              : await db
+                  .collection("users")
+                  .doc(userId)
+                  .collection("pushSubscriptions")
+                  .doc("adminAlerts")
+                  .get();
+
+            if (!subDoc.exists) {
+              warnMissing++;
+              continue;
+            }
+
+            const subscription = subDoc.data() as PushSubscription;
+            const sessionStart =
+              data.startTime?.toMillis?.() ||
+              data.checkInTime?.toMillis?.() ||
+              0;
+            const elapsedMin =
+              sessionStart > 0
+                ? Math.floor((now.toMillis() - sessionStart) / 60000)
+                : 90;
+
+            const success = await sendPushNotification(subscription, {
+              title: "Check-out reminder",
+              body: `You've been checked in for ${elapsedMin}+ minutes. Open the app to check out before your session times out.`,
+              data: {
+                type: "session-timeout-warning",
+                sessionId,
+              },
+            });
+
+            if (success) {
+              warnSent++;
+              // Mark session so we don't send duplicate warnings
+              await sessionsRef.doc(sessionId).update({
+                warningNotificationSent: true,
+              });
+            } else {
+              warnFailed++;
+            }
+          }
+
+          logger.info("Session timeout warning notifications dispatched", {
+            sent: warnSent,
+            failed: warnFailed,
+            missing: warnMissing,
+          });
+        }
+      }
+
       // Run multiple queries to catch all stale sessions
       // Primary query using checkInTime
       const staleByCheckInTime = sessionsRef
@@ -887,7 +1009,18 @@ exports.cleanupStaleSessions = onSchedule(
           return; // Skip this session - give it time to be properly checked out
         }
 
-        logger.info(`Found stale session: ${docId}`);
+        // Calculate actual duration from session start time to now (not cutoff).
+        // cutoff is `now - sessionLimit`, so using it would undercount by the
+        // amount the session exceeded the limit.
+        const sessionStart =
+          data.startTime?.toMillis?.() || data.checkInTime?.toMillis?.() || 0;
+        const actualDurationMs = now.toMillis() - sessionStart;
+        const actualDurationMinutes =
+          sessionStart > 0
+            ? Math.floor(actualDurationMs / 60000)
+            : durationMinutes; // fallback to max if no start time
+
+        logger.info(`Found stale session: ${docId} (duration: ${actualDurationMinutes}min)`);
         staleSessionIds.push(docId);
         const sessionRef = sessionsRef.doc(docId);
         batch.update(sessionRef, {
@@ -895,7 +1028,7 @@ exports.cleanupStaleSessions = onSchedule(
           active: false, // Ensures legacy listener drops the session
           endTime: cutoff, // Primary end time field
           checkOutTime: cutoff, // Legacy compatibility
-          durationMinutes: durationMinutes, // Max duration in minutes
+          durationMinutes: actualDurationMinutes, // Actual elapsed duration in minutes
           notes: "Session automatically closed due to timeout.",
           updatedAt: updateTime, // Track update time
           errorCode: "timeout_auto_close",

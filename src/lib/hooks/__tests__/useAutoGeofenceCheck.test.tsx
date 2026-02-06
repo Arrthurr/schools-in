@@ -815,7 +815,8 @@ describe("useAutoGeofenceCheck", () => {
               latitude: 40.7128,
               longitude: -74.006,
               accuracy: 10,
-            })
+            }),
+            expect.any(Number)
           );
         },
         { timeout: 2000 }
@@ -1170,7 +1171,8 @@ describe("useAutoGeofenceCheck", () => {
         () => {
           expect(mockCheckIn).toHaveBeenCalledWith(
             "loc-1",
-            expect.any(Object)
+            expect.any(Object),
+            expect.any(Number)
           );
         },
         { timeout: 5000 }

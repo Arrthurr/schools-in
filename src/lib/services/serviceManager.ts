@@ -47,7 +47,8 @@ class ServiceManager {
   async checkIn(
     schoolId: string,
     userId: string,
-    location: { latitude: number; longitude: number; accuracy?: number }
+    location: { latitude: number; longitude: number; accuracy?: number },
+    distanceFromCenter?: number
   ): Promise<CheckInResult> {
     try {
       if (this.config.debugMode) {
@@ -56,7 +57,7 @@ class ServiceManager {
 
       if (this.config.enableOfflineSupport) {
         // Use queue manager for offline support
-        const result = await queueManager.checkIn(schoolId, userId, location);
+        const result = await queueManager.checkIn(schoolId, userId, location, distanceFromCenter);
 
         return {
           success: result.success,
@@ -69,7 +70,7 @@ class ServiceManager {
         };
       } else {
         // Direct API call without offline support
-        return await this.directCheckIn(schoolId, userId, location);
+        return await this.directCheckIn(schoolId, userId, location, distanceFromCenter);
       }
     } catch (error) {
       console.error("ServiceManager.checkIn failed:", error);
@@ -124,11 +125,15 @@ class ServiceManager {
   private async directCheckIn(
     schoolId: string,
     userId: string,
-    location: { latitude: number; longitude: number; accuracy?: number }
+    location: { latitude: number; longitude: number; accuracy?: number },
+    distanceFromCenter?: number
   ): Promise<CheckInResult> {
     try {
       const now = Timestamp.now();
       const dayKey = getDayKey(now);
+
+      // Use actual geofence distance if provided, fall back to accuracy
+      const distance = distanceFromCenter ?? location.accuracy ?? 0;
 
       const sessionData = {
         userId,
@@ -137,7 +142,7 @@ class ServiceManager {
         checkInTime: now, // Legacy field
         status: "active" as const,
         checkInMethod: "geo" as const,
-        distanceFromCenterAtCheckIn: location.accuracy ?? 0,
+        distanceFromCenterAtCheckIn: distance,
         dayKey,
         createdAt: now,
         updatedAt: now,
