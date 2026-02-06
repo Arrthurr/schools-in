@@ -466,5 +466,5 @@ function calculateDistance(
   return R * c;
 }
 
-// Export backward compatibility
-export { SchoolService } from "./schoolService";
+// Backward-compatible alias
+export { CachedSchoolService as SchoolService };

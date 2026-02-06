@@ -21,7 +21,7 @@ export interface Location {
   name: string;
   address: string;
   geo: GeoPoint;
-  radiusMeters?: number; // default 100
+  radiusMeters?: number; // default 500
   timezone?: string; // default "America/Chicago"
   active?: boolean; // default true
   assignedProviders: string[]; // array of userIds - authoritative for RBAC

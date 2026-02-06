@@ -3,18 +3,18 @@ import "@testing-library/jest-dom";
 import { SessionHistory } from "./SessionHistory";
 import * as useAuthModule from "../../lib/hooks/useAuth";
 import * as useSessionModule from "../../lib/hooks/useSession";
-import * as schoolServiceModule from "../../lib/services/schoolService";
-import { Timestamp } from "firebase/firestore";
+import * as cachedSchoolServiceModule from "../../lib/services/cachedSchoolService";
+import { Timestamp, GeoPoint } from "firebase/firestore";
 
 // Mock the modules
 jest.mock("../../lib/hooks/useAuth");
 jest.mock("../../lib/hooks/useSession");
-jest.mock("../../lib/services/schoolService");
+jest.mock("../../lib/services/cachedSchoolService");
 
 const mockUseAuth = jest.spyOn(useAuthModule, "useAuth");
 const mockUseSession = jest.spyOn(useSessionModule, "useSession");
 const mockSchoolService = jest.spyOn(
-  schoolServiceModule.SchoolService,
+  cachedSchoolServiceModule.CachedSchoolService,
   "getSchoolById"
 );
 
@@ -75,6 +75,10 @@ const mockSchool = {
   latitude: 41.90191443941818,
   longitude: -87.63472443763325,
   address: "1034 N Wells St, Chicago, IL 60610",
+  geo: new GeoPoint(41.90191443941818, -87.63472443763325),
+  assignedProviders: ["user-123"],
+  createdAt: Timestamp.now(),
+  updatedAt: Timestamp.now(),
   isAssigned: true,
 };
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useSession } from "../../lib/hooks/useSession";
-import { SchoolService } from "../../lib/services/schoolService";
+import { CachedSchoolService } from "../../lib/services/cachedSchoolService";
 import {
   formatDuration,
   formatSessionTime,
@@ -99,7 +99,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
       for (const session of sessions) {
         if (!names.has(session.schoolId)) {
           try {
-            const school = await SchoolService.getSchoolById(session.schoolId);
+            const school = await CachedSchoolService.getSchoolById(session.schoolId);
             if (school) {
               names.set(session.schoolId, school.name);
             } else {

@@ -93,7 +93,7 @@ export function isWithinGeofence(
   userLatitude: number,
   userLongitude: number,
   locationGeo: GeoPointLike,
-  radiusMeters: number = 100 // Default radius from PRD
+  radiusMeters: number = 500 // Default radius
 ): boolean {
   const distance = calculateDistanceToLocation(
     userLatitude,
@@ -111,7 +111,7 @@ export function validateGeofence(
   userLatitude: number,
   userLongitude: number,
   locationGeo: GeoPointLike,
-  radiusMeters: number = 100
+  radiusMeters: number = 500
 ): {
   distance: number;
   isWithinGeofence: boolean;
@@ -180,7 +180,7 @@ export function getCurrentPosition(
  */
 export async function validateCurrentPositionAgainstGeofence(
   locationGeo: GeoPoint,
-  radiusMeters: number = 100
+  radiusMeters: number = 500
 ): Promise<{
   latitude: number;
   longitude: number;
