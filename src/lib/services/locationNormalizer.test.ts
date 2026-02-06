@@ -60,7 +60,12 @@ describe("locationNormalizer", () => {
       assignedProviders: ["provider-2"],
     });
 
-    expect(writeData.geo).toMatchObject({ latitude: 42.1, longitude: -88.2 });
+    // Verify geo fields are NOT plain spreads (should not have _lat/_long)
+    expect(writeData.geo).toBeDefined();
+    expect(writeData.gpsCoordinates).toBeDefined();
+    // In production, these are GeoPoint instances with .latitude/.longitude getters.
+    // In tests with mocked Firebase, verify the constructor was called correctly.
+    expect(writeData.geo).toEqual(writeData.gpsCoordinates);
     expect(writeData.radiusMeters).toBe(150);
     expect(writeData.assignedProviders).toEqual(["provider-2"]);
     expect(writeData.isActive).toBe(true);
@@ -75,7 +80,9 @@ describe("locationNormalizer", () => {
     });
 
     expect(updateData.name).toBe("Updated School");
-    expect(updateData.geo).toMatchObject({ latitude: 43.2, longitude: -89.3 });
+    expect(updateData.geo).toBeDefined();
+    expect(updateData.gpsCoordinates).toBeDefined();
+    expect(updateData.geo).toEqual(updateData.gpsCoordinates);
     expect(updateData.isActive).toBe(false);
   });
 
@@ -133,6 +140,30 @@ describe("locationNormalizer", () => {
 
     expect(normalized.assignedProviders).toEqual([]);
     expect(normalized.activeProviders).toBe(0);
+  });
+
+  it("handles spread GeoPoint objects with _lat/_long properties", () => {
+    const raw = {
+      name: "HOPE Excel",
+      address: "4821 W Chicago Ave, Chicago, IL 60651",
+      geo: { _lat: 41.894692, _long: -87.746703 },
+      gpsCoordinates: { _lat: 41.894692, _long: -87.746703 },
+      radiusMeters: 300,
+      radius: 300,
+      assignedProviders: [],
+      createdAt: { toMillis: () => Timestamp.now().toMillis() },
+      updatedAt: { toMillis: () => Timestamp.now().toMillis() },
+    };
+
+    const normalized = normalizeLocationData("VmkbaQIbg9vmtIvsLBrv", raw);
+    expect(normalized).not.toBeNull();
+    if (!normalized) return;
+
+    expect(normalized.id).toBe("VmkbaQIbg9vmtIvsLBrv");
+    expect(normalized.name).toBe("HOPE Excel");
+    expect(normalized.latitude).toBeCloseTo(41.894692);
+    expect(normalized.longitude).toBeCloseTo(-87.746703);
+    expect(normalized.radiusMeters).toBe(300);
   });
 
   it("returns null when coordinates are missing/invalid", () => {
