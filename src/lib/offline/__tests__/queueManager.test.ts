@@ -147,7 +147,7 @@ describe("QueueManager", () => {
       const result = await manager.checkIn("school123", "user123", mockLocation);
 
       expect(result).toEqual({ success: true, actionId: "checkin123", offline: true });
-      expect(actionQueueMocks.queueCheckIn).toHaveBeenCalledWith("school123", "user123", mockLocation);
+      expect(actionQueueMocks.queueCheckIn).toHaveBeenCalledWith("school123", "user123", mockLocation, undefined);
     });
 
     it("falls back to queue when online check-in fails", async () => {

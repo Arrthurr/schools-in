@@ -4,132 +4,132 @@
     "address": "7120 S Calumet Ave, Chicago, IL 60619",
     "latitude": 41.76515083005216,
     "longitude": -87.61711011902341,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "Cambridge School",
     "address": "4650 S Dearborn St, Chicago, IL 60609",
     "latitude": 41.80988092531061,
     "longitude": -87.62749502208241,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "Chicago SDA",
     "address": "7008 S Michigan Ave, Chicago, IL 60637",
     "latitude": 41.766974075286896,
     "longitude": -87.62197573107879,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "Chicago West Side Christian",
     "address": "1240 S Pulaski Rd, Chicago, IL 60623",
     "latitude": 41.86509907302276,
     "longitude": -87.7253150612635,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "Children of Peace Catholic School",
     "address": "1900 W Taylor St, Chicago, IL 60612",
     "latitude": 41.86930678235451,
     "longitude": -87.67401874687111,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "Good Shepherd Catholic School",
     "address": "3740 W Belden Ave, Chicago, IL 60647",
     "latitude": 41.92284661365967,
     "longitude": -87.72125136962586,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "Heritage Leadership Academy",
     "address": "1425 W 112th St, Chicago, IL 60643",
     "latitude": 41.69020418861042,
     "longitude": -87.65817324811326,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "Holy Angels Catholic School",
     "address": "750 E 40th St, Chicago, IL 60653",
     "latitude": 41.82177737243916,
     "longitude": -87.60787253153758,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "HOPE Excel Academy",
     "address": "4821 W Chicago Ave, Chicago, IL 60651",
     "latitude": 41.894896,
     "longitude": -87.74549,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "ICCI Academy",
     "address": "6435 W Belmont Ave, Chicago, IL 60634",
     "latitude": 41.93810741802481,
     "longitude": -87.78736727331244,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "ITA Village Leadership Academy - Bronzeville",
     "address": "4930 S Cottage Grove Ave, Chicago, IL 60615",
     "latitude": 41.80523129016831,
     "longitude": -87.60715604496299,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "ITA Village Leadership Academy - South Loop",
     "address": "800 S Wells St #90, Chicago, IL 60607",
     "latitude": 41.87143484065084,
     "longitude": -87.63429944848211,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "LYDIA Home",
     "address": "4300 W Irving Park Rd, Chicago, IL 60641",
     "latitude": 41.953988233459896,
     "longitude": -87.73599683478905,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "Oakdale Christian Academy",
     "address": "9440 S Vincennes Ave, Chicago, IL 60620",
     "latitude": 41.722330373877135,
     "longitude": -87.65084913969433,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "St. Ailbe School",
     "address": "9037 S Harper Ave, Chicago, IL 60619",
     "latitude": 41.7301655765595,
     "longitude": -87.58650416323124,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "St. Margaret of Scotland School",
     "address": "9833 S Throop St, Chicago, IL 60643",
     "latitude": 41.71524973597484,
     "longitude": -87.65400824456735,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "St. Paul Lutheran School",
     "address": "7621 S Dorchester Ave, Chicago, IL 60619",
     "latitude": 41.75633622477111,
     "longitude": -87.59027080184111,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "St. Philip Neri School",
     "address": "2110 E 72nd St, Chicago, IL 60649",
     "latitude": 41.764545187487215,
     "longitude": -87.57320183872568,
-    "radius": 500
+    "radius": 300
   },
   {
     "name": "St. Sabina Academy",
     "address": "7801 S Throop St, Chicago, IL 60620",
     "latitude": 41.751977338644906,
     "longitude": -87.65508849834059,
-    "radius": 500
+    "radius": 300
   }
 ]

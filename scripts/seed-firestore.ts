@@ -55,7 +55,7 @@ const seedSchools = async () => {
       name,
       address,
       gpsCoordinates: new GeoPoint(latitude, longitude),
-      radius: 100, // Default radius in meters
+      radius: 300, // Default radius in meters
     });
     console.log(`  - Queued school ${index + 1}/${schools.length}: ${name}`);
   });

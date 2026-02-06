@@ -99,7 +99,8 @@ class QueueManager {
   async checkIn(
     schoolId: string,
     userId: string,
-    location: { latitude: number; longitude: number; accuracy?: number }
+    location: { latitude: number; longitude: number; accuracy?: number },
+    distanceFromCenter?: number
   ): Promise<{
     success: boolean;
     actionId?: string;
@@ -118,12 +119,15 @@ class QueueManager {
           const startTimestamp = Timestamp.fromDate(startDate);
           const dayKey = getDayKey(startTimestamp);
 
+          // Use actual geofence distance if provided, fall back to accuracy
+          const distance = distanceFromCenter ?? location.accuracy ?? 0;
+
           const startSessionFn = httpsCallable(functions, "startSession");
           const response = await startSessionFn({
             locationId: schoolId,
             startTime: startDate.toISOString(),
             checkInMethod: "geo",
-            distanceFromCenterAtCheckIn: location.accuracy ?? 0,
+            distanceFromCenterAtCheckIn: distance,
             dayKey,
             checkInLocation: {
               latitude: location.latitude,
@@ -156,7 +160,7 @@ class QueueManager {
       }
 
       // Queue the action for offline processing
-      const actionId = await queueCheckIn(schoolId, userId, location);
+      const actionId = await queueCheckIn(schoolId, userId, location, distanceFromCenter);
 
       if (this.config.debugMode) {
         console.log("Check-in queued for offline processing:", actionId);

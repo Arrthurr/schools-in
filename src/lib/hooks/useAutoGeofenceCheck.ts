@@ -135,6 +135,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     locationId?: string;
   }>({});
 
+  // Ref that always holds the latest activeSession so long-lived closures
+  // (e.g. toast onClick handlers) can read the current value without stale capture.
+  const activeSessionRef = useRef(activeSession);
+  activeSessionRef.current = activeSession;
+
   const setLocationsIfChanged = useCallback(
     (next: Location[]) =>
       setAssignedLocations((prev) => {
@@ -163,7 +168,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         return activeLoc.radiusMeters;
       }
     }
-    return 100;
+    return 300;
   }, [activeSession, assignedLocations]);
 
   const computeAdaptivePollInterval = useCallback(() => {
@@ -1000,7 +1005,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                       latitude: current.latitude,
                       longitude: current.longitude,
                       accuracy: current.accuracy,
-                    });
+                    }, firstInsideDistance ?? undefined);
                     // Record check-in time for grace period and reset outsideStreak
                     // to prevent immediate auto-checkout due to GPS fluctuations
                     lastCheckInTimeRef.current = Date.now();
@@ -1069,6 +1074,78 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         setIsDocumentVisible(nowVisible);
 
         if (nowVisible) {
+          // "Still here?" prompt for long-running sessions when app regains visibility
+          if (activeSession && !activeCountdownRef.current) {
+            const startTime =
+              activeSession.startTime instanceof Date
+                ? activeSession.startTime
+                : activeSession.startTime?.toDate?.();
+            const checkInTime = activeSession.checkInTime
+              ? activeSession.checkInTime instanceof Date
+                ? activeSession.checkInTime
+                : activeSession.checkInTime?.toDate?.()
+              : null;
+            const sessionStart = checkInTime || startTime;
+            const STILL_HERE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+
+            if (
+              sessionStart &&
+              Date.now() - sessionStart.getTime() >= STILL_HERE_THRESHOLD_MS
+            ) {
+              const elapsedMin = Math.floor(
+                (Date.now() - sessionStart.getTime()) / 60000
+              );
+              const durationText = formatDuration(elapsedMin);
+              const activeLoc = assignedLocations.find(
+                (loc) => loc.id === activeSession.locationId
+              );
+              const locationName = activeLoc?.name || "your school";
+
+              // Capture session ID at toast creation time for the onClick handler
+              const capturedSessionId = activeSession.id;
+
+              toast({
+                title: "Still here?",
+                description: `You've been checked in at ${locationName} for ${durationText}. Dismiss to stay checked in.`,
+                duration: 30000,
+                action: React.createElement(
+                  ToastAction,
+                  {
+                    altText: "Check out now",
+                    onClick: async () => {
+                      // Guard: if the session was already checked out (e.g. via
+                      // main UI) while the toast was visible, bail out to avoid
+                      // a failed API call on a completed/missing session.
+                      const current = activeSessionRef.current;
+                      if (!current || current.id !== capturedSessionId) {
+                        appLogger.info(
+                          "Still-here checkout skipped: session already ended",
+                          { capturedSessionId }
+                        );
+                        return;
+                      }
+
+                      try {
+                        const loc = await locationService.getCurrentLocation(
+                          getLocationOptions()
+                        );
+                        await checkOut(capturedSessionId, {
+                          latitude: loc.latitude,
+                          longitude: loc.longitude,
+                          accuracy: loc.accuracy,
+                        });
+                        appLogger.info("Manual checkout from still-here prompt");
+                      } catch (err) {
+                        appLogger.warn("Checkout from still-here prompt failed", { err });
+                      }
+                    },
+                  },
+                  "Check Out"
+                ) as unknown as ToastActionElement,
+              });
+            }
+          }
+
           runPoll();
         }
       };

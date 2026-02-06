@@ -247,7 +247,8 @@ export async function queueAction(
 export async function queueCheckIn(
   schoolId: string,
   userId: string,
-  location: { latitude: number; longitude: number; accuracy?: number }
+  location: { latitude: number; longitude: number; accuracy?: number },
+  distanceFromCenter?: number
 ): Promise<string> {
   const payload = {
     schoolId,
@@ -256,6 +257,8 @@ export async function queueCheckIn(
       ...location,
       timestamp: Date.now(),
     },
+    // Persist actual geofence distance so syncCheckIn can use it on replay
+    distanceFromCenterAtCheckIn: distanceFromCenter ?? location.accuracy ?? 0,
     action: "check_in",
     timestamp: Date.now(),
   };
@@ -524,8 +527,8 @@ async function syncCheckIn(action: QueuedAction): Promise<boolean> {
       startTime: startDate.toISOString(),
       checkInMethod: "offline-sync",
       distanceFromCenterAtCheckIn:
-        payload.location?.accuracy ??
         payload.distanceFromCenterAtCheckIn ??
+        payload.location?.accuracy ??
         0,
       dayKey,
       checkInLocation: payload.location
