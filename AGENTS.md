@@ -23,14 +23,24 @@ Next.js 14 PWA with Firebase backend for school check-in/out via geofencing. Sta
 
 > **Critical**: Always run `npx tsc --noEmit` before committing. The `next build` command enforces type checking.
 
+## Key Business Constants
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| Default geofence radius | 300 m | `locationData.radiusMeters \|\| 300` |
+| Session timeout | 2 hours | Auto-closed by `cleanupStaleSessions` |
+| Timeout warning | 90 min | Push notification sent to user |
+| Cleanup schedule | Every 30 min | Scheduled Cloud Function |
+| Default timezone | America/Chicago | Used for `dayKey` generation |
+
 ## Static Export Constraint
 
 All routes must be compatible with `output: "export"` — no runtime server rendering.
 
 ## Domain-Specific Guides
 
-- [Architecture & Key Utilities](docs/agents/architecture.md) — project structure, services, hooks
-- [Code Style](docs/agents/code-style.md) — imports, components, naming
-- [Firebase](docs/agents/firebase.md) — emulators, deploy, rollback, rules
-- [PWA](docs/agents/pwa.md) — service worker, meta tags, capabilities
+- [Architecture & Key Utilities](docs/agents/architecture.md) — project structure, services, hooks, data model, cloud functions
+- [Code Style](docs/agents/code-style.md) — imports, components, naming, logging, patterns
+- [Firebase](docs/agents/firebase.md) — emulators, deploy, rollback, rules, collections, env vars
+- [PWA](docs/agents/pwa.md) — service worker, meta tags, capabilities, push notifications
 - [Testing](docs/agents/testing.md) — coverage requirements, test commands
