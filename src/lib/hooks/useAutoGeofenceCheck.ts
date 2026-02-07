@@ -1165,6 +1165,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               // Attach action after creation so the onClick can reference
               // the toast instance for dismissal (same pattern as countdown toast).
               stillHereToast.update({
+                id: stillHereToast.id,
                 action: React.createElement(
                   ToastAction,
                   {
