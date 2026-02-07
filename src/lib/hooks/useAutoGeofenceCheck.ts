@@ -1156,44 +1156,29 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               // Capture session ID at toast creation time for the onClick handler
               const capturedSessionId = visSession.id;
 
-              toast({
-                title: "Still here?",
-                description: `You've been checked in at ${locationName} for ${durationText}. Dismiss to stay checked in.`,
+              const stillHereToast = toast({
+                title: `Still at ${locationName}?`,
+                description: `You've been checked in for ${durationText}. If you've left, the app will check you out automatically.`,
                 duration: 30000,
+              });
+
+              // Attach action after creation so the onClick can reference
+              // the toast instance for dismissal (same pattern as countdown toast).
+              stillHereToast.update({
+                id: stillHereToast.id,
                 action: React.createElement(
                   ToastAction,
                   {
-                    altText: "Check out now",
-                    onClick: async () => {
-                      // Guard: if the session was already checked out (e.g. via
-                      // main UI) while the toast was visible, bail out to avoid
-                      // a failed API call on a completed/missing session.
-                      const current = activeSessionRef.current;
-                      if (!current || current.id !== capturedSessionId) {
-                        appLogger.info(
-                          "Still-here checkout skipped: session already ended",
-                          { capturedSessionId }
-                        );
-                        return;
-                      }
-
-                      try {
-                        const latestCtx = pollContextRef.current;
-                        const loc = await locationService.getCurrentLocation(
-                          latestCtx.getLocationOptions()
-                        );
-                        await latestCtx.checkOut(capturedSessionId, {
-                          latitude: loc.latitude,
-                          longitude: loc.longitude,
-                          accuracy: loc.accuracy,
-                        });
-                        appLogger.info("Manual checkout from still-here prompt");
-                      } catch (err) {
-                        appLogger.warn("Checkout from still-here prompt failed", { err });
-                      }
+                    altText: "Stay checked in",
+                    onClick: () => {
+                      stillHereToast.dismiss();
+                      appLogger.info(
+                        "Provider confirmed still here via still-here prompt",
+                        { sessionId: capturedSessionId }
+                      );
                     },
                   },
-                  "Check Out"
+                  "Stay Checked In"
                 ) as unknown as ToastActionElement,
               });
             }
