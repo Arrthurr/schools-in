@@ -743,18 +743,30 @@ exports.endSession = onCall(async (request: any) => {
           accuracy: data.checkOutLocation.accuracy || null,
         };
 
-        if (sessionData.geo) {
-          updateData.distanceFromCenterAtCheckOut = Math.round(
-            calculateDistance(
-              data.checkOutLocation.latitude,
-              data.checkOutLocation.longitude,
-              sessionData.geo.latitude,
-              sessionData.geo.longitude
-            )
+        // Look up the location document to get its geo coordinates.
+        // sessionData stores locationId, not the geo point itself.
+        if (sessionData.locationId) {
+          const locationDoc = await transaction.get(
+            db.collection("locations").doc(sessionData.locationId)
           );
+          const locationGeo = locationDoc.exists
+            ? locationDoc.data()?.geo
+            : null;
+
+          if (locationGeo) {
+            updateData.distanceFromCenterAtCheckOut = Math.round(
+              calculateDistance(
+                data.checkOutLocation.latitude,
+                data.checkOutLocation.longitude,
+                locationGeo.latitude,
+                locationGeo.longitude
+              )
+            );
+          }
         }
       }
 
+      // Client-provided distance as last-resort fallback
       if (
         updateData.distanceFromCenterAtCheckOut === undefined &&
         typeof data.distanceFromCenterAtCheckOut === "number"

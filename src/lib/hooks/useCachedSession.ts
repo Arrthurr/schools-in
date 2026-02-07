@@ -124,37 +124,53 @@ export function useCachedSession(userId: string | undefined) {
       realtimeUnsubscribe();
     }
 
-    // Subscribe to active sessions
+    // Subscribe to active AND paused sessions (matches useSession queries so
+    // both hooks agree on what counts as "current").
     const q = query(
       collection(db, COLLECTIONS.SESSIONS),
       where("userId", "==", userId),
-      where("status", "==", "active")
+      where("status", "in", ["active", "paused"]),
+      orderBy("startTime", "desc"),
+      limit(1)
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        let activeSession: Session | null = null;
+        let nextSession: Session | null = null;
 
         if (!snapshot.empty) {
-          const doc = snapshot.docs[0];
-          activeSession = {
-            id: doc.id,
-            ...doc.data(),
+          const d = snapshot.docs[0];
+          nextSession = {
+            id: d.id,
+            ...d.data(),
           } as Session;
 
           // Update cache with real-time data
           FirebaseCache.cacheSessionData(
             `active_session_${userId}`,
-            () => Promise.resolve(activeSession),
+            () => Promise.resolve(nextSession),
             { forceRefresh: true }
           );
         }
 
-        setState((prev) => ({
-          ...prev,
-          activeSession,
-        }));
+        // Only update state when the session meaningfully changed.
+        // This prevents new object references from cascading through
+        // every consumer on each Firestore snapshot event.
+        setState((prev) => {
+          const cur = prev.activeSession;
+          if (cur === nextSession) return prev;
+          if (
+            cur &&
+            nextSession &&
+            cur.id === nextSession.id &&
+            cur.status === nextSession.status &&
+            cur.locationId === nextSession.locationId
+          ) {
+            return prev; // Same session, no meaningful change
+          }
+          return { ...prev, activeSession: nextSession };
+        });
       },
       (error) => {
         console.error("Real-time session subscription error:", error);
@@ -167,13 +183,41 @@ export function useCachedSession(userId: string | undefined) {
 
     setRealtimeUnsubscribe(() => unsubscribe);
 
-    // Load initial data
-    loadSessions();
+    // NOTE: loadSessions() is intentionally NOT called here.  The onSnapshot
+    // listener is the single source of truth for activeSession.  Calling
+    // loadSessions() simultaneously caused a race where the one-time getDocs
+    // read could return stale cached data and overwrite the real-time value.
+    // Recent sessions are still loaded on mount via the separate useEffect
+    // in the loadSessions hook body (user?.uid dependency).
 
     return () => {
       unsubscribe();
     };
-  }, [userId, loadSessions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  // Load recent sessions on mount (separate from the real-time listener
+  // which only handles activeSession to avoid the race condition).
+  useEffect(() => {
+    if (!userId) return;
+
+    getCachedUserSessions(userId, { limit: 10 })
+      .then((recentSessionsData) => {
+        setState((prev) => ({
+          ...prev,
+          recentSessions: recentSessionsData,
+          loading: false,
+        }));
+      })
+      .catch((error) => {
+        console.error("Failed to load recent sessions:", error);
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: error instanceof Error ? error.message : "Failed to load sessions",
+        }));
+      });
+  }, [userId]);
 
   // Create new session with cache invalidation
   const createSession = useCallback(

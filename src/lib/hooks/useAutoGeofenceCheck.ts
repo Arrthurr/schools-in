@@ -693,6 +693,39 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     prevSessionIdRef.current = currentSessionId;
   }, [activeSession?.id]);
 
+  // ---------------------------------------------------------------------------
+  // Bundle frequently-changing values into a single ref so the polling effect
+  // can read the latest without listing them as dependencies (which would cause
+  // the effect to tear-down / re-create on every reference change, firing
+  // runPoll() each time and pumping outsideStreak during the grace period).
+  // ---------------------------------------------------------------------------
+  const pollContextRef = useRef({
+    activeSession,
+    assignedLocations,
+    checkIn,
+    checkOut,
+    pausedReason,
+    startCountdownToast,
+    handleGoodAccuracy,
+    handlePoorAccuracy,
+    getLocationOptions,
+    featureEnabled,
+    debouncePolls: DEBOUNCE_POLLS,
+  });
+  pollContextRef.current = {
+    activeSession,
+    assignedLocations,
+    checkIn,
+    checkOut,
+    pausedReason,
+    startCountdownToast,
+    handleGoodAccuracy,
+    handlePoorAccuracy,
+    getLocationOptions,
+    featureEnabled,
+    debouncePolls: DEBOUNCE_POLLS,
+  };
+
   // Core polling loop
   useEffect(() => {
     if (!prefEnabled || !featureEnabled) {
@@ -709,8 +742,12 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         return;
       }
 
+      // Read latest values from ref — avoids stale closures and keeps the
+      // dependency array of the enclosing effect small & stable.
+      const ctx = pollContextRef.current;
+
       pollInFlightRef.current = true;
-      if (!featureEnabled || document.visibilityState !== "visible") {
+      if (!ctx.featureEnabled || document.visibilityState !== "visible") {
         pollInFlightRef.current = false;
         return;
       }
@@ -718,7 +755,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
       const now = Date.now();
       setIsPolling(true);
       try {
-        const baseOptions = getLocationOptions();
+        const baseOptions = ctx.getLocationOptions();
         const current = await locationService.getBestEffortLocation({
           mode: "decision",
           initialOptions: baseOptions,
@@ -741,7 +778,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
           accuracyMeters <= ACCURACY_THRESHOLD_METERS;
 
         if (!actionableAccuracy) {
-          handlePoorAccuracy();
+          ctx.handlePoorAccuracy();
           setLastAccuracyMeters(accuracyMeters);
           // Still update last known location for visibility but skip decisions
           updateGeofenceUserLocation(current.latitude, current.longitude).catch(
@@ -750,7 +787,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
           setIsPolling(false);
           return;
         } else {
-          handleGoodAccuracy();
+          ctx.handleGoodAccuracy();
           setLastAccuracyMeters(accuracyMeters);
         }
 
@@ -761,7 +798,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
         // If previously paused but accuracy is now good, clear the pause.
         // Only bail out when still poor accuracy.
-        if (pausedReason) {
+        if (ctx.pausedReason) {
           if (actionableAccuracy) {
             setPausedReason(null);
           } else {
@@ -776,9 +813,13 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
         let closestDistance: number | null = null;
 
-        if (activeSession) {
-          const activeLoc = assignedLocations.find(
-            (loc) => loc.id === activeSession.locationId
+        // Read session & locations from context ref (latest values)
+        const session = ctx.activeSession;
+        const locations = ctx.assignedLocations;
+
+        if (session) {
+          const activeLoc = locations.find(
+            (loc) => loc.id === session.locationId
           );
           if (activeLoc) {
             const { distance, isWithinGeofence } = validateGeofence(
@@ -798,11 +839,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
             } else {
               outsideStreak.current += 1;
               setGeofenceState(
-                outsideStreak.current >= DEBOUNCE_POLLS ? "exiting" : "inside"
+                outsideStreak.current >= ctx.debouncePolls ? "exiting" : "inside"
               );
             }
 
-            if (outsideStreak.current >= DEBOUNCE_POLLS) {
+            if (outsideStreak.current >= ctx.debouncePolls) {
               // Skip checkout if within grace period after check-in
               // This prevents immediate auto-checkout due to GPS fluctuations
               const withinGracePeriod =
@@ -813,6 +854,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                   "Skipping auto checkout - within grace period after check-in",
                   { gracePeriodMs: CHECK_IN_GRACE_PERIOD_MS }
                 );
+                // Reset streak so it doesn't survive the grace period.
+                // Without this, the streak accumulated during the grace window
+                // would immediately trigger checkout once the window expires.
+                outsideStreak.current = 0;
                 setIsPolling(false);
                 pollInFlightRef.current = false;
                 return;
@@ -841,13 +886,13 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
               // Calculate session duration
               const startTime =
-                activeSession.startTime instanceof Date
-                  ? activeSession.startTime
-                  : activeSession.startTime.toDate();
-              const checkInTime = activeSession.checkInTime
-                ? activeSession.checkInTime instanceof Date
-                  ? activeSession.checkInTime
-                  : activeSession.checkInTime.toDate()
+                session.startTime instanceof Date
+                  ? session.startTime
+                  : session.startTime.toDate();
+              const checkInTime = session.checkInTime
+                ? session.checkInTime instanceof Date
+                  ? session.checkInTime
+                  : session.checkInTime.toDate()
                 : null;
               const sessionStart = checkInTime || startTime;
               const now = new Date();
@@ -861,7 +906,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                 distance,
                 durationMinutes,
               });
-              startCountdownToast({
+              ctx.startCountdownToast({
                 id: countdownKey,
                 title: "Auto check-out",
                 initialDescription: `Leaving ${activeLoc.name} • Session: ${durationText}`,
@@ -878,7 +923,8 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                 },
                 onConfirm: async () => {
                   try {
-                    await checkOut(activeSession.id, {
+                    // Read checkOut from ref so this closure is never stale
+                    await pollContextRef.current.checkOut(session.id, {
                       latitude: current.latitude,
                       longitude: current.longitude,
                       accuracy: current.accuracy,
@@ -898,7 +944,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
             }
           }
         } else {
-          for (const loc of assignedLocations) {
+          for (const loc of locations) {
             const { distance, isWithinGeofence } = validateGeofence(
               current.latitude,
               current.longitude,
@@ -920,7 +966,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         }
 
         // Handle check-in logic only when no active session
-        if (!activeSession && firstInside) {
+        if (!session && firstInside) {
           const withinCooldown =
             cancelledCheckIn.current[firstInside.id] &&
             Date.now() - cancelledCheckIn.current[firstInside.id] <
@@ -948,10 +994,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
             lastInsideUpdateRef.current = now;
 
             setGeofenceState(
-              insideStreak.current >= DEBOUNCE_POLLS ? "inside" : "entering"
+              insideStreak.current >= ctx.debouncePolls ? "inside" : "entering"
             );
 
-            if (insideStreak.current >= DEBOUNCE_POLLS) {
+            if (insideStreak.current >= ctx.debouncePolls) {
               const countdownKey = `checkin-${firstInside.id}`;
 
               // Atomic check-and-set to prevent race condition with overlapping polls
@@ -984,7 +1030,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                 distance: distanceMeters,
               });
 
-              startCountdownToast({
+              ctx.startCountdownToast({
                 id: countdownKey,
                 title: "Auto check-in",
                 initialDescription: `Arrived at ${firstInside.name} • ${distanceText} away`,
@@ -1001,7 +1047,8 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                 },
                 onConfirm: async () => {
                   try {
-                    await checkIn(firstInside!.id, {
+                    // Read checkIn from ref so this closure is never stale
+                    await pollContextRef.current.checkIn(firstInside!.id, {
                       latitude: current.latitude,
                       longitude: current.longitude,
                       accuracy: current.accuracy,
@@ -1026,7 +1073,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
           }
         }
 
-        if (!firstInside && !activeSession) {
+        if (!firstInside && !session) {
           if (closestDistance !== null) {
             setLastDistanceMeters(closestDistance);
           }
@@ -1056,6 +1103,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
     // Expose runPoll via ref so SW listener can trigger it
     runPollRef.current = runPoll;
+
     runPoll();
 
     // Set up interval polling using adaptive interval
@@ -1075,15 +1123,18 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
 
         if (nowVisible) {
           // "Still here?" prompt for long-running sessions when app regains visibility
-          if (activeSession && !activeCountdownRef.current) {
+          // Always read from ref — the visibility handler outlives the effect
+          // closure when only the interval changes.
+          const visSession = activeSessionRef.current;
+          if (visSession && !activeCountdownRef.current) {
             const startTime =
-              activeSession.startTime instanceof Date
-                ? activeSession.startTime
-                : activeSession.startTime?.toDate?.();
-            const checkInTime = activeSession.checkInTime
-              ? activeSession.checkInTime instanceof Date
-                ? activeSession.checkInTime
-                : activeSession.checkInTime?.toDate?.()
+              visSession.startTime instanceof Date
+                ? visSession.startTime
+                : visSession.startTime?.toDate?.();
+            const checkInTime = visSession.checkInTime
+              ? visSession.checkInTime instanceof Date
+                ? visSession.checkInTime
+                : visSession.checkInTime?.toDate?.()
               : null;
             const sessionStart = checkInTime || startTime;
             const STILL_HERE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
@@ -1096,13 +1147,14 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                 (Date.now() - sessionStart.getTime()) / 60000
               );
               const durationText = formatDuration(elapsedMin);
-              const activeLoc = assignedLocations.find(
-                (loc) => loc.id === activeSession.locationId
+              const visLocations = pollContextRef.current.assignedLocations;
+              const activeLoc = visLocations.find(
+                (loc) => loc.id === visSession.locationId
               );
               const locationName = activeLoc?.name || "your school";
 
               // Capture session ID at toast creation time for the onClick handler
-              const capturedSessionId = activeSession.id;
+              const capturedSessionId = visSession.id;
 
               toast({
                 title: "Still here?",
@@ -1126,10 +1178,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                       }
 
                       try {
+                        const latestCtx = pollContextRef.current;
                         const loc = await locationService.getCurrentLocation(
-                          getLocationOptions()
+                          latestCtx.getLocationOptions()
                         );
-                        await checkOut(capturedSessionId, {
+                        await latestCtx.checkOut(capturedSessionId, {
                           latitude: loc.latitude,
                           longitude: loc.longitude,
                           accuracy: loc.accuracy,
@@ -1160,18 +1213,19 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         document.removeEventListener("visibilitychange", visibilityHandler);
       }
     };
+    // IMPORTANT: activeSession, checkIn, checkOut, and callback deps are
+    // intentionally read from pollContextRef inside runPoll so they do NOT
+    // appear here.  This prevents the effect from tearing-down / re-creating
+    // (and firing an immediate runPoll) every time a Firestore snapshot
+    // delivers a new activeSession object reference.
+    //
+    // assignedLocations is kept here because it only changes when locations
+    // are first loaded or actually change (guarded by setLocationsIfChanged).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     prefEnabled,
     featureEnabled,
     assignedLocations,
-    activeSession,
-    checkIn,
-    checkOut,
-    pausedReason,
-    startCountdownToast,
-    handleGoodAccuracy,
-    handlePoorAccuracy,
-    getLocationOptions,
     clearPollTimer,
     clearCountdowns,
     adaptivePollIntervalMs,
