@@ -914,8 +914,8 @@ exports.cleanupStaleSessions = onSchedule(
                 : 90;
 
             const success = await sendPushNotification(subscription, {
-              title: "Check-out reminder",
-              body: `You've been checked in for ${elapsedMin}+ minutes. Open the app to check out before your session times out.`,
+              title: "Still at the school?",
+              body: `Your session has been active for ${elapsedMin}+ minutes. Open the app to update your status before it times out.`,
               data: {
                 type: "session-timeout-warning",
                 sessionId,
