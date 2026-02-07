@@ -295,23 +295,15 @@ export const useSession = (): UseSessionReturn => {
     }
   }, [user?.uid, loadSessions]);
 
-  // Real-time active/paused session listener to keep currentSession in sync
-  // The primary (new-schema) listener is authoritative. The legacy listener only
-  // fills in if the primary found nothing, preventing flickering between null
-  // and a session when both fire in quick succession.
+  // Real-time active/paused session listener to keep currentSession in sync.
+  // Uses a single query on the `status` field.  The legacy `active == true`
+  // listener has been removed to cut the number of Firestore subscriptions
+  // in half (each useSession() call was creating two subscriptions).
   useEffect(() => {
     if (!user?.uid) {
       setCurrentSession(null);
       return;
     }
-
-    // Track whether each listener has found an active session.
-    // Both flags are read inside the setTimeout callback so the timeout
-    // only clears currentSession when *neither* listener has a session.
-    let primaryHasSession = false;
-    let legacyHasSession = false;
-    let pendingNullTimeout: ReturnType<typeof setTimeout> | null = null;
-    let cancelled = false;
 
     const activeQ = query(
       collection(db, COLLECTIONS.SESSIONS),
@@ -321,31 +313,11 @@ export const useSession = (): UseSessionReturn => {
       limit(1)
     );
 
-    const legacyQ = query(
-      collection(db, COLLECTIONS.SESSIONS),
-      where("userId", "==", user.uid),
-      where("active", "==", true),
-      orderBy("startTime", "desc"),
-      limit(1)
-    );
-
-    const unsubNew = onSnapshot(activeQ, (snap) => {
+    const unsub = onSnapshot(activeQ, (snap) => {
       if (snap.empty) {
-        primaryHasSession = false;
-        // Don't immediately null out -- let legacy listener fill in if applicable.
-        // Use a short delay so the legacy listener has a chance to fire first.
-        if (pendingNullTimeout !== null) clearTimeout(pendingNullTimeout);
-        pendingNullTimeout = setTimeout(() => {
-          pendingNullTimeout = null;
-          // Only clear if neither listener has found a session by the time
-          // this callback runs AND the effect hasn't been cleaned up.
-          if (!cancelled && !primaryHasSession && !legacyHasSession) {
-            setCurrentSession(null);
-          }
-        }, 100);
+        setCurrentSession(null);
         return;
       }
-      primaryHasSession = true;
       const d = snap.docs[0];
       const data = d.data() as any;
       const session: SessionData = {
@@ -355,32 +327,8 @@ export const useSession = (): UseSessionReturn => {
       setCurrentSession(session);
     });
 
-    const unsubLegacy = onSnapshot(legacyQ, (snap) => {
-      legacyHasSession = !snap.empty;
-      if (!snap.empty) {
-        const d = snap.docs[0];
-        const data = d.data() as any;
-        const session: SessionData = {
-          id: d.id,
-          ...(data as SessionData),
-          status: "active",
-        };
-        // Only set from legacy if primary hasn't already found a session
-        setCurrentSession((curr) => {
-          if (primaryHasSession) return curr;
-          return curr ?? session;
-        });
-      }
-    });
-
     return () => {
-      cancelled = true;
-      if (pendingNullTimeout !== null) {
-        clearTimeout(pendingNullTimeout);
-        pendingNullTimeout = null;
-      }
-      unsubNew();
-      unsubLegacy();
+      unsub();
     };
   }, [user?.uid]);
 
