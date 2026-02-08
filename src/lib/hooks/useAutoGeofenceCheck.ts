@@ -75,6 +75,7 @@ const POOR_ACCURACY_LIMIT = 3;
 const COUNTDOWN_MS = 15_000;
 const CANCEL_COOLDOWN_MS = 5 * 60_000;
 const CHECK_IN_GRACE_PERIOD_MS = 60_000; // 60 seconds grace period after check-in
+const SESSION_LIMIT_MS = 2 * 60 * 60 * 1000; // 2 hours — matches cleanupStaleSessions timeout
 const FEATURE_FLAG = process.env.NEXT_PUBLIC_FEATURE_AUTO_GEOFENCE !== "false";
 export function useAutoGeofenceCheck(): AutoGeofenceState {
   const { user } = useCachedAuth();
@@ -139,6 +140,20 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   // (e.g. toast onClick handlers) can read the current value without stale capture.
   const activeSessionRef = useRef(activeSession);
   activeSessionRef.current = activeSession;
+
+  // Ref to the "still here?" / "Auto Check-out Alert" toast so it can be
+  // reactively dismissed when the Firestore listener reports the session ended.
+  const stillHereToastRef = useRef<ReturnType<typeof toast> | null>(null);
+
+  // Dismiss the "Auto Check-out Alert" toast when the Firestore real-time
+  // listener delivers an update showing the session is no longer active
+  // (e.g. closed by cleanupStaleSessions while the app was backgrounded).
+  useEffect(() => {
+    if (!activeSession && stillHereToastRef.current) {
+      stillHereToastRef.current.dismiss();
+      stillHereToastRef.current = null;
+    }
+  }, [activeSession]);
 
   const setLocationsIfChanged = useCallback(
     (next: Location[]) =>
@@ -1139,13 +1154,19 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
             const sessionStart = checkInTime || startTime;
             const STILL_HERE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
 
+            const elapsedMs = sessionStart
+              ? Date.now() - sessionStart.getTime()
+              : 0;
+
+            // Skip the toast entirely if the session is past the cleanup
+            // threshold — it has either already been auto-closed or will be
+            // imminently.  Showing a stale duration would be misleading.
             if (
               sessionStart &&
-              Date.now() - sessionStart.getTime() >= STILL_HERE_THRESHOLD_MS
+              elapsedMs >= STILL_HERE_THRESHOLD_MS &&
+              elapsedMs < SESSION_LIMIT_MS
             ) {
-              const elapsedMin = Math.floor(
-                (Date.now() - sessionStart.getTime()) / 60000
-              );
+              const elapsedMin = Math.floor(elapsedMs / 60000);
               const durationText = formatDuration(elapsedMin);
               const visLocations = pollContextRef.current.assignedLocations;
               const activeLoc = visLocations.find(
@@ -1157,10 +1178,15 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               const capturedSessionId = visSession.id;
 
               const stillHereToast = toast({
-                title: `Still at ${locationName}?`,
-                description: `You've been checked in for ${durationText}. If you've left, the app will check you out automatically.`,
+                title: "Auto Check-out Alert",
+                description: `You've been checked in at ${locationName} for ${durationText}. If you've left, the app will check you out automatically.`,
                 duration: 30000,
               });
+
+              // Store ref so the reactive effect can dismiss it if the
+              // Firestore listener reports the session ended while the
+              // toast is still visible.
+              stillHereToastRef.current = stillHereToast;
 
               // Attach action after creation so the onClick can reference
               // the toast instance for dismissal (same pattern as countdown toast).
@@ -1169,16 +1195,17 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
                 action: React.createElement(
                   ToastAction,
                   {
-                    altText: "Stay checked in",
+                    altText: "Dismiss",
                     onClick: () => {
                       stillHereToast.dismiss();
+                      stillHereToastRef.current = null;
                       appLogger.info(
                         "Provider confirmed still here via still-here prompt",
                         { sessionId: capturedSessionId }
                       );
                     },
                   },
-                  "Stay Checked In"
+                  "Dismiss"
                 ) as unknown as ToastActionElement,
               });
             }
