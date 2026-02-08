@@ -196,6 +196,12 @@ function toDate(ts: any): Date {
 }
 
 function computeDurationMinutes(s: any): number | undefined {
+  // Prefer the authoritative durationMinutes field set by Cloud Functions
+  if (typeof s.durationMinutes === "number" && s.durationMinutes >= 0) {
+    return s.durationMinutes;
+  }
+
+  // Fall back to timestamp arithmetic for legacy data
   const start = s.startTime || s.checkInTime;
   const end = s.endTime || s.checkOutTime;
   if (!start || !end) return undefined;

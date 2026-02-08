@@ -423,7 +423,8 @@ export function SessionManagement() {
                           ? formatDuration(
                               calculateSessionDuration(
                                 session.checkInTime,
-                                session.checkOutTime
+                                session.checkOutTime,
+                                session.durationMinutes
                               )
                             )
                           : formatDuration(
@@ -556,7 +557,8 @@ export function SessionManagement() {
                           ? formatDuration(
                               calculateSessionDuration(
                                 session.checkInTime,
-                                session.checkOutTime
+                                session.checkOutTime,
+                                session.durationMinutes
                               )
                             )
                           : formatDuration(
