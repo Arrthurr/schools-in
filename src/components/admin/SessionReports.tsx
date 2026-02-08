@@ -221,6 +221,9 @@ export function SessionReports() {
       );
 
       const totalDuration = completedSessions.reduce((sum, session) => {
+        if (typeof session.durationMinutes === "number" && session.durationMinutes >= 0) {
+          return sum + session.durationMinutes;
+        }
         if (session.checkInTime && session.checkOutTime) {
           const duration = Math.round(
             (session.checkOutTime.toMillis() - session.checkInTime.toMillis()) /
@@ -322,9 +325,9 @@ export function SessionReports() {
       session.checkOutTime
         ? new Date(session.checkOutTime.toDate()).toLocaleString()
         : "N/A",
-      session.checkInTime && session.checkOutTime
+      session.checkInTime && (session.checkOutTime || (typeof session.durationMinutes === "number" && session.durationMinutes >= 0))
         ? formatDuration(
-            calculateSessionDuration(session.checkInTime, session.checkOutTime)
+            calculateSessionDuration(session.checkInTime, session.checkOutTime, session.durationMinutes)
           )
         : "N/A",
       getSessionStatusConfig(session.status).label,
@@ -636,13 +639,15 @@ export function SessionReports() {
                 <TableBody>
                   {sessions.map((session) => {
                     const duration =
-                      session.checkInTime && session.checkOutTime
-                        ? Math.round(
-                            (session.checkOutTime.toMillis() -
-                              session.checkInTime.toMillis()) /
-                              (1000 * 60)
-                          )
-                        : 0;
+                      typeof session.durationMinutes === "number" && session.durationMinutes >= 0
+                        ? session.durationMinutes
+                        : session.checkInTime && session.checkOutTime
+                          ? Math.round(
+                              (session.checkOutTime.toMillis() -
+                                session.checkInTime.toMillis()) /
+                                (1000 * 60)
+                            )
+                          : 0;
 
                     const statusStyle = getSessionStatusConfig(session.status);
 

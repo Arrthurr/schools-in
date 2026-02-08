@@ -14,6 +14,7 @@ export interface SessionData {
   checkOutLocation?: Coordinates;
   status: "active" | "completed" | "error" | "paused" | "cancelled";
   duration?: number;
+  durationMinutes?: number;
   notes?: string;
   checkInMethod?: "geo" | "manual" | "offline-sync";
   distanceFromCenterAtCheckIn?: number;
@@ -27,11 +28,19 @@ export interface SessionData {
   adminReviewedBy?: string;
 }
 
-// Calculate session duration in minutes
+// Calculate session duration in minutes.
+// Prefers the authoritative `durationMinutes` field when available (set by
+// Cloud Functions on check-out or stale-session cleanup) and falls back to
+// timestamp arithmetic only when `durationMinutes` is not provided.
 export const calculateSessionDuration = (
   checkInTime: Timestamp,
-  checkOutTime?: Timestamp
+  checkOutTime?: Timestamp,
+  durationMinutes?: number
 ): number => {
+  if (typeof durationMinutes === "number" && durationMinutes >= 0) {
+    return durationMinutes;
+  }
+
   if (!checkOutTime) return 0;
 
   const checkInMs = checkInTime.toMillis();

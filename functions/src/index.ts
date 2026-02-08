@@ -1045,8 +1045,8 @@ exports.cleanupStaleSessions = onSchedule(
         batch.update(sessionRef, {
           status: "error",
           active: false, // Ensures legacy listener drops the session
-          endTime: cutoff, // Primary end time field
-          checkOutTime: cutoff, // Legacy compatibility
+          endTime: updateTime, // Actual time the session was terminated by cleanup
+          checkOutTime: updateTime, // Legacy compatibility
           durationMinutes: actualDurationMinutes, // Actual elapsed duration in minutes
           notes: "Session automatically closed due to timeout.",
           updatedAt: updateTime, // Track update time
