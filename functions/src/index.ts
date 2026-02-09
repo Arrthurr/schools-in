@@ -4,168 +4,23 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as nodemailer from "nodemailer";
-import * as webpush from "web-push";
+
+import {
+  calculateDistance,
+  requireAuth,
+  isAdminGroup,
+  getM365AccessToken,
+  getUserM365Groups,
+  initializeWebPush,
+  sendPushNotification,
+  PRODUCTION_CONFIG,
+  SESSION_LIMIT_MS,
+  RECENTLY_CREATED_GRACE_MS,
+  type SyncResult,
+  type PushSubscription,
+} from "./utils";
 
 admin.initializeApp();
-
-// ============================================================================
-// Microsoft 365 Group Sync Configuration
-// ============================================================================
-// These values should be set via Firebase Functions config or environment secrets:
-// firebase functions:secrets:set MS_TENANT_ID
-// firebase functions:secrets:set MS_CLIENT_ID
-// firebase functions:secrets:set MS_CLIENT_SECRET
-// firebase functions:secrets:set DMDL_OFFICE_GROUP_ID (optional, preferred)
-// firebase functions:secrets:set DMDL_OFFICE_GROUP_NAME (default: "DMDL Office")
-// ============================================================================
-
-const DEFAULT_ADMIN_GROUP_NAME = "DMDL Office";
-
-interface M365Group {
-  id: string;
-  displayName: string;
-}
-
-interface SyncResult {
-  role: "admin" | "provider";
-  assignedLocations: Array<{ id: string; name: string }>;
-  removedLocations: Array<{ id: string; name: string }>;
-  groupsFound: string[];
-  alreadySynced?: boolean;
-}
-
-function getAdminGroupConfig() {
-  return {
-    adminGroupId: process.env.DMDL_OFFICE_GROUP_ID?.toLowerCase(),
-    adminGroupName: (
-      process.env.DMDL_OFFICE_GROUP_NAME || DEFAULT_ADMIN_GROUP_NAME
-    ).toLowerCase(),
-  };
-}
-
-function isAdminGroup(group: M365Group): boolean {
-  const { adminGroupId, adminGroupName } = getAdminGroupConfig();
-  const byId = adminGroupId && group.id?.toLowerCase() === adminGroupId;
-  const byName =
-    group.displayName && group.displayName.toLowerCase() === adminGroupName;
-  return Boolean(byId || byName);
-}
-
-function requireAuth(request: any): { uid: string; email: string } {
-  const { auth, data } = request;
-  if (!auth) {
-    throw new HttpsError("unauthenticated", "Authentication required");
-  }
-  const emailFromData =
-    typeof data?.email === "string" ? data.email.trim() : undefined;
-  const email = emailFromData || auth.token.email;
-  if (!email) {
-    throw new HttpsError(
-      "failed-precondition",
-      "User email not available in authentication token"
-    );
-  }
-  return { uid: auth.uid, email };
-}
-
-/**
- * Acquire an app-only access token from Microsoft Identity Platform
- * using client credentials flow
- */
-async function getM365AccessToken(): Promise<string> {
-  const tenantId = process.env.MS_TENANT_ID;
-  const clientId = process.env.MS_CLIENT_ID;
-  const clientSecret = process.env.MS_CLIENT_SECRET;
-
-  if (!tenantId || !clientId || !clientSecret) {
-    throw new HttpsError(
-      "failed-precondition",
-      "Microsoft 365 configuration missing. Ensure MS_TENANT_ID, MS_CLIENT_ID, and MS_CLIENT_SECRET are set."
-    );
-  }
-
-  const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
-
-  const params = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    scope: "https://graph.microsoft.com/.default",
-    grant_type: "client_credentials",
-  });
-
-  const response = await fetch(tokenUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    logger.error("Failed to acquire M365 access token:", errorText);
-    throw new HttpsError(
-      "internal",
-      `Failed to acquire M365 access token: ${response.status}`
-    );
-  }
-
-  const data = await response.json();
-  return data.access_token;
-}
-
-/**
- * Fetch all groups a user is a member of from Microsoft Graph
- */
-async function getUserM365Groups(
-  accessToken: string,
-  userEmail: string
-): Promise<M365Group[]> {
-  const groups: M365Group[] = [];
-
-  // Use the user's email (UPN) to query their group membership
-  let url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(
-    userEmail
-  )}/memberOf?$select=id,displayName&$top=100`;
-
-  while (url) {
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error(`Failed to fetch user groups for ${userEmail}:`, errorText);
-      throw new HttpsError(
-        "internal",
-        `Failed to fetch user groups: ${response.status}`
-      );
-    }
-
-    const data = await response.json();
-
-    // Filter to only include groups (not other directory objects like roles)
-    for (const item of data.value || []) {
-      if (
-        item["@odata.type"] === "#microsoft.graph.group" &&
-        item.displayName
-      ) {
-        groups.push({
-          id: item.id,
-          displayName: item.displayName,
-        });
-      }
-    }
-
-    // Handle pagination
-    url = data["@odata.nextLink"] || null;
-  }
-
-  return groups;
-}
 
 /**
  * Sync user role and school assignments from Microsoft 365 groups
@@ -388,44 +243,8 @@ exports.requestM365Resync = onCall(async (request: any) => {
   return { success: true };
 });
 
-// Production configuration
-const _PRODUCTION_CONFIG = {
-  sessionTimeoutHours: 2,
-  cleanupIntervalHours: 1,
-  maxBatchSize: 500,
-  performanceThresholds: {
-    queryTimeMs: 1000,
-    batchTimeMs: 5000,
-  },
-};
-
-const sessionLimitInMs =
-  _PRODUCTION_CONFIG.sessionTimeoutHours * 60 * 60 * 1000;
-
-/**
- * Calculate distance between two coordinates using Haversine formula
- * @returns Distance in meters
- */
-function calculateDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371000; // Earth's radius in meters
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
+// Use imported constants from utils.ts
+const sessionLimitInMs = SESSION_LIMIT_MS;
 
 // Callable function to start a session with atomic checks
 // Supports role-based check-in methods:
@@ -800,9 +619,7 @@ exports.endSession = onCall(async (request: any) => {
   }
 });
 
-// Grace period for recently-synced offline sessions (15 minutes)
-// Sessions created via offline sync have backdated checkInTime but recent createdAt
-const RECENTLY_CREATED_GRACE_MS = 15 * 60 * 1000;
+// RECENTLY_CREATED_GRACE_MS imported from ./utils
 
 exports.cleanupStaleSessions = onSchedule(
   {
@@ -830,13 +647,13 @@ exports.cleanupStaleSessions = onSchedule(
         .where("status", "in", ["active", "paused"])
         .where("checkInTime", "<", warningCutoff)
         .where("checkInTime", ">=", cutoff)
-        .limit(_PRODUCTION_CONFIG.maxBatchSize);
+        .limit(PRODUCTION_CONFIG.maxBatchSize);
 
       const warnByStartTime = sessionsRef
         .where("status", "in", ["active", "paused"])
         .where("startTime", "<", warningCutoff)
         .where("startTime", ">=", cutoff)
-        .limit(_PRODUCTION_CONFIG.maxBatchSize);
+        .limit(PRODUCTION_CONFIG.maxBatchSize);
 
       const [warnCheckInSnap, warnStartSnap] = await Promise.all([
         warnByCheckInTime.get(),
@@ -953,13 +770,13 @@ exports.cleanupStaleSessions = onSchedule(
       const staleByCheckInTime = sessionsRef
         .where("status", "in", ["active", "paused"])
         .where("checkInTime", "<", cutoff)
-        .limit(_PRODUCTION_CONFIG.maxBatchSize);
+        .limit(PRODUCTION_CONFIG.maxBatchSize);
 
       // Fallback query for sessions with only startTime (sessions created via useCachedSession)
       const staleByStartTime = sessionsRef
         .where("status", "in", ["active", "paused"])
         .where("startTime", "<", cutoff)
-        .limit(_PRODUCTION_CONFIG.maxBatchSize);
+        .limit(PRODUCTION_CONFIG.maxBatchSize);
 
       // Legacy query for sessions with active: true (older schema)
       const legacyStale = sessionsRef
@@ -1610,119 +1427,7 @@ View in Admin Console: ${feedbackUrl}
   }
 );
 
-// ============================================================================
-// Push Notification Functions for Geofence Reminders
-// ============================================================================
-// These functions send push notifications to users who have subscribed
-// for geofence check-in/out reminders (for platforms without background sync)
-// ============================================================================
-
-interface PushSubscription {
-  endpoint: string;
-  expirationTime: number | null;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-  platform: string;
-  userAgent: string;
-}
-
-/**
- * Initialize web-push with VAPID keys
- */
-function initializeWebPush() {
-  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
-  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-  let vapidEmail = (
-    process.env.VAPID_EMAIL || "mailto:admin@schools-in-check.web.app"
-  ).trim();
-
-  // Ensure VAPID email is a valid URL (mailto: or https://)
-  if (!vapidEmail) {
-    logger.warn(
-      "VAPID email not configured. Push notifications will not work."
-    );
-    return false;
-  }
-
-  const vapidEmailLower = vapidEmail.toLowerCase();
-  if (
-    !vapidEmailLower.startsWith("mailto:") &&
-    !vapidEmailLower.startsWith("https://")
-  ) {
-    // Assume it's an email address and prepend mailto:
-    if (vapidEmail.includes("@")) {
-      vapidEmail = `mailto:${vapidEmail}`;
-    } else {
-      logger.warn(
-        "VAPID email is not a valid URL or email. Push notifications will not work."
-      );
-      return false;
-    }
-  }
-
-  if (!vapidPublicKey || !vapidPrivateKey) {
-    logger.warn("VAPID keys not configured. Push notifications will not work.");
-    return false;
-  }
-
-  try {
-    webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
-    return true;
-  } catch (error) {
-    logger.warn(
-      "Invalid VAPID configuration. Push notifications will not work.",
-      {
-        error,
-      }
-    );
-    return false;
-  }
-}
-
-/**
- * Send a push notification to a specific subscription
- */
-async function sendPushNotification(
-  subscription: PushSubscription,
-  payload: { title: string; body: string; data?: Record<string, any> }
-): Promise<boolean> {
-  try {
-    const pushSubscription = {
-      endpoint: subscription.endpoint,
-      keys: {
-        p256dh: subscription.keys.p256dh,
-        auth: subscription.keys.auth,
-      },
-    };
-
-    await webpush.sendNotification(
-      pushSubscription,
-      JSON.stringify({
-        title: payload.title,
-        body: payload.body,
-        icon: "/icons/icon-192x192.png",
-        badge: "/icons/icon-72x72.png",
-        tag: "schools-in-notification",
-        requireInteraction: true,
-        data: payload.data || {},
-      })
-    );
-
-    return true;
-  } catch (error: any) {
-    // Handle expired or invalid subscriptions
-    if (error.statusCode === 410 || error.statusCode === 404) {
-      logger.info("Push subscription expired or invalid", {
-        endpoint: subscription.endpoint,
-      });
-      return false;
-    }
-    logger.error("Failed to send push notification", { error });
-    return false;
-  }
-}
+// Push notification helpers imported from ./utils
 
 /**
  * Callable function to register VAPID public key (for client to fetch)

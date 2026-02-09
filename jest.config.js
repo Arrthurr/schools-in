@@ -27,24 +27,26 @@ const config = {
   ],
 
   // Coverage settings
+  //
+  // POLICY: every file with a corresponding .test file is measured.
+  // Only exclude files that (a) have NO tests AND (b) fall into an
+  // infrastructure / generated / E2E-only category.
   collectCoverageFrom: [
     "src/**/*.{js,jsx,ts,tsx}",
     "!src/**/*.d.ts",
     "!src/**/*.stories.{js,jsx,ts,tsx}",
     "!src/**/index.{js,jsx,ts,tsx}",
-    // Exclude Next.js instrumentation hook file (runtime wiring; not meaningfully unit-testable)
+
+    // Runtime wiring — not meaningfully unit-testable
     "!src/instrumentation.ts",
-    // Exclude infrastructure, generated UI primitives, and legacy/offline
-    // code paths that are not part of the current runtime surface. This keeps
-    // coverage focused on the authenticated app flows we ship.
+
+    // Infrastructure & plumbing (no unit tests; covered by E2E / integration)
     "!src/lib/deployment/**",
     "!src/lib/offline/**",
     "!src/lib/performance/**",
-    // Browser-only / integration-heavy code (maps + PWA) is covered by E2E rather than unit tests
-    "!src/components/maps/**",
     "!src/lib/pwa/**",
     "!src/lib/testing/**",
-    "!src/lib/cache/cacheInitializer.ts",
+    "!src/lib/logging/**",
     "!src/lib/cache/**",
     "!src/lib/firebase/productionConfig.ts",
     "!src/lib/firebase/types.ts",
@@ -54,8 +56,19 @@ const config = {
     "!src/lib/utils/imagePreloader.ts",
     "!src/lib/utils/environmentValidator.ts",
     "!src/lib/utils/dateTime.ts",
-    "!src/lib/logging/**",
-    "!src/lib/services/**",
+
+    // Services without test coverage (remove as tests are added)
+    "!src/lib/services/cachedSchoolService.ts",
+    "!src/lib/services/cachedUserService.ts",
+    "!src/lib/services/reportScheduleService.ts",
+    "!src/lib/services/scheduleService.ts",
+    "!src/lib/services/schoolService.ts",
+    "!src/lib/services/serviceManager.ts",
+    "!src/lib/services/serviceService.ts",
+    "!src/lib/services/userPreferences.ts",
+    "!src/lib/services/userService.ts",
+
+    // Hooks without test coverage
     "!src/lib/hooks/useAdminMetrics.ts",
     "!src/lib/hooks/useAutoCheckoutReminder.ts",
     "!src/lib/hooks/useCache.ts",
@@ -65,57 +78,45 @@ const config = {
     "!src/lib/hooks/useLazyLoading.ts",
     "!src/lib/hooks/useNetworkStatus.ts",
     "!src/lib/hooks/useOffline.ts",
-    "!src/lib/hooks/useSession.ts",
+    "!src/lib/hooks/useActiveSessions.ts",
+    "!src/lib/hooks/useAsyncError.tsx",
+    "!src/lib/hooks/useLocation.ts",
+
+    // Generated UI primitives (shadcn/ui)
     "!src/components/ui/**",
+
+    // Layout wrappers (thin composition, covered by E2E)
     "!src/components/layout/**",
+
+    // Components without test coverage
     "!src/components/provider/ProviderDashboardCards.tsx",
     "!src/components/provider/AuthProvider.tsx",
     "!src/components/schedules/**",
     "!src/components/pwa/OfflineQueue.tsx",
     "!src/components/pwa/PWAUpdatePrompt.tsx",
-    "!src/components/offline/**",
-    "!src/components/admin/**",
-    "!src/components/layout/ClientLayout.tsx",
     "!src/components/dashboard/DashboardShell.tsx",
-    "!src/components/demo/**",
-    "!src/lib/hooks/useActiveSessions.ts",
-    "!src/lib/hooks/useCachedAuth.ts",
-    "!src/lib/hooks/useOfflineQueue.ts",
-    "!src/lib/hooks/useProviderMetrics.ts",
-    "!src/lib/hooks/useStartupLogging.ts",
-    "!src/lib/hooks/useAsyncError.tsx",
-    "!src/lib/hooks/useLocation.ts",
-    "!src/lib/utils/geo.ts",
-    "!src/app/**",
-    "!src/components/common/**",
-    "!src/components/common/NetworkStatusIndicator.tsx",
-    "!src/components/admin/SessionReports.tsx",
-    "!src/components/admin/UserForm.tsx",
     "!src/components/dashboard/StatCard.tsx",
-    "!src/components/feedback/**",
-    "!src/components/provider/CheckInButton.tsx",
-    "!src/components/provider/SchoolList.tsx",
-    "!src/components/provider/SessionHistory.tsx",
-    "!src/components/provider/SessionStatus.tsx",
-    "!src/components/auth/ProtectedRoute.tsx",
-    "!src/components/ui/slider.tsx",
-    "!src/components/ui/switch.tsx",
-    "!src/components/ui/tabs.tsx",
-    "!src/components/ui/theme-provider.tsx",
-    "!src/components/ui/theme-toggle.tsx",
-    "!src/components/ui/toaster.tsx",
-    "!src/components/ui/use-toast.ts",
-    "!src/components/ui/skeleton.tsx",
+    "!src/components/demo/**",
+    "!src/components/common/**",
+
+    // Next.js pages (thin composition, covered by E2E)
+    "!src/app/**",
+
+    // Browser-only integrations (maps, covered by E2E)
+    "!src/components/maps/**",
+
+    // Test utilities
     "!src/lib/test-utils.tsx",
   ],
 
-  // Coverage thresholds
+  // Coverage thresholds — honest baseline after removing exclusions for
+  // files that already have tests (Feb 2026). Increase as coverage improves.
   coverageThreshold: {
     global: {
       branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
+      functions: 58,
+      lines: 68,
+      statements: 68,
     },
   },
 
