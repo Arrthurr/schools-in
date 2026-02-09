@@ -59,8 +59,8 @@ import * as webpush from "web-push";
 // ============================================================================
 
 describe("Constants", () => {
-  test("SESSION_LIMIT_MS equals 2 hours in milliseconds", () => {
-    expect(SESSION_LIMIT_MS).toBe(2 * 60 * 60 * 1000); // 7,200,000
+  test("SESSION_LIMIT_MS equals 7 hours in milliseconds", () => {
+    expect(SESSION_LIMIT_MS).toBe(7 * 60 * 60 * 1000); // 25,200,000
   });
 
   test("RECENTLY_CREATED_GRACE_MS equals 15 minutes in milliseconds", () => {
@@ -68,7 +68,7 @@ describe("Constants", () => {
   });
 
   test("PRODUCTION_CONFIG has expected session timeout", () => {
-    expect(PRODUCTION_CONFIG.sessionTimeoutHours).toBe(2);
+    expect(PRODUCTION_CONFIG.sessionTimeoutHours).toBe(7);
   });
 
   test("PRODUCTION_CONFIG has expected cleanup interval", () => {

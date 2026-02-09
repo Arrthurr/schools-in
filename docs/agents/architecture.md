@@ -54,11 +54,11 @@ Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions
 |-------|---------|--------|
 | Check-in | `startSession` Cloud Function | `active` |
 | Check-out | `endSession` Cloud Function | `completed` |
-| Warning | `cleanupStaleSessions` at 90 min | push notification sent |
-| Timeout | `cleanupStaleSessions` at 120 min | `error` + `errorCode: "timeout_auto_close"` |
+| Warning | `cleanupStaleSessions` at 6h 30m | push notification sent |
+| Timeout | `cleanupStaleSessions` at 7 hr | `error` + `errorCode: "timeout_auto_close"` |
 
-- **Session timeout**: 2 hours
-- **Warning window**: 90 minutes
+- **Session timeout**: 7 hours
+- **Warning window**: 6 hours 30 minutes
 - **Cleanup schedule**: Every 30 minutes
 - **Offline grace**: 15 min (recently synced sessions skipped during cleanup)
 
@@ -68,7 +68,7 @@ Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions
 |----------|------|---------|
 | `startSession` | Callable | Create session with geofence validation |
 | `endSession` | Callable | End session, calculate duration |
-| `cleanupStaleSessions` | Scheduled (30 min) | Warn at 90 min, auto-close at 2 hr |
+| `cleanupStaleSessions` | Scheduled (30 min) | Warn at 6h 30m, auto-close at 7 hr |
 | `generateDailyStats` | Scheduled (02:00 daily) | Aggregate daily session statistics |
 | `syncUserFromM365` | Callable | Sync roles and assignments from M365 groups |
 | `requestM365Resync` | Callable | Request M365 group resync |

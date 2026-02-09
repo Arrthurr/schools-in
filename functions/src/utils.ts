@@ -7,7 +7,7 @@ import * as webpush from "web-push";
 // ============================================================================
 
 export const PRODUCTION_CONFIG = {
-  sessionTimeoutHours: 2,
+  sessionTimeoutHours: 7,
   cleanupIntervalHours: 1,
   maxBatchSize: 500,
   performanceThresholds: {

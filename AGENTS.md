@@ -28,8 +28,8 @@ Next.js 14 PWA with Firebase backend for school check-in/out via geofencing. Sta
 | Constant | Value | Notes |
 |----------|-------|-------|
 | Default geofence radius | 300 m | `locationData.radiusMeters \|\| 300` |
-| Session timeout | 2 hours | Auto-closed by `cleanupStaleSessions` |
-| Timeout warning | 90 min | Push notification sent to user |
+| Session timeout | 7 hours | Auto-closed by `cleanupStaleSessions` |
+| Timeout warning | 6h 30m | Push notification sent to user |
 | Cleanup schedule | Every 30 min | Scheduled Cloud Function |
 | Default timezone | America/Chicago | Used for `dayKey` generation |
 

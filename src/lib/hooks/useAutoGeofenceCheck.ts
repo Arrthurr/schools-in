@@ -75,7 +75,7 @@ const POOR_ACCURACY_LIMIT = 3;
 const COUNTDOWN_MS = 15_000;
 const CANCEL_COOLDOWN_MS = 5 * 60_000;
 const CHECK_IN_GRACE_PERIOD_MS = 60_000; // 60 seconds grace period after check-in
-const SESSION_LIMIT_MS = 2 * 60 * 60 * 1000; // 2 hours — matches cleanupStaleSessions timeout
+const SESSION_LIMIT_MS = 7 * 60 * 60 * 1000; // 7 hours — matches cleanupStaleSessions timeout
 const FEATURE_FLAG = process.env.NEXT_PUBLIC_FEATURE_AUTO_GEOFENCE !== "false";
 export function useAutoGeofenceCheck(): AutoGeofenceState {
   const { user } = useCachedAuth();

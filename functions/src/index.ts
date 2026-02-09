@@ -636,13 +636,13 @@ exports.cleanupStaleSessions = onSchedule(
         now.toMillis() - sessionLimitInMs
       );
 
-      // --- Warning pass: notify users with sessions approaching timeout (90-120 min) ---
-      const warningWindowMs = 90 * 60 * 1000; // 90 minutes
+      // --- Warning pass: notify users with sessions approaching timeout (390-420 min) ---
+      const warningWindowMs = 390 * 60 * 1000; // 390 minutes (6h 30m)
       const warningCutoff = admin.firestore.Timestamp.fromMillis(
         now.toMillis() - warningWindowMs
       );
 
-      // Find sessions that started between 90 and 120 minutes ago (approaching timeout)
+      // Find sessions that started between 390 and 420 minutes ago (approaching timeout)
       const warnByCheckInTime = sessionsRef
         .where("status", "in", ["active", "paused"])
         .where("checkInTime", "<", warningCutoff)
