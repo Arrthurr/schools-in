@@ -508,7 +508,7 @@ export class BulkSchoolOperationsService {
             ...schoolData,
             latitude: schoolData.latitude || 0,
             longitude: schoolData.longitude || 0,
-            radius: schoolData.radius || 500,
+            radius: schoolData.radius || 300,
             isActive: true,
             createdAt: new Date(),
             updatedAt: new Date(),

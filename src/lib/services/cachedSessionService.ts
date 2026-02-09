@@ -599,7 +599,7 @@ export class CachedSessionService {
         throw new Error("Location has no GPS coordinates");
       }
 
-      const radiusMeters = locationData.radiusMeters || 500;
+      const radiusMeters = locationData.radiusMeters || 300;
       const validation = validateGeofence(
         userLatitude,
         userLongitude,
