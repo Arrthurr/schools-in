@@ -65,7 +65,7 @@ function mapSchool(raw: School): School {
 
   return {
     ...raw,
-    radius: raw.radius ?? raw.radiusMeters ?? 500,
+    radius: raw.radius ?? raw.radiusMeters ?? 300,
     latitude,
     longitude,
     description:
@@ -394,7 +394,7 @@ function SchoolManagementContent() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSchools.map((school) => {
-            const radiusMeters = school.radius ?? 500;
+            const radiusMeters = school.radius ?? 300;
             const providerCount = school.activeProviders ?? 0;
 
             return (

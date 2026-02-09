@@ -366,7 +366,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
         name: loc.name,
         latitude: loc.geo.latitude,
         longitude: loc.geo.longitude,
-        radiusMeters: loc.radiusMeters ?? 500,
+        radiusMeters: loc.radiusMeters ?? 300,
       })
     );
 
@@ -841,7 +841,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               current.latitude,
               current.longitude,
               activeLoc.geo,
-              activeLoc.radiusMeters ?? 500
+              activeLoc.radiusMeters ?? 300
             );
 
             setLastDistanceMeters(distance);
@@ -964,7 +964,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               current.latitude,
               current.longitude,
               loc.geo,
-              loc.radiusMeters ?? 500
+              loc.radiusMeters ?? 300
             );
 
             if (closestDistance === null || distance < closestDistance) {

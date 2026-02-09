@@ -96,7 +96,7 @@ export function SchoolForm({
         address: school.address || "",
         latitude: school.latitude || 0,
         longitude: school.longitude || 0,
-        radius: school.radius || 500,
+        radius: school.radius || 300,
         description: school.description || "",
       };
     }
@@ -105,7 +105,7 @@ export function SchoolForm({
       address: "",
       latitude: 0,
       longitude: 0,
-      radius: 500,
+      radius: 300,
       description: "",
     };
   });
@@ -118,7 +118,7 @@ export function SchoolForm({
         address: school.address || "",
         latitude: school.latitude || 0,
         longitude: school.longitude || 0,
-        radius: school.radius || 500,
+        radius: school.radius || 300,
         description: school.description || "",
       });
     }

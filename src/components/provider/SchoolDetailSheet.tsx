@@ -36,7 +36,7 @@ export function SchoolDetailSheet({
 }: SchoolDetailSheetProps) {
   const isWithinRadius = useMemo(() => {
     if (!school || typeof school.distance !== "number") return false;
-    const radius = school.radiusMeters ?? 500;
+    const radius = school.radiusMeters ?? 300;
     return school.distance <= radius;
   }, [school]);
 
@@ -122,7 +122,7 @@ export function SchoolDetailSheet({
               {/* Geofence radius indicator overlay */}
               <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm rounded-md px-2 py-1 text-xs flex items-center gap-1">
                 <Circle className="h-3 w-3 text-blue-500" />
-                <span>{school.radiusMeters ?? 500}m check-in zone</span>
+                <span>{school.radiusMeters ?? 300}m check-in zone</span>
               </div>
             </div>
           )}
@@ -168,7 +168,7 @@ export function SchoolDetailSheet({
               </p>
               <p className="text-sm flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-blue-500" />
-                {school.radiusMeters ?? 500} meters
+                {school.radiusMeters ?? 300} meters
               </p>
             </div>
 

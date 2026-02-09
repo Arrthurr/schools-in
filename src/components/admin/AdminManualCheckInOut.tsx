@@ -90,7 +90,7 @@ export function AdminManualCheckInOut({
       userLocation.latitude,
       userLocation.longitude,
       selectedSchool.geo,
-      selectedSchool.radiusMeters ?? 500
+      selectedSchool.radiusMeters ?? 300
     );
 
     return {
@@ -419,7 +419,7 @@ export function AdminManualCheckInOut({
 
             {!rangeStatus.isInRange && selectedSchool && userLocation && (
               <p className="text-sm text-muted-foreground text-center">
-                You must be within {selectedSchool.radiusMeters ?? 500}m of the
+                You must be within {selectedSchool.radiusMeters ?? 300}m of the
                 school to check in.
               </p>
             )}

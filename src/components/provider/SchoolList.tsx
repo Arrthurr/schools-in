@@ -167,7 +167,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
     if (!location || typeof school.distance !== "number") {
       return false;
     }
-    const radius = school.radiusMeters ?? 500;
+    const radius = school.radiusMeters ?? 300;
     return school.distance <= radius;
   };
 
@@ -409,7 +409,7 @@ export const SchoolList: React.FC<SchoolListProps> = ({
                       )}
                       <div className="flex items-center">
                         <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
-                        <span>{school.radiusMeters ?? 500}m radius</span>
+                        <span>{school.radiusMeters ?? 300}m radius</span>
                       </div>
                     </div>
                   </div>
