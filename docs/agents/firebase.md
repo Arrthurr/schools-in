@@ -73,7 +73,7 @@ https://schools-in-check.web.app
 
 ## Cloud Functions
 
-All functions live in `functions/src/index.ts`. See [Architecture — Cloud Functions](architecture.md#cloud-functions) for the full list.
+Function exports live in `functions/src/index.ts`. Shared utilities (auth helpers, distance calculation, push notification wrappers, config constants) are in `functions/src/utils.ts`. See [Architecture — Cloud Functions](architecture.md#cloud-functions) for the full list.
 
 ### Secrets (defined in Cloud Functions config)
 

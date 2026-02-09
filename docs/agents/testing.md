@@ -29,13 +29,30 @@ npm run lighthouse:local   # Starts dev server first
 npm run analyze   # Enables @next/bundle-analyzer
 ```
 
+## Cloud Functions Tests
+
+Cloud Functions have their own Jest config (`functions/jest.config.js`):
+
+```bash
+cd functions && npm test           # Run functions unit tests
+cd functions && npm run test:watch # Watch mode
+cd functions && npm run test:coverage
+```
+
+Tests live in `functions/src/__tests__/`.
+
 ## Coverage Requirements
 
-70% minimum for:
-- Branches
-- Functions
-- Lines
-- Statements
+Client-side thresholds (from `jest.config.js`):
+
+| Metric | Minimum |
+|--------|---------|
+| Branches | 70% |
+| Functions | 58% |
+| Lines | 68% |
+| Statements | 68% |
+
+These reflect the honest baseline after granular per-file exclusions (Feb 2026). Increase as coverage improves.
 
 ## Performance Targets (Core Web Vitals)
 

@@ -18,6 +18,7 @@ Next.js 14 PWA with Firebase backend for school check-in/out via geofencing. Sta
 | Test watch | `npm run test:watch` |
 | E2E | `npm run test:e2e` |
 | E2E headless | `npm run test:e2e:headless` |
+| Functions test | `cd functions && npm test` |
 | Firestore rules | `npm run test:firestore-rules` |
 | Storage rules | `npm run test:storage-rules` |
 

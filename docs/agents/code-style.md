@@ -53,10 +53,10 @@ appLogger.info("Manual checkout from still-here prompt");
 appLogger.warn("Checkout failed", { err });
 ```
 
-In Cloud Functions, use the `logger` from `firebase-functions/v2`:
+In Cloud Functions, use the `logger` from `firebase-functions`:
 
 ```ts
-import { logger } from "firebase-functions/v2";
+import { logger } from "firebase-functions";
 
 logger.info("Found stale session", { docId, duration });
 ```

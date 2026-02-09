@@ -46,7 +46,7 @@
 
 ### Distance Calculation
 
-Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions/src/index.ts`). Server-side validation enforces `distanceFromCenter <= radiusMeters`.
+Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions/src/utils.ts`). Server-side validation enforces `distanceFromCenter <= radiusMeters`.
 
 ## Session Lifecycle
 
