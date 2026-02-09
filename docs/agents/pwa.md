@@ -50,8 +50,8 @@ When sending session timeout warnings, the system checks `sessionAlerts` first, 
 
 | Type | Trigger | Target | Data Payload |
 |------|---------|--------|-------------|
-| `session-timeout-warning` | Session reaches 90+ min | Session owner | `{ sessionId }` |
-| `session-timeout` | Session auto-closed at 2 hr | All admins | `{ count, sessionIds[] }` |
+| `session-timeout-warning` | Session reaches 6h 30m+ | Session owner | `{ sessionId }` |
+| `session-timeout` | Session auto-closed at 7 hr | All admins | `{ count, sessionIds[] }` |
 | Feedback alert | New feedback submitted | Admin email | Email (not push) |
 
 ### VAPID Configuration
