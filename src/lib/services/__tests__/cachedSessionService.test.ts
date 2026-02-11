@@ -461,13 +461,13 @@ describe("CachedSessionService", () => {
         -118.244
       );
 
-      // Current code on main uses 500 as default; geofence branch changes this to 300
-      expect(result.radiusMeters).toBe(500);
+      // Default radius is 300m when location.radiusMeters is missing
+      expect(result.radiusMeters).toBe(300);
       expect(mockValidateGeofence).toHaveBeenCalledWith(
         34.0525,
         -118.244,
         { latitude: 34.0522, longitude: -118.2437 },
-        500
+        300
       );
     });
   });

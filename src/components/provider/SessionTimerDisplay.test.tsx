@@ -8,17 +8,28 @@ const mockTimestamp = {
 };
 
 describe("SessionTimerDisplay", () => {
-  it("renders with basic props", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-01-01T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("renders with basic props", async () => {
     render(
       <SessionTimerDisplay checkInTime={mockTimestamp as any} isActive={true} />
     );
 
     // Should render without crashing
     expect(screen.getByText(/Session Active:/)).toBeInTheDocument();
-    expect(screen.getByText(/30m/)).toBeInTheDocument();
+
+    // Duration is derived from Date.now(); keep test deterministic.
+    expect(await screen.findByText(/30m/)).toBeInTheDocument();
   });
 
-  it("renders in compact mode", () => {
+  it("renders in compact mode", async () => {
     render(
       <SessionTimerDisplay
         checkInTime={mockTimestamp as any}
@@ -27,7 +38,7 @@ describe("SessionTimerDisplay", () => {
       />
     );
 
-    expect(screen.getByText(/30m/)).toBeInTheDocument();
+    expect(await screen.findByText(/30m/)).toBeInTheDocument();
     expect(screen.queryByText(/Session Active:/)).not.toBeInTheDocument();
   });
 

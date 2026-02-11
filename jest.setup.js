@@ -159,4 +159,93 @@ jest.mock("idb", () => ({
     })
   ),
   deleteDB: jest.fn(() => Promise.resolve()),
-}))
+}));
+
+// Silence appLogger output during tests (keeps test output readable)
+jest.mock("@/lib/logging/appLogger", () => ({
+  appLogger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
+// Filter out known noisy console warnings/errors coming from intentionally-failing paths
+// and React test environment warnings. (We still allow unexpected messages through.)
+const suppressedConsolePatterns = [
+  // React testing warnings
+  /not wrapped in act/i,
+  /Function components cannot be given refs/i,
+
+  // Expected failures from mocked integrations
+  /Failed to fetch VAPID public key/i,
+  /Failed to check admin alert subscription/i,
+  /Failed to enable admin alerts/i,
+  /Microsoft Graph API error/i,
+  /M365 sync failed/i,
+
+  // Expected service-level errors exercised by unit tests
+  /Error fetching provider metrics/i,
+  /Session service error/i,
+  /Error starting session/i,
+  /Error ending session/i,
+  /Error pausing session/i,
+  /Error resuming session/i,
+  /Error validating geofence/i,
+  /Error deleting session/i,
+
+  // Expected UI flows that log errors/warnings
+  /Sign-in error/i,
+  /Check-in error/i,
+  /Location validation warnings/i,
+  /Failed to preload critical data/i,
+  /Preloading critical data for offline use/i,
+
+  // Misc noisy errors from mocked PushSubscription objects in jsdom
+  /Cannot read properties of undefined \(reading '_url'\)/i,
+];
+
+const shouldSuppressConsole = (args) => {
+  try {
+    const text = args
+      .map((a) => {
+        if (typeof a === "string") return a;
+        if (a instanceof Error) return a.message;
+        return JSON.stringify(a);
+      })
+      .join(" ");
+
+    return suppressedConsolePatterns.some((p) => p.test(text));
+  } catch {
+    return false;
+  }
+};
+
+// Set JEST_SHOW_CONSOLE=true to disable suppression while debugging.
+const suppressTestConsole = process.env.JEST_SHOW_CONSOLE !== "true";
+
+if (suppressTestConsole) {
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    if (shouldSuppressConsole(args)) return;
+    originalConsoleError(...args);
+  };
+
+  const originalConsoleWarn = console.warn;
+  console.warn = (...args) => {
+    if (shouldSuppressConsole(args)) return;
+    originalConsoleWarn(...args);
+  };
+
+  // Most console.log/info/debug output is noise in tests.
+  console.log = (...args) => {
+    if (shouldSuppressConsole(args)) return;
+  };
+  console.info = (...args) => {
+    if (shouldSuppressConsole(args)) return;
+  };
+  console.debug = (...args) => {
+    if (shouldSuppressConsole(args)) return;
+  };
+}
