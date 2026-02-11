@@ -1,6 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import {
+  collection,
+  getDocs,
+  limit as limitResults,
+  orderBy,
+  query,
+  Timestamp,
+  where,
+} from "firebase/firestore";
+import { db } from "../../../firebase.config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +26,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  EmptyState,
-} from "@/components/ui/error-empty-states";
+import { EmptyState } from "@/components/ui/error-empty-states";
 import {
   CalendarDays,
   Download,
@@ -171,44 +179,76 @@ export function SessionReports() {
     setError(null);
 
     try {
-      // Get all sessions first, then filter client-side
-      // In a production app, you'd want to implement server-side filtering
-      const allSessions = await getCollection(COLLECTIONS.SESSIONS);
-
-      // Apply filters
-      let filteredSessions = allSessions as SessionData[];
-
-      // Date range filter
       const dateRange = getDateRange(filters.dateRange);
-      if (dateRange.startDate && dateRange.endDate) {
-        filteredSessions = filteredSessions.filter((session) => {
-          const sessionDate = session.checkInTime.toDate();
-          return (
-            sessionDate >= dateRange.startDate! &&
-            sessionDate <= dateRange.endDate!
-          );
+      if (!dateRange.startDate || !dateRange.endDate) {
+        setSessions([]);
+        setSummary({
+          totalSessions: 0,
+          totalDuration: 0,
+          averageSessionDuration: 0,
+          completionRate: 0,
+          activeSessionsCount: 0,
+          completedSessionsCount: 0,
         });
+        return;
       }
 
-      // Provider filter
+      // Query Firestore with constraints (avoid fetching entire collections).
+      const start = Timestamp.fromDate(dateRange.startDate);
+      const end = Timestamp.fromDate(dateRange.endDate);
+
+      const MAX_RESULTS = 2000;
+      const baseConstraints = [
+        where("checkInTime", ">=", start),
+        where("checkInTime", "<=", end),
+      ];
+
       if (filters.providerId) {
-        filteredSessions = filteredSessions.filter(
-          (session) => session.userId === filters.providerId
-        );
+        baseConstraints.push(where("userId", "==", filters.providerId));
       }
+
+      if (filters.status) {
+        baseConstraints.push(where("status", "==", filters.status));
+      }
+
+      const sessionsRef = collection(db, COLLECTIONS.SESSIONS);
+
+      const runQuery = async (extra: ReturnType<typeof where>[] = []) => {
+        const q = query(
+          sessionsRef,
+          ...baseConstraints,
+          ...extra,
+          orderBy("checkInTime", "desc"),
+          limitResults(MAX_RESULTS)
+        );
+
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(
+          (d) =>
+            ({
+              id: d.id,
+              ...d.data(),
+            } as SessionData)
+        );
+      };
 
       // School filter
+      let filteredSessions: SessionData[];
       if (filters.schoolId) {
-        filteredSessions = filteredSessions.filter(
-          (session) => getSessionLocationId(session) === filters.schoolId
-        );
-      }
+        // Sessions may use either `locationId` (new) or `schoolId` (legacy).
+        const [byLocationId, bySchoolId] = await Promise.all([
+          runQuery([where("locationId", "==", filters.schoolId)]),
+          runQuery([where("schoolId", "==", filters.schoolId)]),
+        ]);
 
-      // Status filter
-      if (filters.status) {
-        filteredSessions = filteredSessions.filter(
-          (session) => session.status === filters.status
-        );
+        const merged = new Map<string, SessionData>();
+        [...byLocationId, ...bySchoolId].forEach((s) => {
+          if (s.id) merged.set(s.id, s);
+        });
+
+        filteredSessions = Array.from(merged.values());
+      } else {
+        filteredSessions = await runQuery();
       }
 
       // Calculate summary statistics
@@ -216,12 +256,13 @@ export function SessionReports() {
       const completedSessions = filteredSessions.filter(
         (s) => s.status === "completed"
       );
-      const activeSessions = filteredSessions.filter(
-        (s) => s.status === "active"
-      );
+      const activeSessions = filteredSessions.filter((s) => s.status === "active");
 
       const totalDuration = completedSessions.reduce((sum, session) => {
-        if (typeof session.durationMinutes === "number" && session.durationMinutes >= 0) {
+        if (
+          typeof session.durationMinutes === "number" &&
+          session.durationMinutes >= 0
+        ) {
           return sum + session.durationMinutes;
         }
         if (session.checkInTime && session.checkOutTime) {
@@ -254,6 +295,12 @@ export function SessionReports() {
       });
 
       setSessions(filteredSessions);
+
+      if (filteredSessions.length >= MAX_RESULTS) {
+        setError(
+          `Showing the first ${MAX_RESULTS} sessions. Narrow the date range or add filters to see more.`
+        );
+      }
     } catch (err) {
       console.error("Error loading sessions:", err);
       setError("Failed to load session data");

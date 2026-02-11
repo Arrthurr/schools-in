@@ -1,7 +1,31 @@
 import { render, screen } from "@testing-library/react";
 import { SessionReports } from "./SessionReports";
 
-// Mock the entire firestore module
+jest.mock("firebase/firestore", () => {
+  const Timestamp = {
+    fromDate: (date: Date) => ({
+      toDate: () => date,
+      toMillis: () => date.getTime(),
+    }),
+  };
+
+  return {
+    // Query builder fns (their return values are opaque to this component)
+    collection: jest.fn(() => ({})),
+    query: jest.fn(() => ({})),
+    where: jest.fn(() => ({})),
+    orderBy: jest.fn(() => ({})),
+    limit: jest.fn(() => ({})),
+
+    // Data fetch
+    getDocs: jest.fn().mockResolvedValue({ docs: [] }),
+
+    // Timestamp
+    Timestamp,
+  };
+});
+
+// Mock the app's Firestore helper module (used for initial filter option data)
 jest.mock("../../lib/firebase/firestore", () => ({
   getCollection: jest.fn().mockResolvedValue([]),
   COLLECTIONS: {
@@ -26,6 +50,8 @@ jest.mock("../../lib/utils/session", () => ({
 const renderReports = async () => {
   render(<SessionReports />);
   await screen.findByText("Session Data (0 sessions)");
+  // Ensure async Firestore fetch effect has completed.
+  await screen.findByText(/No sessions match the selected filters/i);
 };
 
 describe("SessionReports Component", () => {
