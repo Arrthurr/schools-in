@@ -54,11 +54,11 @@ Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions
 |-------|---------|--------|
 | Check-in | `startSession` Cloud Function | `active` |
 | Check-out | `endSession` Cloud Function | `completed` |
-| Warning | `cleanupStaleSessions` at 6h 30m | push notification sent |
-| Timeout | `cleanupStaleSessions` at 7 hr | `error` + `errorCode: "timeout_auto_close"` |
+| Warning | `cleanupStaleSessions` at 8h 30m | push notification sent |
+| Timeout | `cleanupStaleSessions` at 9 hr | `error` + `errorCode: "timeout_auto_close"` |
 
-- **Session timeout**: 7 hours
-- **Warning window**: 6 hours 30 minutes
+- **Session timeout**: 9 hours
+- **Warning window**: 8 hours 30 minutes
 - **Cleanup schedule**: Every 30 minutes
 - **Offline grace**: 15 min (recently synced sessions skipped during cleanup)
 
