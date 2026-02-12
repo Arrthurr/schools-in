@@ -91,25 +91,28 @@ describe("Session History Page", () => {
     cy.setMobileViewport();
     cy.visitAndWaitForLoad("/dashboard/history");
     cy.get("main").should("be.visible");
-    cy.contains("Session History").should("be.visible");
+    cy.get("h1:visible").contains("Session History").should("be.visible");
+    // Check page content sections are visible (use exact match to avoid matching breadcrumb)
     cy.contains("Filters").should("be.visible");
     cy.contains("Hours by location").should("be.visible");
-    cy.contains("History").should("be.visible");
+    cy.contains(/^History$/).should("be.visible");
   });
 
   it("works on tablet viewport", () => {
     cy.setTabletViewport();
     cy.visitAndWaitForLoad("/dashboard/history");
     cy.get("main").should("be.visible");
-    cy.contains("Session History").should("be.visible");
-    cy.contains("Filters").should("be.visible");
-    cy.contains("Hours by location").should("be.visible");
-    cy.contains("Session duration distribution").should("be.visible");
-    cy.contains("History").should("be.visible");
-    cy.contains("Last 30 days").should("be.visible");
+    cy.get("h1").contains("Session History").should("be.visible");
+    cy.get("[class*='lg:pl-64']").within(() => {
+      cy.contains("Filters").should("be.visible");
+      cy.contains("Hours by location").should("be.visible");
+      cy.contains("Session duration distribution").should("be.visible");
+      cy.contains("History").should("be.visible");
+      cy.contains("Last 30 days").should("be.visible");
+    });
   });
 
   it("passes accessibility checks", () => {
-    cy.checkA11y();
+    cy.checkA11y({ exclude: [".firebase-emulator-warning"] });
   });
 });
