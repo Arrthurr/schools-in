@@ -142,6 +142,7 @@ function FeedbackContent() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
+        <h1 className="sr-only">Provider Feedback</h1>
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );

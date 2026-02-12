@@ -127,7 +127,7 @@ export function ProviderNavigation({
             <p className="text-sm font-medium">
               {user?.displayName || user?.email}
             </p>
-            <p className="text-xs text-muted-foreground">Provider</p>
+            <p className="text-xs text-slate-700 dark:text-slate-300">Provider</p>
           </div>
           <Button
             variant="ghost"
@@ -213,7 +213,7 @@ export function ProviderNavigation({
                   <p className="text-sm font-medium">
                     {user?.displayName || user?.email}
                   </p>
-                  <p className="text-xs text-muted-foreground">Provider</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300">Provider</p>
                 </div>
               </div>
             </div>

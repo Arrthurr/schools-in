@@ -161,13 +161,14 @@ interface SimpleSelectProps {
   className?: string;
   disabled?: boolean;
   id?: string;
+  "aria-label"?: string;
 }
 
 const SimpleSelect = React.forwardRef<HTMLButtonElement, SimpleSelectProps>(
-  ({ options, value, placeholder = "Select...", onValueChange, className, disabled, id }, ref) => {
+  ({ options, value, placeholder = "Select...", onValueChange, className, disabled, id, "aria-label": ariaLabel }, ref) => {
     return (
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-        <SelectTrigger ref={ref} className={className} id={id}>
+        <SelectTrigger ref={ref} className={className} id={id} aria-label={ariaLabel}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>

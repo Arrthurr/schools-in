@@ -29,6 +29,8 @@ describe("Admin Feedback Page", () => {
   });
 
   it("shows empty state or feedback list", () => {
+    // Wait for the table to be rendered (loading is done)
+    cy.get("table").should("exist");
     cy.get("main").then(($main) => {
       const hasEmptyState = $main
         .text()

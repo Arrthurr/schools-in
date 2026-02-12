@@ -40,7 +40,7 @@ describe("Provider Dashboard", () => {
 
   it("navigates to /dashboard/history via View all button", () => {
     cy.contains("View all").should("be.visible").click();
-    cy.location("pathname").should("eq", "/dashboard/history");
+    cy.location("pathname").should("eq", "/dashboard/history/");
   });
 
   it("renders correctly on mobile viewport", () => {

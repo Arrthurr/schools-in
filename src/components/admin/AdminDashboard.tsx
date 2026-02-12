@@ -287,11 +287,11 @@ export function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-fadeInUp">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Admin Dashboard</h1>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-fadeInUp">
           {[...Array(4)].map((_, i) => (
             <Card key={i} className="micro-skeleton-wave">
               <CardHeader className="pb-2">
