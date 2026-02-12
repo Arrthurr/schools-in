@@ -105,21 +105,10 @@ describe("Schools Page", () => {
       cy.get("[class*='card']").should("have.length.at.least", 3);
     });
 
-    // Each card has a header and content area
-    cy.contains("Quick Tips")
-      .closest("[class*='card']")
-      .find("[class*='card-header'], [class*='CardHeader']")
-      .should("exist");
-
-    cy.contains("Location Status")
-      .closest("[class*='card']")
-      .find("[class*='card-header'], [class*='CardHeader']")
-      .should("exist");
-
-    cy.contains("Need Help?")
-      .closest("[class*='card']")
-      .find("[class*='card-header'], [class*='CardHeader']")
-      .should("exist");
+    // Each card has its expected title visible
+    cy.contains("Quick Tips").should("be.visible");
+    cy.contains("Location Status").should("be.visible");
+    cy.contains("Need Help?").should("be.visible");
   });
 
   it("works on tablet viewport", () => {

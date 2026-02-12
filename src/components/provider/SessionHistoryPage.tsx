@@ -223,6 +223,7 @@ export function SessionHistoryPage() {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Start date</p>
               <DatePicker
+                aria-label="Start date"
                 value={startDate}
                 onChange={(date) => {
                   if (!date) return;
@@ -235,6 +236,7 @@ export function SessionHistoryPage() {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">End date</p>
               <DatePicker
+                aria-label="End date"
                 value={endDate}
                 onChange={(date) => {
                   if (!date) return;
@@ -251,6 +253,7 @@ export function SessionHistoryPage() {
                 value={locationFilter}
                 onValueChange={setLocationFilter}
                 id="history-location-select"
+                aria-label="Filter by location"
               />
             </div>
           </div>

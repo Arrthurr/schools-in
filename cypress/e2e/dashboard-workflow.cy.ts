@@ -34,7 +34,7 @@ describe("Dashboard Workflow", () => {
 
   it("navigates to history when clicking View all", () => {
     cy.contains("View all").should("be.visible").click();
-    cy.location("pathname").should("eq", "/dashboard/history");
+    cy.location("pathname").should("eq", "/dashboard/history/");
   });
 
   it("renders correctly on mobile viewport", () => {
@@ -92,28 +92,28 @@ describe("Dashboard Workflow", () => {
   it("stat cards display numeric or text values", () => {
     // Current Status shows "Active" or "Not Active"
     cy.contains("Current Status")
-      .closest("[class*='card'], [class*='Card'], div")
+      .closest("[class*='card']")
       .within(() => {
         cy.contains(/Active|Not Active/).should("be.visible");
       });
 
     // Assigned Schools shows a number
     cy.contains("Assigned Schools")
-      .closest("[class*='card'], [class*='Card'], div")
+      .closest("[class*='card']")
       .within(() => {
         cy.contains(/\d+/).should("exist");
       });
 
     // This Week shows a number
     cy.contains("This Week")
-      .closest("[class*='card'], [class*='Card'], div")
+      .closest("[class*='card']")
       .within(() => {
         cy.contains(/\d+/).should("exist");
       });
 
     // Total Hours shows a decimal number like "0.0" or "12.5"
     cy.contains("Total Hours")
-      .closest("[class*='card'], [class*='Card'], div")
+      .closest("[class*='card']")
       .within(() => {
         cy.contains(/\d+\.\d/).should("exist");
       });

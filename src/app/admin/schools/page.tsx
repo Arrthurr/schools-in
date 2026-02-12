@@ -375,9 +375,9 @@ function SchoolManagementContent() {
         <Card className="text-center py-12">
           <CardContent>
             <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">
+            <h2 className="text-lg font-medium text-foreground mb-2">
               {searchQuery ? "No schools found" : "No schools configured"}
-            </h3>
+            </h2>
             <p className="text-muted-foreground mb-4">
               {searchQuery
                 ? "Try adjusting your search criteria."

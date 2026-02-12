@@ -150,7 +150,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
             <p className="text-sm font-medium">
               {user?.displayName || user?.email}
             </p>
-            <p className="text-xs text-muted-foreground">Administrator</p>
+            <p className="text-xs text-slate-700 dark:text-slate-300">Administrator</p>
           </div>
           <Button
             variant="ghost"
@@ -235,7 +235,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
                   <p className="text-sm font-medium">
                     {user?.displayName || user?.email}
                   </p>
-                  <p className="text-xs text-muted-foreground">Administrator</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300">Administrator</p>
                 </div>
               </div>
             </div>
