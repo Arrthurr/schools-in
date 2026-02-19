@@ -608,6 +608,93 @@ describe("useAutoGeofenceCheck", () => {
     });
   });
 
+  describe("Verifying location toast", () => {
+    it("should show verifying toast on first poll inside geofence before countdown", async () => {
+      (useAutoGeofencePreference as jest.Mock).mockReturnValue({
+        enabled: true,
+      });
+      (validateGeofence as jest.Mock).mockReturnValue({
+        distance: 50,
+        isWithinGeofence: true,
+      });
+
+      renderHook(() => useAutoGeofenceCheck());
+
+      // Wait for locations to load and initial poll (first inside detection)
+      await act(async () => {
+        await flushPromises();
+      });
+
+      await waitFor(() => {
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      // After first poll inside, verifying toast should appear
+      await waitFor(
+        () => {
+          expect(toast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: "Confirming location…",
+              description: "Verifying GPS at Test School",
+            })
+          );
+        },
+        { timeout: 3000 }
+      );
+    });
+
+    it("should dismiss verifying toast when provider leaves before debounce", async () => {
+      (useAutoGeofencePreference as jest.Mock).mockReturnValue({
+        enabled: true,
+      });
+
+      const dismissMock = jest.fn();
+      (toast as jest.Mock).mockReturnValue({
+        id: "toast-verifying",
+        dismiss: dismissMock,
+        update: jest.fn(),
+      });
+
+      // First poll: inside
+      (validateGeofence as jest.Mock).mockReturnValue({
+        distance: 50,
+        isWithinGeofence: true,
+      });
+
+      renderHook(() => useAutoGeofenceCheck());
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      await waitFor(() => {
+        expect(getCachedLocationsByProvider).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      // Now move outside before second poll
+      (validateGeofence as jest.Mock).mockReturnValue({
+        distance: 500,
+        isWithinGeofence: false,
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(60000);
+        await flushPromises();
+      });
+
+      // Verifying toast should have been dismissed
+      expect(dismissMock).toHaveBeenCalled();
+    });
+  });
+
   describe("Auto check-in flow", () => {
     it("should not trigger check-in when there is an active session", async () => {
       const initialSession: Session = {
@@ -797,9 +884,9 @@ describe("useAutoGeofenceCheck", () => {
         { timeout: 2000 }
       );
 
-      // Fast-forward countdown (15 seconds) - need to advance in smaller increments
+      // Fast-forward countdown (5 seconds) - need to advance in smaller increments
       // to trigger the interval callbacks. The interval runs every 1000ms.
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < 5; i++) {
         await act(async () => {
           jest.advanceTimersByTime(1000);
           await flushPromises();
@@ -1158,8 +1245,8 @@ describe("useAutoGeofenceCheck", () => {
         { timeout: 3000 }
       );
 
-      // Fast-forward countdown (15 seconds)
-      for (let i = 0; i < 15; i++) {
+      // Fast-forward countdown (5 seconds)
+      for (let i = 0; i < 5; i++) {
         await act(async () => {
           jest.advanceTimersByTime(1000);
           await flushPromises();
@@ -1385,9 +1472,9 @@ describe("useAutoGeofenceCheck", () => {
 
       // Third poll while countdown is still active - should NOT trigger another countdown
       // Once countdown starts, poll interval adapts to 12s (countdownPollIntervalMs)
-      // The countdown is 15s, so a poll at 12s would still be within the countdown
+      // The countdown is 5s, so poll at 3s is still within the countdown
       await act(async () => {
-        jest.advanceTimersByTime(12000);
+        jest.advanceTimersByTime(3000);
         await flushPromises();
       });
 
