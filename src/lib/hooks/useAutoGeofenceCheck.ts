@@ -72,7 +72,7 @@ const GEOFENCE_TUNING = {
 
 const ACCURACY_THRESHOLD_METERS = GEOFENCE_TUNING.accuracyThresholdMeters;
 const POOR_ACCURACY_LIMIT = 3;
-const COUNTDOWN_MS = 15_000;
+const COUNTDOWN_MS = 5_000;
 const CANCEL_COOLDOWN_MS = 5 * 60_000;
 const CHECK_IN_GRACE_PERIOD_MS = 60_000; // 60 seconds grace period after check-in
 const SESSION_LIMIT_MS = 9 * 60 * 60 * 1000; // 9 hours — matches cleanupStaleSessions timeout
@@ -126,6 +126,7 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
   const swListenerCleanupRef = useRef<(() => void) | null>(null);
   const runPollRef = useRef<(() => void) | null>(null);
   const pollInFlightRef = useRef(false);
+  const verifyingToastRef = useRef<{ dismiss: () => void } | null>(null);
   const lastInsideUpdateRef = useRef(0);
   const lastGeofenceConfigRef = useRef<string | null>(null);
   const pendingGeofenceSaveRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -621,6 +622,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     poorAccuracyCount.current = count;
     if (count >= POOR_ACCURACY_LIMIT) {
       setPausedReason("poor-accuracy");
+      // Dismiss verifying toast — polling is paused so debounce won't complete
+      if (verifyingToastRef.current) {
+        verifyingToastRef.current.dismiss();
+        verifyingToastRef.current = null;
+      }
       toast({
         title: "Auto check temporarily paused",
         description: platform?.isIOS
@@ -669,6 +675,12 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     if (activeSession && activeCountdown?.type === "checkin") {
       clearCountdown(`checkin-${activeCountdown.locationId}`);
       setActiveCountdown(null);
+    }
+
+    // Dismiss verifying toast when a session becomes active (manual check-in)
+    if (activeSession && verifyingToastRef.current) {
+      verifyingToastRef.current.dismiss();
+      verifyingToastRef.current = null;
     }
 
     if (!activeSession && activeCountdown?.type === "checkout") {
@@ -746,6 +758,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     if (!prefEnabled || !featureEnabled) {
       clearPollTimer();
       clearCountdowns();
+      if (verifyingToastRef.current) {
+        verifyingToastRef.current.dismiss();
+        verifyingToastRef.current = null;
+      }
       runPollRef.current = null;
       setGeofenceState("idle");
       return;
@@ -1004,6 +1020,12 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
             } else {
               targetLocationId.current = firstInside.id;
               insideStreak.current = 1;
+              // Target location changed — dismiss stale verifying toast so
+              // it can be recreated with the new school name below
+              if (verifyingToastRef.current) {
+                verifyingToastRef.current.dismiss();
+                verifyingToastRef.current = null;
+              }
             }
 
             lastInsideUpdateRef.current = now;
@@ -1012,7 +1034,26 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
               insideStreak.current >= ctx.debouncePolls ? "inside" : "entering"
             );
 
+            // Show a "verifying" toast on first detection so the
+            // provider gets immediate feedback while debounce completes
+            if (
+              insideStreak.current < ctx.debouncePolls &&
+              !verifyingToastRef.current
+            ) {
+              verifyingToastRef.current = toast({
+                title: "Confirming location…",
+                description: `Verifying GPS at ${firstInside.name}`,
+                duration: 180_000,
+              });
+            }
+
             if (insideStreak.current >= ctx.debouncePolls) {
+              // Dismiss verifying toast now that debounce is satisfied
+              if (verifyingToastRef.current) {
+                verifyingToastRef.current.dismiss();
+                verifyingToastRef.current = null;
+              }
+
               const countdownKey = `checkin-${firstInside.id}`;
 
               // Atomic check-and-set to prevent race condition with overlapping polls
@@ -1094,6 +1135,11 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
           }
           insideStreak.current = 0;
           targetLocationId.current = null;
+          // Dismiss verifying toast if provider left before debounce completed
+          if (verifyingToastRef.current) {
+            verifyingToastRef.current.dismiss();
+            verifyingToastRef.current = null;
+          }
           setGeofenceState("outside");
         }
       } catch (error: any) {
@@ -1221,6 +1267,10 @@ export function useAutoGeofenceCheck(): AutoGeofenceState {
     return () => {
       clearPollTimer();
       runPollRef.current = null;
+      if (verifyingToastRef.current) {
+        verifyingToastRef.current.dismiss();
+        verifyingToastRef.current = null;
+      }
       if (visibilityHandler) {
         document.removeEventListener("visibilitychange", visibilityHandler);
       }
