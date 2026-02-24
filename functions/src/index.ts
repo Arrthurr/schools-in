@@ -338,6 +338,40 @@ exports.startSession = onCall(async (request: any) => {
         );
       }
 
+      // Prevent offline-sync duplicates: reject if a session already exists
+      // for this user with a startTime within 5 minutes of the proposed time
+      if (data.checkInMethod === "offline-sync") {
+        const proposedStart = new Date(data.startTime).getTime();
+        const windowMs = 5 * 60 * 1000; // 5 minutes
+        const windowStart = admin.firestore.Timestamp.fromMillis(
+          proposedStart - windowMs
+        );
+        const windowEnd = admin.firestore.Timestamp.fromMillis(
+          proposedStart + windowMs
+        );
+
+        const duplicateQuery = db
+          .collection("sessions")
+          .where("userId", "==", userId)
+          .where("startTime", ">=", windowStart)
+          .where("startTime", "<=", windowEnd);
+
+        const duplicateSnapshot = await transaction.get(duplicateQuery);
+
+        if (!duplicateSnapshot.empty) {
+          const existing = duplicateSnapshot.docs[0];
+          logger.warn("Rejected duplicate offline-sync session", {
+            userId,
+            existingSessionId: existing.id,
+            proposedStartTime: data.startTime,
+            existingStartTime: existing.data().startTime?.toDate?.(),
+          });
+          throw new Error(
+            `Duplicate session detected: session ${existing.id} already exists within 5 minutes of the proposed start time`
+          );
+        }
+      }
+
       // Verify the location exists
       const locationRef = db.collection("locations").doc(data.locationId);
       const locationDoc = await transaction.get(locationRef);
@@ -486,6 +520,10 @@ exports.startSession = onCall(async (request: any) => {
         throw error; // Preserve role-based method error
       } else if (error.message.includes("requires checkInLocation")) {
         throw error; // Preserve location requirement error
+      } else if (error.message.includes("Duplicate session detected")) {
+        throw new Error(
+          "A session already exists for this time. No duplicate was created."
+        );
       } else if (error.message.includes("Missing required")) {
         throw new Error("Invalid session data provided.");
       }
