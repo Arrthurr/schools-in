@@ -345,6 +345,15 @@ describe("normalizeCanonicalName", () => {
     expect(normalizeCanonicalName("O'Brien")).toBe("obrien");
   });
 
+  test("collapses whitespace created by removed punctuation", () => {
+    expect(normalizeCanonicalName("ITA Village Leadership Academy - Bronzeville")).toBe(
+      normalizeCanonicalName("ITA Village Leadership Academy Bronzeville")
+    );
+    expect(normalizeCanonicalName("ITA Village Leadership Academy - Bronzeville")).toBe(
+      "ita village leadership academy bronzeville"
+    );
+  });
+
   test("St. Sabina vs St Sabina normalize to same string", () => {
     expect(normalizeCanonicalName("St. Sabina")).toBe(normalizeCanonicalName("St Sabina"));
     expect(normalizeCanonicalName("St. Sabina")).toBe("st sabina");

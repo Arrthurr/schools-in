@@ -103,6 +103,7 @@ export function normalizeCanonicalName(name: string): string {
     .trim()
     .replace(/\s+/g, " ")
     .replace(/[.'(),\-]/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
