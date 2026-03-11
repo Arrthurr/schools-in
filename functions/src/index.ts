@@ -18,6 +18,8 @@ import {
   RECENTLY_CREATED_GRACE_MS,
   type SyncResult,
   type PushSubscription,
+  locationMatchesGroup,
+  normalizeCanonicalName,
 } from "./utils";
 
 admin.initializeApp();
@@ -123,24 +125,76 @@ exports.syncUserFromM365 = onCall(
           .where("active", "==", true)
           .get();
 
-        const allLocations = locationsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          name: (doc.data().name as string) || "",
-          assignedProviders: (doc.data().assignedProviders || []) as string[],
-        }));
+        const allLocations = locationsSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: (data.name as string) || "",
+            assignedProviders: (data.assignedProviders || []) as string[],
+            groupAliases: (data.groupAliases || []) as string[],
+          };
+        });
 
         // Filter out admin group from matching
         const schoolGroups = userGroups.filter((group) => !isAdminGroup(group));
         const schoolGroupNames = schoolGroups.map((g) => g.displayName);
 
-        // Find locations that match user's school groups (exact name match)
-        const matchedLocations = allLocations.filter((loc) =>
-          schoolGroupNames.some(
-            (groupName) => groupName.toLowerCase() === loc.name.toLowerCase()
-          )
-        );
+        // Find locations that match user's school groups (canonical name + optional groupAliases)
+        const matchedLocations: Array<{
+          id: string;
+          name: string;
+          assignedProviders: string[];
+          groupAliases: string[];
+          matchedBy?: "name" | "alias";
+        }> = [];
+        const matchedGroupNames = new Set<string>();
 
-        const matchedLocationIds = new Set(matchedLocations.map((l) => l.id));
+        for (const loc of allLocations) {
+          for (const groupName of schoolGroupNames) {
+            const result = locationMatchesGroup(
+              { id: loc.id, name: loc.name, groupAliases: loc.groupAliases },
+              groupName
+            );
+            if (result.match) {
+              matchedLocations.push({
+                ...loc,
+                matchedBy: result.matchedBy,
+              });
+              matchedGroupNames.add(groupName);
+              break;
+            }
+          }
+        }
+
+        // Log unmatched provider groups and candidate location names for debugging
+        const unmatchedGroups = schoolGroupNames.filter(
+          (g) => !matchedGroupNames.has(g)
+        );
+        if (unmatchedGroups.length > 0) {
+          const candidateNames = allLocations.map((loc) => {
+            const aliases = (loc.groupAliases || []).length
+              ? ` (aliases: ${(loc.groupAliases || []).join(", ")})`
+              : "";
+            return `${normalizeCanonicalName(loc.name)}${aliases}`;
+          });
+          logger.info(
+            `M365 sync: unmatched school groups for provider ${userEmail}`,
+            {
+              unmatchedGroups,
+              candidateNormalizedNames: candidateNames,
+            }
+          );
+        }
+
+        // Dedupe by location id (same location could match multiple groups in theory)
+        const seenIds = new Set<string>();
+        const uniqueMatchedLocations = matchedLocations.filter((loc) => {
+          if (seenIds.has(loc.id)) return false;
+          seenIds.add(loc.id);
+          return true;
+        });
+
+        const matchedLocationIds = new Set(uniqueMatchedLocations.map((l) => l.id));
 
         // Find locations user is currently assigned to
         const currentlyAssignedLocations = allLocations.filter((loc) =>
@@ -148,7 +202,7 @@ exports.syncUserFromM365 = onCall(
         );
 
         // Add user to newly matched locations
-        for (const location of matchedLocations) {
+        for (const location of uniqueMatchedLocations) {
           if (!location.assignedProviders.includes(userId)) {
             await db
               .collection("locations")
@@ -158,7 +212,9 @@ exports.syncUserFromM365 = onCall(
                   admin.firestore.FieldValue.arrayUnion(userId),
                 updatedAt: admin.firestore.Timestamp.now(),
               });
-            logger.info(`Added user ${userId} to location: ${location.name}`);
+            logger.info(`Added user ${userId} to location: ${location.name}`, {
+              matchedBy: location.matchedBy ?? "name",
+            });
           }
           assignedLocations.push({ id: location.id, name: location.name });
         }

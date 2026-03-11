@@ -79,6 +79,61 @@ export function isAdminGroup(group: M365Group): boolean {
   return Boolean(byId || byName);
 }
 
+// ============================================================================
+// M365 group-to-location matching (canonical name + optional aliases)
+// ============================================================================
+
+/** Location shape used for matching (name + optional groupAliases from Firestore). */
+export interface LocationMatchInput {
+  id: string;
+  name: string;
+  groupAliases?: string[];
+}
+
+/**
+ * Normalize a name for deterministic matching: lowercase, trim, collapse
+ * whitespace, strip common punctuation. Used so "St. Sabina" / "St Sabina" and
+ * "HOPE Excel" / "HOPE Excel Academy" can be matched via aliases rather than
+ * fuzzy logic.
+ */
+export function normalizeCanonicalName(name: string): string {
+  if (typeof name !== "string") return "";
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[.'(),\-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Check if a location matches a group display name using canonical comparison
+ * on primary name and optional groupAliases. Returns match result and whether
+ * it matched by primary name or alias (for logging).
+ */
+export function locationMatchesGroup(
+  loc: LocationMatchInput,
+  groupName: string
+): { match: boolean; matchedBy?: "name" | "alias" } {
+  const canonicalGroup = normalizeCanonicalName(groupName);
+  if (!canonicalGroup) return { match: false };
+
+  const canonicalName = normalizeCanonicalName(loc.name);
+  if (canonicalName && canonicalName === canonicalGroup) {
+    return { match: true, matchedBy: "name" };
+  }
+
+  const aliases = Array.isArray(loc.groupAliases) ? loc.groupAliases : [];
+  for (const alias of aliases) {
+    if (normalizeCanonicalName(alias) === canonicalGroup) {
+      return { match: true, matchedBy: "alias" };
+    }
+  }
+
+  return { match: false };
+}
+
 /**
  * Validate that request has authentication and return user info
  */

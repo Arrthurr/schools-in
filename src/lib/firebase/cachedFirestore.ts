@@ -218,12 +218,18 @@ export const getCachedLocationsByProvider = async (
 
       const snap = await getDocs(q);
       const normalized = snap.docs.reduce<Location[]>((acc, docSnapshot) => {
-        const loc = normalizeLocationData(docSnapshot.id, docSnapshot.data());
+        const data = docSnapshot.data();
+        const loc = normalizeLocationData(docSnapshot.id, data);
         if (loc) {
           acc.push(loc);
         } else {
+          const hasGeo = Boolean(
+            data?.geo ?? data?.gpsCoordinates ?? data?.coordinates
+          );
           appLogger.warn("Invalid location skipped (missing coordinates)", {
             locationId: docSnapshot.id,
+            name: data?.name ?? "",
+            hasGeo,
           });
         }
         return acc;
@@ -251,8 +257,14 @@ export const getCachedLocationsByProvider = async (
             if (loc) {
               results.push(loc);
             } else {
+              const data = docSnapshot.data();
+              const hasGeo = Boolean(
+                data?.geo ?? data?.gpsCoordinates ?? data?.coordinates
+              );
               appLogger.warn("Invalid legacy-assigned location skipped", {
                 locationId: docSnapshot.id,
+                name: data?.name ?? "",
+                hasGeo,
               });
             }
           });

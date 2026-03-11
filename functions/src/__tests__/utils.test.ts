@@ -50,6 +50,8 @@ import {
   SESSION_LIMIT_MS,
   RECENTLY_CREATED_GRACE_MS,
   DEFAULT_ADMIN_GROUP_NAME,
+  normalizeCanonicalName,
+  locationMatchesGroup,
 } from "../utils";
 
 import * as webpush from "web-push";
@@ -316,6 +318,111 @@ describe("isAdminGroup", () => {
 
   test("handles group with empty displayName", () => {
     expect(isAdminGroup({ id: "some-id", displayName: "" })).toBe(false);
+  });
+});
+
+// ============================================================================
+// normalizeCanonicalName (M365 group-to-location matching)
+// ============================================================================
+
+describe("normalizeCanonicalName", () => {
+  test("lowercases and trims", () => {
+    expect(normalizeCanonicalName("  HOPE Excel  ")).toBe("hope excel");
+  });
+
+  test("collapses multiple spaces", () => {
+    expect(normalizeCanonicalName("St   Sabina   Academy")).toBe(
+      "st sabina academy"
+    );
+  });
+
+  test("strips punctuation: period, comma, hyphen, apostrophe, parens", () => {
+    expect(normalizeCanonicalName("St. Sabina")).toBe("st sabina");
+    expect(normalizeCanonicalName("HOPE Excel Academy")).toBe(
+      "hope excel academy"
+    );
+    expect(normalizeCanonicalName("School (Main)")).toBe("school main");
+    expect(normalizeCanonicalName("O'Brien")).toBe("obrien");
+  });
+
+  test("collapses whitespace created by removed punctuation", () => {
+    expect(normalizeCanonicalName("ITA Village Leadership Academy - Bronzeville")).toBe(
+      normalizeCanonicalName("ITA Village Leadership Academy Bronzeville")
+    );
+    expect(normalizeCanonicalName("ITA Village Leadership Academy - Bronzeville")).toBe(
+      "ita village leadership academy bronzeville"
+    );
+  });
+
+  test("St. Sabina vs St Sabina normalize to same string", () => {
+    expect(normalizeCanonicalName("St. Sabina")).toBe(normalizeCanonicalName("St Sabina"));
+    expect(normalizeCanonicalName("St. Sabina")).toBe("st sabina");
+  });
+
+  test("returns empty string for non-string input", () => {
+    expect(normalizeCanonicalName("")).toBe("");
+    expect(normalizeCanonicalName(null as any)).toBe("");
+    expect(normalizeCanonicalName(undefined as any)).toBe("");
+  });
+});
+
+// ============================================================================
+// locationMatchesGroup (M365 group-to-location matching)
+// ============================================================================
+
+describe("locationMatchesGroup", () => {
+  test("matches by primary name (case-insensitive, canonical)", () => {
+    const loc = { id: "loc1", name: "St. Sabina Academy" };
+    expect(locationMatchesGroup(loc, "St Sabina Academy")).toEqual({
+      match: true,
+      matchedBy: "name",
+    });
+    expect(locationMatchesGroup(loc, "st. sabina academy")).toEqual({
+      match: true,
+      matchedBy: "name",
+    });
+  });
+
+  test("matches by groupAliases when group name differs from location name", () => {
+    const loc = {
+      id: "hope-id",
+      name: "HOPE Excel Academy",
+      groupAliases: ["HOPE Excel"],
+    };
+    expect(locationMatchesGroup(loc, "HOPE Excel")).toEqual({
+      match: true,
+      matchedBy: "alias",
+    });
+    expect(locationMatchesGroup(loc, "HOPE Excel Academy")).toEqual({
+      match: true,
+      matchedBy: "name",
+    });
+  });
+
+  test("does not match similar but incorrect names (false-positive prevention)", () => {
+    const loc = { id: "loc1", name: "Springfield Elementary" };
+    expect(locationMatchesGroup(loc, "Springfield High")).toEqual({
+      match: false,
+    });
+    expect(locationMatchesGroup(loc, "Springfield")).toEqual({ match: false });
+    expect(locationMatchesGroup(loc, "Elementary")).toEqual({ match: false });
+  });
+
+  test("returns match: false for empty group name", () => {
+    const loc = { id: "loc1", name: "Test School" };
+    expect(locationMatchesGroup(loc, "")).toEqual({ match: false });
+  });
+
+  test("handles missing or empty groupAliases", () => {
+    const loc = { id: "loc1", name: "Test School" };
+    expect(locationMatchesGroup(loc, "Test School")).toEqual({
+      match: true,
+      matchedBy: "name",
+    });
+    expect(locationMatchesGroup({ ...loc, groupAliases: [] }, "Test School")).toEqual({
+      match: true,
+      matchedBy: "name",
+    });
   });
 });
 
