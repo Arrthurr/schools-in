@@ -17,6 +17,7 @@ import { isAuthBypassEnabled, createMockAuthState } from "@/lib/firebase/authByp
 
 interface AuthUser extends User {
   role?: "provider" | "admin";
+  autoGeofenceCheckEnabled?: boolean;
   profile?: {
     displayName?: string;
     photoURL?: string;

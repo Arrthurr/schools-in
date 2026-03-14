@@ -6,15 +6,17 @@ import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useProviderMetrics } from "@/lib/hooks/useProviderMetrics";
 import { SchoolList } from "../../components/provider/SchoolList";
 import { SessionStatus } from "../../components/provider/SessionStatus";
+import { ProviderManualCheckInOut } from "@/components/provider/ProviderManualCheckInOut";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   PageHeader,
   StatCard,
   SectionCard,
   ActivityList,
 } from "@/components/dashboard";
-import { MapPin, Clock, School, History } from "lucide-react";
+import { MapPin, Clock, School, History, Zap } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CachedSessionService } from "@/lib/services/cachedSessionService";
@@ -30,7 +32,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const { locations: providerLocations } = useProviderLocations(user?.uid);
   const [assignedSchoolsCount, setAssignedSchoolsCount] = useState(0);
-  const { enabled: autoGeofenceEnabled } = useAutoGeofencePreference();
+  const {
+    enabled: autoGeofenceEnabled,
+    loading: prefLoading,
+    setEnabled: setAutoGeofenceEnabled,
+  } = useAutoGeofencePreference();
   const autoGeofence = useAutoGeofenceCheck();
   const [todayLabel, setTodayLabel] = useState("");
   const [relativeNowMs, setRelativeNowMs] = useState<number | null>(null);
@@ -161,6 +167,11 @@ export default function DashboardPage() {
     </Badge>
   ) : null;
 
+  const handleAutoToggle = async (checked: boolean) => {
+    if (user?.role !== "provider") return;
+    await setAutoGeofenceEnabled(checked);
+  };
+
   return (
     <ProtectedRoute roles={["provider", "admin"]}>
       <ProviderNavigation headerStatus={autoCheckBadge}>
@@ -184,18 +195,47 @@ export default function DashboardPage() {
             }
           />
 
-          {/* Mobile-first: Priority order - Current Session & Assigned Schools first */}
+          {/* Mobile-first: Priority order - Check-In & Assigned Schools first */}
           <div className="space-y-6 mb-8">
-            {/* Current Session Card - Top priority on mobile */}
-            {/* Note: onEndSession removed - providers use automatic check-out via geofence */}
-            <SessionStatus
-              currentSession={
-                metrics.currentSession || metrics.lastCompletedSession
-              }
-            />
+            {/* Auto Check-In Toggle (providers only) */}
+            {user?.role === "provider" && !prefLoading && (
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                <div className="flex items-center gap-3">
+                  <Zap className="h-5 w-5 text-brand-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Automatic Check-In/Out
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {autoGeofenceEnabled
+                        ? "Checks you in/out automatically when you enter or leave a school."
+                        : "Manually check in and out at your schools."}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={autoGeofenceEnabled}
+                  onCheckedChange={handleAutoToggle}
+                  aria-label="Toggle automatic check-in"
+                />
+              </div>
+            )}
 
-            {/* Assigned Schools - Second priority on mobile */}
-            {/* Note: showCheckInButtons removed - providers use automatic check-in via geofence */}
+            {/* Manual mode: ProviderManualCheckInOut handles check-in and active session */}
+            {user?.role === "provider" && !autoGeofenceEnabled && (
+              <ProviderManualCheckInOut />
+            )}
+
+            {/* Auto mode: SessionStatus shows current session (auto check-out) */}
+            {(user?.role !== "provider" || autoGeofenceEnabled) && (
+              <SessionStatus
+                currentSession={
+                  metrics.currentSession || metrics.lastCompletedSession
+                }
+              />
+            )}
+
+            {/* Assigned Schools list */}
             <SchoolList
               showCheckInButtons={false}
               currentSessionLocationId={metrics.currentSession?.locationId}

@@ -288,7 +288,6 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
         </div>
 
         {/* Action Button - Full width on mobile */}
-        {/* Only show End Session button if onEndSession handler is provided (admin use case) */}
         {status === "active" && onEndSession && (
           <div className="flex gap-3">
             <Button
@@ -300,7 +299,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
           </div>
         )}
 
-        {/* For providers without manual end - show auto-checkout info */}
+        {/* Auto check-out info when auto mode is active */}
         {status === "active" && !onEndSession && (
           <div className="flex items-start gap-3 p-3 bg-muted/20 rounded-lg border">
             <MapPin className="h-5 w-5 text-brand-primary mt-0.5 flex-shrink-0" />
@@ -309,7 +308,8 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
                 Auto Check-Out Enabled
               </p>
               <p className="text-muted-foreground text-sm">
-                You'll be automatically checked out when you leave this location.
+                You&apos;ll be automatically checked out when you leave this
+                location.
               </p>
             </div>
           </div>

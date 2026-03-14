@@ -132,10 +132,10 @@ service cloud.firestore {
         request.resource.data.distanceFromCenterAtCheckIn is number &&
         request.resource.data.dayKey is string &&
         (
-          // Providers: allow only automatic/queued methods, and only for assigned locations
+          // Providers: allow automatic, manual, and queued methods for assigned locations
           (isProvider() &&
             isProviderAssignedToLocation(request.auth.uid, request.resource.data.locationId) &&
-            request.resource.data.checkInMethod in ['geo', 'offline-sync']
+            request.resource.data.checkInMethod in ['geo', 'manual', 'offline-sync']
           ) ||
           // Admins: allow manual check-in method (used by admin manual check-in flow)
           (isAdmin() &&

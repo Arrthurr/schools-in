@@ -304,7 +304,7 @@ const sessionLimitInMs = SESSION_LIMIT_MS;
 
 // Callable function to start a session with atomic checks
 // Supports role-based check-in methods:
-// - Providers: checkInMethod must be 'geo' or 'offline-sync' (auto check-in)
+// - Providers: checkInMethod can be 'geo', 'manual', or 'offline-sync'
 // - Admins: checkInMethod must be 'manual' (manual check-in with GPS + in-radius enforcement)
 exports.startSession = onCall(async (request: any) => {
   try {
@@ -356,11 +356,9 @@ exports.startSession = onCall(async (request: any) => {
 
       // Validate role-based checkInMethod
       if (userRole === "provider") {
-        // Providers can only use geo or offline-sync (automatic check-in)
-        if (data.checkInMethod === "manual") {
-          throw new Error(
-            "Providers cannot use manual check-in. Automatic check-in is enabled for your account."
-          );
+        // Providers can use geo (auto), manual, or offline-sync
+        if (!["geo", "manual", "offline-sync"].includes(data.checkInMethod)) {
+          throw new Error("Invalid check-in method for provider.");
         }
       } else if (userRole === "admin") {
         // Admins can only use manual check-in
@@ -487,11 +485,59 @@ exports.startSession = onCall(async (request: any) => {
           distance: Math.round(distanceFromCenter),
           radiusMeters,
         });
-      } else if (userRole === "admin" && data.checkInMethod === "manual") {
-        // For admin manual check-in, checkInLocation is required
+      } else if (data.checkInMethod === "manual") {
+        // For manual check-in (admin or provider), checkInLocation is required
         throw new Error(
-          "Admin manual check-in requires checkInLocation with latitude and longitude"
+          "Manual check-in requires checkInLocation with latitude and longitude"
         );
+      }
+
+      // Schedule-based time gating for provider manual check-in
+      if (userRole === "provider" && data.checkInMethod === "manual") {
+        // Determine the current time in America/Chicago for day-of-week comparisons
+        const nowChicago = new Date().toLocaleString("en-US", {
+          timeZone: "America/Chicago",
+        });
+        const chicagoDate = new Date(nowChicago);
+        const dayOfWeek = chicagoDate.getDay();
+        const currentMinutes =
+          chicagoDate.getHours() * 60 + chicagoDate.getMinutes();
+
+        const schedulesQuery = db
+          .collection("schedules")
+          .where("providerId", "==", userId)
+          .where("locationId", "==", data.locationId)
+          .where("dayOfWeek", "==", dayOfWeek);
+
+        const schedulesSnapshot = await transaction.get(schedulesQuery);
+
+        const activeStartTimes = schedulesSnapshot.docs
+          .filter((doc: any) => doc.data().isActive !== false)
+          .map((doc: any) => doc.data().startTime as string)
+          .sort();
+
+        if (activeStartTimes.length > 0) {
+          const earliestStartTime = activeStartTimes[0]; // "HH:MM" 24-hour
+          const [hours, minutes] = earliestStartTime.split(":").map(Number);
+          const scheduleMinutes = hours * 60 + minutes;
+          const earliestCheckInMinutes = scheduleMinutes - 15;
+
+          if (currentMinutes < earliestCheckInMinutes) {
+            const checkInHour = Math.floor(earliestCheckInMinutes / 60);
+            const checkInMin = earliestCheckInMinutes % 60;
+            const ampm = checkInHour >= 12 ? "PM" : "AM";
+            const displayHour =
+              checkInHour > 12
+                ? checkInHour - 12
+                : checkInHour === 0
+                ? 12
+                : checkInHour;
+            const timeStr = `${displayHour}:${String(checkInMin).padStart(2, "0")} ${ampm}`;
+            throw new Error(
+              `Check-in opens at ${timeStr}. Your first session starts at ${earliestStartTime}.`
+            );
+          }
+        }
       }
 
       // Create the new session document
@@ -570,12 +616,12 @@ exports.startSession = onCall(async (request: any) => {
         throw new Error("User account not found. Please contact support.");
       } else if (error.message.includes("must be within")) {
         throw error; // Preserve geofence error message
-      } else if (error.message.includes("Providers cannot use manual")) {
-        throw error; // Preserve role-based method error
       } else if (error.message.includes("Admins must use manual")) {
         throw error; // Preserve role-based method error
       } else if (error.message.includes("requires checkInLocation")) {
         throw error; // Preserve location requirement error
+      } else if (error.message.includes("Check-in opens at")) {
+        throw error; // Preserve schedule gating error
       } else if (error.message.includes("Duplicate session detected")) {
         throw new Error(
           "A session already exists for this time. No duplicate was created."
