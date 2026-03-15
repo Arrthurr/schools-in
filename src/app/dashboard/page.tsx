@@ -209,7 +209,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-muted-foreground">
                       {autoGeofenceEnabled
                         ? "Checks you in/out automatically when you enter or leave a school."
-                        : "Manually check in and out at your schools."}
+                        : "Enable to automatically check in/out when you enter or leave a school."}
                     </p>
                   </div>
                 </div>
