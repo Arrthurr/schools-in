@@ -183,11 +183,16 @@ describe("useScheduleGate", () => {
 
   it("picks the earliest schedule when multiple exist today", async () => {
     const chicago = getChicagoNow();
-    // Compute future times using minute arithmetic to avoid wraparound issues
-    const nearTotalMin = chicago.hours * 60 + chicago.minutes + 120; // +2h
-    const farTotalMin = chicago.hours * 60 + chicago.minutes + 240; // +4h
-    const nearStart = `${String(Math.floor(nearTotalMin / 60) % 24).padStart(2, "0")}:${String(nearTotalMin % 60).padStart(2, "0")}`;
-    const farStart = `${String(Math.floor(farTotalMin / 60) % 24).padStart(2, "0")}:${String(farTotalMin % 60).padStart(2, "0")}`;
+    const nowMin = chicago.hours * 60 + chicago.minutes;
+    const endOfDay = 23 * 60 + 59; // 23:59
+    const remaining = endOfDay - nowMin;
+    // Need two future times both >15 min from now and before midnight
+    const nearOffset = Math.min(120, Math.floor(remaining * 0.5));
+    const farOffset = Math.min(240, Math.max(nearOffset + 15, Math.floor(remaining * 0.85)));
+    const nearTotalMin = nowMin + nearOffset;
+    const farTotalMin = nowMin + farOffset;
+    const nearStart = `${String(Math.floor(nearTotalMin / 60)).padStart(2, "0")}:${String(nearTotalMin % 60).padStart(2, "0")}`;
+    const farStart = `${String(Math.floor(farTotalMin / 60)).padStart(2, "0")}:${String(farTotalMin % 60).padStart(2, "0")}`;
 
     // Schedule with nearStart should be the earliest — gate opens 15 min before it
     mockGetSchedulesByProviderAndLocation.mockResolvedValue([

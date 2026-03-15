@@ -42,9 +42,13 @@ const config = {
 
     // Infrastructure & plumbing (no unit tests; covered by E2E / integration)
     "!src/lib/deployment/**",
-    "!src/lib/offline/**",
+    "!src/lib/offline/offlineDB.ts",
+    "!src/lib/offline/syncManager.ts",
+    "!src/lib/offline/serviceManager.ts",
+    "!src/lib/offline/dbSchema.ts",
     "!src/lib/performance/**",
-    "!src/lib/pwa/**",
+    "!src/lib/pwa/periodicBackgroundSync.ts",
+    "!src/lib/pwa/capabilities.ts",
     "!src/lib/testing/**",
     "!src/lib/logging/**",
     "!src/lib/cache/**",
@@ -62,11 +66,9 @@ const config = {
     "!src/lib/services/cachedUserService.ts",
     "!src/lib/services/reportScheduleService.ts",
     "!src/lib/services/scheduleService.ts",
-    "!src/lib/services/schoolService.ts",
     "!src/lib/services/serviceManager.ts",
     "!src/lib/services/serviceService.ts",
     "!src/lib/services/userPreferences.ts",
-    "!src/lib/services/userService.ts",
 
     // Hooks without test coverage
     "!src/lib/hooks/useAdminMetrics.ts",
@@ -109,8 +111,8 @@ const config = {
     "!src/lib/test-utils.tsx",
   ],
 
-  // Coverage thresholds — honest baseline after removing exclusions for
-  // files that already have tests (Feb 2026). Increase as coverage improves.
+  // Coverage thresholds — honest baseline after granular per-file exclusions.
+  // Increase as coverage improves.
   coverageThreshold: {
     global: {
       branches: 70,
