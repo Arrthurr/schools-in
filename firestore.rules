@@ -49,10 +49,6 @@ service cloud.firestore {
       return serviceExists(serviceId) && get(/databases/$(database)/documents/services/$(serviceId)).data.isActive != false;
     }
 
-    function isActiveLocation(locationId) {
-      return get(/databases/$(database)/documents/locations/$(locationId)).data.active != false;
-    }
-
     function isValidPushSubscription(data) {
       return data.endpoint is string &&
         data.keys is map &&
@@ -119,29 +115,13 @@ service cloud.firestore {
                      request.query.where.value == request.auth.uid);
     }
 
-    // Sessions collection rules - Enhanced validation per PRD
+    // Sessions collection rules - Callable-authoritative
+    // Session creation and ending are enforced by Cloud Functions (startSession / endSession callables).
+    // Client-side writes are denied for create; providers can only pause/resume (not complete) via direct writes.
     match /sessions/{sessionId} {
-      allow create: if isAuthenticated() &&
-        isActiveUser() &&
-        request.auth.uid == request.resource.data.userId &&
-        isActiveLocation(request.resource.data.locationId) &&
-        hasValidTimestamp(request.resource.data) &&
-        request.resource.data.status in ['active'] && // Only allow creating active sessions
-        request.resource.data.locationId is string &&
-        request.resource.data.startTime is timestamp &&
-        request.resource.data.distanceFromCenterAtCheckIn is number &&
-        request.resource.data.dayKey is string &&
-        (
-          // Providers: allow only automatic/queued methods, and only for assigned locations
-          (isProvider() &&
-            isProviderAssignedToLocation(request.auth.uid, request.resource.data.locationId) &&
-            request.resource.data.checkInMethod in ['geo', 'offline-sync']
-          ) ||
-          // Admins: allow manual check-in method (used by admin manual check-in flow)
-          (isAdmin() &&
-            request.resource.data.checkInMethod == 'manual'
-          )
-        );
+      // Session creation: denied for clients. Only the Admin SDK (Cloud Functions) can create sessions.
+      // This ensures geofence validation, schedule gating, and one-active-session checks are enforced server-side.
+      allow create: if false;
       
       allow read: if isAuthenticated() &&
                      (isOwner(resource.data.userId) || isAdmin());
@@ -149,14 +129,13 @@ service cloud.firestore {
       allow update: if isAuthenticated() &&
                        hasValidTimestamp(request.resource.data) &&
                        (
-                         // Providers can only update their own sessions with valid transitions
+                         // Providers can only pause/resume their own sessions (not complete — must use endSession callable)
                          (isOwner(resource.data.userId) && 
                           isProvider() &&
-                          resource.data.status != 'completed' && // Cannot update completed sessions
+                          resource.data.status != 'completed' &&
                           (
-                            // Valid state transitions for providers
-                            (resource.data.status == 'active' && request.resource.data.status in ['paused', 'completed']) ||
-                            (resource.data.status == 'paused' && request.resource.data.status in ['active', 'completed'])
+                            (resource.data.status == 'active' && request.resource.data.status == 'paused') ||
+                            (resource.data.status == 'paused' && request.resource.data.status == 'active')
                           )) ||
                         // Admins have full control over all sessions and transitions
                         (isAdmin() && request.resource.data.status in ['active', 'paused', 'completed', 'cancelled', 'error'])
@@ -165,7 +144,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
       
       // List operations - admins can list all, providers can query their own sessions
-      // Explicitly allow real-time queries for active/paused/completed sessions by userId
       allow list: if isAdmin() || 
                      (isProvider() && isActiveUser());
     }

@@ -17,6 +17,7 @@ import { isAuthBypassEnabled, createMockAuthState } from "@/lib/firebase/authByp
 
 interface AuthUser extends User {
   role?: "provider" | "admin";
+  autoGeofenceCheckEnabled?: boolean;
   profile?: {
     displayName?: string;
     photoURL?: string;
@@ -65,6 +66,7 @@ export function useCachedAuth() {
 
           let userData = await cacheManager.getMultiLayer<{
             role: "provider" | "admin";
+            autoGeofenceCheckEnabled?: boolean;
             profile?: any;
           }>(cacheKey, [
             FIREBASE_CACHE_CONFIGS.AUTH.memory,
@@ -75,6 +77,7 @@ export function useCachedAuth() {
           if (!userData) {
             userData = await getCachedDocumentWithRetry<{
               role: "provider" | "admin";
+              autoGeofenceCheckEnabled?: boolean;
               profile?: any;
             }>(COLLECTIONS.USERS, firebaseUser.uid);
 
@@ -91,6 +94,7 @@ export function useCachedAuth() {
           const authUser: AuthUser = {
             ...firebaseUser,
             role: userData?.role,
+            autoGeofenceCheckEnabled: userData?.autoGeofenceCheckEnabled,
             profile: userData?.profile || {
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
@@ -158,6 +162,7 @@ export function useCachedAuth() {
       // Force refresh user data from Firestore with retry for auth state propagation
       const userData = await getCachedDocumentWithRetry<{
         role: "provider" | "admin";
+        autoGeofenceCheckEnabled?: boolean;
         profile?: any;
       }>(COLLECTIONS.USERS, state.user.uid);
 
@@ -165,6 +170,7 @@ export function useCachedAuth() {
         const authUser: AuthUser = {
           ...state.user,
           role: userData.role,
+          autoGeofenceCheckEnabled: userData.autoGeofenceCheckEnabled,
           profile: userData.profile || state.user.profile,
         };
 

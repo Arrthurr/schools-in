@@ -101,7 +101,7 @@ export class CachedSessionService {
     }
   }
 
-  // End an active session
+  // End an active session via the endSession callable (server-side validation)
   static async endSession(
     sessionId: string,
     endData: EndSessionData,
@@ -110,54 +110,29 @@ export class CachedSessionService {
     const { forceRefresh = false } = options;
 
     try {
-      const sessionRef = doc(db, COLLECTIONS.SESSIONS, sessionId);
-      const sessionDoc = await getDoc(sessionRef);
+      const endSessionFunction = httpsCallable(functions, "endSession");
+      const result = await endSessionFunction({
+        sessionId,
+        checkOutTime: endData.endTime.toISOString(),
+        notes: endData.notes,
+      });
+      const data = result.data as any;
 
-      if (!sessionDoc.exists()) {
-        throw new Error("Session not found");
+      if (!data.success) {
+        throw new Error(data.error || "Failed to end session");
       }
 
-      const sessionData = sessionDoc.data() as Session;
-
-      if (sessionData.status !== "active" && sessionData.status !== "paused") {
-        throw new Error("Session is not active or paused");
-      }
-
-      // Calculate duration if not provided
-      let durationMinutes = endData.durationMinutes;
-      if (!durationMinutes && sessionData.startTime) {
-        const startMs = sessionData.startTime.toMillis();
-        const endMs = endData.endTime.getTime();
-        durationMinutes = Math.max(0, Math.floor((endMs - startMs) / (1000 * 60)));
-      }
-
-      const updatedSessionData = {
-        endTime: Timestamp.fromDate(endData.endTime),
-        checkOutTime: Timestamp.fromDate(endData.endTime),
-        status: "completed" as const,
-        active: false,
-        durationMinutes,
-        notes: endData.notes || sessionData.notes,
-        updatedAt: Timestamp.now(),
-      };
-
-      await updateDoc(sessionRef, updatedSessionData);
-
-      const updatedSession = {
-        ...sessionData,
-        ...updatedSessionData,
+      const session: Session = {
         id: sessionId,
-      };
+        ...data.sessionUpdates,
+      } as Session;
 
       // Clear related caches
       if (forceRefresh) {
-        await this.clearSessionCaches(
-          sessionData.userId,
-          sessionData.locationId
-        );
+        await this.clearSessionCaches(session.userId, session.locationId);
       }
 
-      return updatedSession;
+      return session;
     } catch (error: any) {
       console.error("Error ending session:", error);
       throw new Error(error.message || "Failed to end session");

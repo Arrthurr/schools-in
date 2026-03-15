@@ -6,7 +6,7 @@ import type { Location } from "@/lib/firebase/types";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { useCachedSession } from "@/lib/hooks/useCachedSession";
 import { useSession } from "@/lib/hooks/useSession";
-import { useAutoGeofencePreference } from "@/lib/hooks/useAutoGeofencePreference";
+
 import { useGeofenceStrategy } from "@/lib/hooks/useGeofenceStrategy";
 import { locationService } from "@/lib/utils/location";
 import { validateGeofence } from "@/lib/utils/geo";
@@ -77,9 +77,8 @@ const CANCEL_COOLDOWN_MS = 5 * 60_000;
 const CHECK_IN_GRACE_PERIOD_MS = 60_000; // 60 seconds grace period after check-in
 const SESSION_LIMIT_MS = 9 * 60 * 60 * 1000; // 9 hours — matches cleanupStaleSessions timeout
 const FEATURE_FLAG = process.env.NEXT_PUBLIC_FEATURE_AUTO_GEOFENCE !== "false";
-export function useAutoGeofenceCheck(): AutoGeofenceState {
+export function useAutoGeofenceCheck(prefEnabled: boolean): AutoGeofenceState {
   const { user } = useCachedAuth();
-  const { enabled: prefEnabled } = useAutoGeofencePreference();
   const { activeSession } = useCachedSession(user?.uid);
   const { checkIn, checkOut } = useSession();
 

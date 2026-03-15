@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useAutoGeofencePreference } from "../useAutoGeofencePreference";
 
 // Mock useCachedAuth with different user roles
@@ -7,13 +7,21 @@ jest.mock("@/lib/hooks/useCachedAuth", () => ({
   useCachedAuth: () => mockUseCachedAuth(),
 }));
 
+// Mock Firestore
+jest.mock("firebase/firestore", () => ({
+  ...jest.requireActual("firebase/firestore"),
+  doc: jest.fn(() => ({ id: "mock-doc" })),
+  updateDoc: jest.fn(),
+}));
+jest.mock("../../../../firebase.config", () => ({ db: {} }));
+
 describe("useAutoGeofencePreference", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   describe("Role-based auto geofence enablement", () => {
-    it("should enable auto geofence for provider users", () => {
+    it("defaults to disabled (manual mode) for providers with no stored preference", async () => {
       mockUseCachedAuth.mockReturnValue({
         user: { uid: "user-1", role: "provider" },
         loading: false,
@@ -21,25 +29,38 @@ describe("useAutoGeofencePreference", () => {
 
       const { result } = renderHook(() => useAutoGeofencePreference());
 
-      expect(result.current.enabled).toBe(true);
-      expect(result.current.loading).toBe(false);
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.enabled).toBe(false);
       expect(result.current.error).toBeNull();
     });
 
-    it("should disable auto geofence for admin users", () => {
+    it("reads stored true preference for providers", async () => {
       mockUseCachedAuth.mockReturnValue({
-        user: { uid: "admin-1", role: "admin" },
+        user: { uid: "user-1", role: "provider", autoGeofenceCheckEnabled: true },
         loading: false,
       });
 
       const { result } = renderHook(() => useAutoGeofencePreference());
 
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.enabled).toBe(true);
+    });
+
+    it("disables auto geofence for admin users regardless of stored preference", async () => {
+      mockUseCachedAuth.mockReturnValue({
+        user: { uid: "admin-1", role: "admin", autoGeofenceCheckEnabled: true },
+        loading: false,
+      });
+
+      const { result } = renderHook(() => useAutoGeofencePreference());
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.enabled).toBe(false);
       expect(result.current.loading).toBe(false);
       expect(result.current.error).toBeNull();
     });
 
-    it("should disable auto geofence when user is not authenticated", () => {
+    it("disables auto geofence when user is not authenticated", async () => {
       mockUseCachedAuth.mockReturnValue({
         user: null,
         loading: false,
@@ -47,12 +68,12 @@ describe("useAutoGeofencePreference", () => {
 
       const { result } = renderHook(() => useAutoGeofencePreference());
 
+      await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.enabled).toBe(false);
-      expect(result.current.loading).toBe(false);
       expect(result.current.error).toBeNull();
     });
 
-    it("should reflect loading state from auth hook", () => {
+    it("reflects loading state from auth hook", () => {
       mockUseCachedAuth.mockReturnValue({
         user: null,
         loading: true,
@@ -63,14 +84,16 @@ describe("useAutoGeofencePreference", () => {
       expect(result.current.loading).toBe(true);
     });
 
-    it("should update enabled state when user role changes", () => {
-      // Start as provider
+    it("updates enabled state when user role changes from provider to admin", async () => {
+      // Start as provider with auto enabled
       mockUseCachedAuth.mockReturnValue({
-        user: { uid: "user-1", role: "provider" },
+        user: { uid: "user-1", role: "provider", autoGeofenceCheckEnabled: true },
         loading: false,
       });
 
       const { result, rerender } = renderHook(() => useAutoGeofencePreference());
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.enabled).toBe(true);
 
       // Change to admin
@@ -80,10 +103,10 @@ describe("useAutoGeofencePreference", () => {
       });
 
       rerender();
-      expect(result.current.enabled).toBe(false);
+      await waitFor(() => expect(result.current.enabled).toBe(false));
     });
 
-    it("should handle undefined role as disabled", () => {
+    it("handles undefined role as disabled", async () => {
       mockUseCachedAuth.mockReturnValue({
         user: { uid: "user-1" }, // No role specified
         loading: false,
@@ -91,12 +114,13 @@ describe("useAutoGeofencePreference", () => {
 
       const { result } = renderHook(() => useAutoGeofencePreference());
 
+      await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.enabled).toBe(false);
     });
   });
 
   describe("Hook return value shape", () => {
-    it("should return expected interface shape", () => {
+    it("returns expected interface including setEnabled", async () => {
       mockUseCachedAuth.mockReturnValue({
         user: { uid: "user-1", role: "provider" },
         loading: false,
@@ -104,22 +128,14 @@ describe("useAutoGeofencePreference", () => {
 
       const { result } = renderHook(() => useAutoGeofencePreference());
 
-      expect(result.current).toEqual({
-        enabled: true,
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current).toMatchObject({
+        enabled: false,
         loading: false,
         error: null,
       });
-    });
-
-    it("should not have setEnabled method (role-based, not configurable)", () => {
-      mockUseCachedAuth.mockReturnValue({
-        user: { uid: "user-1", role: "provider" },
-        loading: false,
-      });
-
-      const { result } = renderHook(() => useAutoGeofencePreference());
-
-      expect(result.current).not.toHaveProperty("setEnabled");
+      expect(typeof result.current.setEnabled).toBe("function");
     });
   });
 });

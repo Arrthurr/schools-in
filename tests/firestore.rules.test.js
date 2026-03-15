@@ -288,7 +288,10 @@ describe("Firestore Security Rules", () => {
   });
 
   describe("Sessions Collection", () => {
-    test("allows provider to create a session only for assigned active location", async () => {
+    // Session creation is callable-only — only the Admin SDK (Cloud Functions) can create sessions.
+    // All client-side writes for session creation are denied regardless of role or check-in method.
+
+    test("denies provider from creating a session via client (callable-only)", async () => {
       const now = new Date();
       await seedUser("provider123", {
         uid: "provider123",
@@ -312,7 +315,7 @@ describe("Firestore Security Rules", () => {
       });
 
       const provider = authed("provider123", { email: "provider@test.com" });
-      await assertSucceeds(
+      await assertFails(
         provider.firestore().collection("sessions").add({
           userId: "provider123",
           locationId: "loc1",
@@ -327,7 +330,7 @@ describe("Firestore Security Rules", () => {
       );
     });
 
-    test("allows admin to create a manual session for an active location", async () => {
+    test("denies admin from creating a session via client (callable-only)", async () => {
       const now = new Date();
       await seedUser("admin", {
         uid: "admin",
@@ -351,7 +354,7 @@ describe("Firestore Security Rules", () => {
       });
 
       const admin = authed("admin", { email: "admin@test.com" });
-      await assertSucceeds(
+      await assertFails(
         admin.firestore().collection("sessions").add({
           userId: "admin",
           locationId: "loc1",
@@ -366,7 +369,7 @@ describe("Firestore Security Rules", () => {
       );
     });
 
-    test("denies provider from creating a manual session (manual is admin-only)", async () => {
+    test("denies all client session creates regardless of check-in method", async () => {
       const now = new Date();
       await seedUser("provider123", {
         uid: "provider123",
@@ -405,7 +408,7 @@ describe("Firestore Security Rules", () => {
       );
     });
 
-    test("denies provider from creating a session for unassigned location", async () => {
+    test("allows provider to pause their own active session", async () => {
       const now = new Date();
       await seedUser("provider123", {
         uid: "provider123",
@@ -417,22 +420,10 @@ describe("Firestore Security Rules", () => {
         updatedAt: now,
       });
 
-      await seedLocation("loc2", {
-        name: "Other Location",
-        address: "456 Main St",
-        geo: { latitude: 41.0, longitude: -87.0 },
-        radiusMeters: 100,
-        assignedProviders: [],
-        active: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      const provider = authed("provider123", { email: "provider@test.com" });
-      await assertFails(
-        provider.firestore().collection("sessions").add({
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().doc("sessions/session123").set({
           userId: "provider123",
-          locationId: "loc2",
+          locationId: "loc1",
           startTime: now,
           status: "active",
           checkInMethod: "geo",
@@ -440,11 +431,19 @@ describe("Firestore Security Rules", () => {
           dayKey: "2026-01-01",
           createdAt: now,
           updatedAt: now,
+        });
+      });
+
+      const provider = authed("provider123", { email: "provider@test.com" });
+      await assertSucceeds(
+        provider.firestore().doc("sessions/session123").update({
+          status: "paused",
+          updatedAt: now,
         })
       );
     });
 
-    test("denies provider from creating a session for inactive location", async () => {
+    test("allows provider to resume their own paused session", async () => {
       const now = new Date();
       await seedUser("provider123", {
         uid: "provider123",
@@ -456,28 +455,95 @@ describe("Firestore Security Rules", () => {
         updatedAt: now,
       });
 
-      await seedLocation("loc3", {
-        name: "Inactive Location",
-        address: "789 Main St",
-        geo: { latitude: 41.0, longitude: -87.0 },
-        radiusMeters: 100,
-        assignedProviders: ["provider123"],
-        active: false,
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().doc("sessions/session123").set({
+          userId: "provider123",
+          locationId: "loc1",
+          startTime: now,
+          status: "paused",
+          checkInMethod: "geo",
+          distanceFromCenterAtCheckIn: 10,
+          dayKey: "2026-01-01",
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
+
+      const provider = authed("provider123", { email: "provider@test.com" });
+      await assertSucceeds(
+        provider.firestore().doc("sessions/session123").update({
+          status: "active",
+          updatedAt: now,
+        })
+      );
+    });
+
+    test("denies provider from completing their own session via direct write (must use endSession callable)", async () => {
+      const now = new Date();
+      await seedUser("provider123", {
+        uid: "provider123",
+        email: "provider@test.com",
+        displayName: "Provider",
+        role: "provider",
+        isActive: true,
         createdAt: now,
         updatedAt: now,
       });
 
-      const provider = authed("provider123", { email: "provider@test.com" });
-      await assertFails(
-        provider.firestore().collection("sessions").add({
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().doc("sessions/session123").set({
           userId: "provider123",
-          locationId: "loc3",
+          locationId: "loc1",
           startTime: now,
           status: "active",
           checkInMethod: "geo",
           distanceFromCenterAtCheckIn: 10,
           dayKey: "2026-01-01",
           createdAt: now,
+          updatedAt: now,
+        });
+      });
+
+      const provider = authed("provider123", { email: "provider@test.com" });
+      await assertFails(
+        provider.firestore().doc("sessions/session123").update({
+          status: "completed",
+          updatedAt: now,
+        })
+      );
+    });
+
+    test("allows admin to complete a session via direct write", async () => {
+      const now = new Date();
+      await seedUser("admin", {
+        uid: "admin",
+        email: "admin@test.com",
+        displayName: "Admin",
+        role: "admin",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().doc("sessions/session123").set({
+          userId: "provider123",
+          locationId: "loc1",
+          startTime: now,
+          status: "active",
+          checkInMethod: "geo",
+          distanceFromCenterAtCheckIn: 10,
+          dayKey: "2026-01-01",
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
+
+      const admin = authed("admin", { email: "admin@test.com" });
+      await assertSucceeds(
+        admin.firestore().doc("sessions/session123").update({
+          status: "completed",
+          endTime: now,
           updatedAt: now,
         })
       );
