@@ -22,12 +22,34 @@ jest.mock("../../../firebase.config", () => ({
 const mockGetSchedulesByProviderAndLocation =
   scheduleService.getSchedulesByProviderAndLocation as jest.Mock;
 
+/** Get current day-of-week and time in America/Chicago (matches hook logic) */
+function getChicagoNow() {
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    hour12: false,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const parts = fmt.formatToParts(now);
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  const weekdayMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  const dayOfWeek = weekdayMap[get("weekday")] ?? now.getDay();
+  const hours = Number(get("hour").replace(/^24$/, "00"));
+  const minutes = Number(get("minute"));
+  return { dayOfWeek, hours, minutes };
+}
+
 const baseSchedule = {
   id: "sched-1",
   providerId: "provider-1",
   locationId: "location-1",
   serviceId: "service-1",
-  dayOfWeek: new Date().getDay(),
+  dayOfWeek: getChicagoNow().dayOfWeek,
   startTime: "09:00",
   endTime: "10:00",
   isActive: true,
@@ -71,12 +93,12 @@ describe("useScheduleGate", () => {
 
   it("blocks check-in when current time is before the grace window", async () => {
     // Force the schedule start time to be 3 hours from now — well outside the 15-min window
-    const now = new Date();
-    const futureHour = (now.getHours() + 3) % 24;
-    const startTime = `${String(futureHour).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const chicago = getChicagoNow();
+    const futureHour = (chicago.hours + 3) % 24;
+    const startTime = `${String(futureHour).padStart(2, "0")}:${String(chicago.minutes).padStart(2, "0")}`;
 
     mockGetSchedulesByProviderAndLocation.mockResolvedValue([
-      { ...baseSchedule, dayOfWeek: now.getDay(), startTime },
+      { ...baseSchedule, dayOfWeek: chicago.dayOfWeek, startTime },
     ]);
 
     const { result } = renderHook(() =>
@@ -92,12 +114,14 @@ describe("useScheduleGate", () => {
 
   it("allows check-in when current time is within the 15-minute grace window", async () => {
     // Schedule starts 10 minutes from now — within the 15-min grace window
-    const now = new Date();
-    const tenMinutesAhead = new Date(now.getTime() + 10 * 60 * 1000);
-    const startTime = `${String(tenMinutesAhead.getHours()).padStart(2, "0")}:${String(tenMinutesAhead.getMinutes()).padStart(2, "0")}`;
+    const chicago = getChicagoNow();
+    const totalMin = chicago.hours * 60 + chicago.minutes + 10;
+    const startHour = Math.floor(totalMin / 60) % 24;
+    const startMin = totalMin % 60;
+    const startTime = `${String(startHour).padStart(2, "0")}:${String(startMin).padStart(2, "0")}`;
 
     mockGetSchedulesByProviderAndLocation.mockResolvedValue([
-      { ...baseSchedule, dayOfWeek: now.getDay(), startTime },
+      { ...baseSchedule, dayOfWeek: chicago.dayOfWeek, startTime },
     ]);
 
     const { result } = renderHook(() =>
@@ -112,12 +136,14 @@ describe("useScheduleGate", () => {
 
   it("allows check-in when current time is past the schedule start", async () => {
     // Schedule started 1 hour ago
-    const now = new Date();
-    const pastHour = new Date(now.getTime() - 60 * 60 * 1000);
-    const startTime = `${String(pastHour.getHours()).padStart(2, "0")}:${String(pastHour.getMinutes()).padStart(2, "0")}`;
+    const chicago = getChicagoNow();
+    const totalMin = Math.max(0, chicago.hours * 60 + chicago.minutes - 60);
+    const startHour = Math.floor(totalMin / 60);
+    const startMin = totalMin % 60;
+    const startTime = `${String(startHour).padStart(2, "0")}:${String(startMin).padStart(2, "0")}`;
 
     mockGetSchedulesByProviderAndLocation.mockResolvedValue([
-      { ...baseSchedule, dayOfWeek: now.getDay(), startTime },
+      { ...baseSchedule, dayOfWeek: chicago.dayOfWeek, startTime },
     ]);
 
     const { result } = renderHook(() =>
@@ -132,14 +158,14 @@ describe("useScheduleGate", () => {
 
   it("ignores inactive schedules", async () => {
     // Inactive schedule far in the future — should not block
-    const now = new Date();
-    const futureHour = (now.getHours() + 5) % 24;
+    const chicago = getChicagoNow();
+    const futureHour = (chicago.hours + 5) % 24;
     const startTime = `${String(futureHour).padStart(2, "0")}:00`;
 
     mockGetSchedulesByProviderAndLocation.mockResolvedValue([
       {
         ...baseSchedule,
-        dayOfWeek: now.getDay(),
+        dayOfWeek: chicago.dayOfWeek,
         startTime,
         isActive: false,
       },
@@ -156,16 +182,17 @@ describe("useScheduleGate", () => {
   });
 
   it("picks the earliest schedule when multiple exist today", async () => {
-    const now = new Date();
-    const farFutureHour = (now.getHours() + 4) % 24;
-    const nearFutureHour = (now.getHours() + 2) % 24;
-    const farStart = `${String(farFutureHour).padStart(2, "0")}:00`;
-    const nearStart = `${String(nearFutureHour).padStart(2, "0")}:00`;
+    const chicago = getChicagoNow();
+    // Compute future times using minute arithmetic to avoid wraparound issues
+    const nearTotalMin = chicago.hours * 60 + chicago.minutes + 120; // +2h
+    const farTotalMin = chicago.hours * 60 + chicago.minutes + 240; // +4h
+    const nearStart = `${String(Math.floor(nearTotalMin / 60) % 24).padStart(2, "0")}:${String(nearTotalMin % 60).padStart(2, "0")}`;
+    const farStart = `${String(Math.floor(farTotalMin / 60) % 24).padStart(2, "0")}:${String(farTotalMin % 60).padStart(2, "0")}`;
 
     // Schedule with nearStart should be the earliest — gate opens 15 min before it
     mockGetSchedulesByProviderAndLocation.mockResolvedValue([
-      { ...baseSchedule, id: "s2", dayOfWeek: now.getDay(), startTime: farStart },
-      { ...baseSchedule, id: "s1", dayOfWeek: now.getDay(), startTime: nearStart },
+      { ...baseSchedule, id: "s2", dayOfWeek: chicago.dayOfWeek, startTime: farStart },
+      { ...baseSchedule, id: "s1", dayOfWeek: chicago.dayOfWeek, startTime: nearStart },
     ]);
 
     const { result } = renderHook(() =>
@@ -196,13 +223,70 @@ describe("useScheduleGate", () => {
     expect(result.current.error).toBeTruthy();
   });
 
+  it("automatically re-checks when the gate is blocked (tick timer)", async () => {
+    jest.useFakeTimers();
+
+    const chicago = getChicagoNow();
+    const futureHour = (chicago.hours + 3) % 24;
+    const startTime = `${String(futureHour).padStart(2, "0")}:${String(chicago.minutes).padStart(2, "0")}`;
+
+    mockGetSchedulesByProviderAndLocation.mockResolvedValue([
+      { ...baseSchedule, dayOfWeek: chicago.dayOfWeek, startTime },
+    ]);
+
+    const { result } = renderHook(() =>
+      useScheduleGate("provider-1", "location-1")
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.canCheckIn).toBe(false);
+
+    // The hook should have scheduled a setTimeout; verify the service is called again after advancing
+    mockGetSchedulesByProviderAndLocation.mockClear();
+
+    jest.advanceTimersByTime(60_000);
+    await waitFor(() =>
+      expect(mockGetSchedulesByProviderAndLocation).toHaveBeenCalled()
+    );
+
+    jest.useRealTimers();
+  });
+
+  it("clears tick timer on unmount", async () => {
+    jest.useFakeTimers();
+
+    const chicago = getChicagoNow();
+    const futureHour = (chicago.hours + 3) % 24;
+    const startTime = `${String(futureHour).padStart(2, "0")}:${String(chicago.minutes).padStart(2, "0")}`;
+
+    mockGetSchedulesByProviderAndLocation.mockResolvedValue([
+      { ...baseSchedule, dayOfWeek: chicago.dayOfWeek, startTime },
+    ]);
+
+    const { result, unmount } = renderHook(() =>
+      useScheduleGate("provider-1", "location-1")
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.canCheckIn).toBe(false);
+
+    unmount();
+    mockGetSchedulesByProviderAndLocation.mockClear();
+
+    // Timer should be cancelled — no new call after advancing
+    jest.advanceTimersByTime(120_000);
+    expect(mockGetSchedulesByProviderAndLocation).not.toHaveBeenCalled();
+
+    jest.useRealTimers();
+  });
+
   it("filters schedules by dayOfWeek to only include today", async () => {
-    const now = new Date();
-    const today = now.getDay();
+    const chicago = getChicagoNow();
+    const today = chicago.dayOfWeek;
     const tomorrow = (today + 1) % 7;
 
     // Only a schedule for tomorrow — should not affect today
-    const futureStart = `${String((now.getHours() + 3) % 24).padStart(2, "0")}:00`;
+    const futureStart = `${String((chicago.hours + 3) % 24).padStart(2, "0")}:00`;
     mockGetSchedulesByProviderAndLocation.mockResolvedValue([
       {
         ...baseSchedule,

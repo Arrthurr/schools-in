@@ -37,7 +37,7 @@ export default function DashboardPage() {
     loading: prefLoading,
     setEnabled: setAutoGeofenceEnabled,
   } = useAutoGeofencePreference();
-  const autoGeofence = useAutoGeofenceCheck();
+  const autoGeofence = useAutoGeofenceCheck(autoGeofenceEnabled);
   const [todayLabel, setTodayLabel] = useState("");
   const [relativeNowMs, setRelativeNowMs] = useState<number | null>(null);
 

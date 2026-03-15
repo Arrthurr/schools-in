@@ -147,98 +147,52 @@ describe("CachedSessionService", () => {
       notes: "Completed",
     };
 
-    it("ends an active session", async () => {
-      const startTime = {
-        toMillis: () => new Date("2026-02-08T10:00:00Z").getTime(),
-      };
-
-      mockGetDoc.mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          userId: "user-1",
-          locationId: "loc-1",
-          status: "active",
-          startTime,
-          notes: "",
-        }),
-      } as any);
-
-      mockUpdateDoc.mockResolvedValue(undefined);
+    it("ends a session via the endSession callable", async () => {
+      const mockCallable = jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          sessionId: "session-1",
+          sessionUpdates: {
+            status: "completed",
+            active: false,
+            durationMinutes: 120,
+            userId: "user-1",
+            locationId: "loc-1",
+          },
+        },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockCallable);
 
       const result = await CachedSessionService.endSession("session-1", endData);
 
-      expect(mockUpdateDoc).toHaveBeenCalled();
+      expect(httpsCallable).toHaveBeenCalledWith(undefined, "endSession");
+      expect(mockCallable).toHaveBeenCalledWith({
+        sessionId: "session-1",
+        checkOutTime: endData.endTime.toISOString(),
+        notes: "Completed",
+      });
       expect(result.status).toBe("completed");
-      expect((result as any).active).toBe(false);
       expect(result.id).toBe("session-1");
     });
 
-    it("calculates duration from start time when not provided", async () => {
-      const startMs = new Date("2026-02-08T10:00:00Z").getTime();
-      const endMs = new Date("2026-02-08T12:00:00Z").getTime();
-      const expectedMinutes = Math.floor((endMs - startMs) / (1000 * 60)); // 120
-
-      mockGetDoc.mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          userId: "user-1",
-          locationId: "loc-1",
-          status: "active",
-          startTime: { toMillis: () => startMs },
-          notes: "",
-        }),
-      } as any);
-
-      mockUpdateDoc.mockResolvedValue(undefined);
-
-      const result = await CachedSessionService.endSession("session-1", endData);
-
-      expect(result.durationMinutes).toBe(expectedMinutes);
-    });
-
-    it("throws when session not found", async () => {
-      mockGetDoc.mockResolvedValue({
-        exists: () => false,
-      } as any);
+    it("throws when callable returns failure", async () => {
+      const mockCallable = jest.fn().mockResolvedValue({
+        data: { success: false, error: "Session not found" },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockCallable);
 
       await expect(
         CachedSessionService.endSession("missing-session", endData)
       ).rejects.toThrow("Session not found");
     });
 
-    it("throws when session is already completed", async () => {
-      mockGetDoc.mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          userId: "user-1",
-          locationId: "loc-1",
-          status: "completed",
-        }),
-      } as any);
+    it("throws when callable rejects", async () => {
+      const mockCallable = jest.fn().mockRejectedValue(new Error("Session is not active."));
+      (httpsCallable as jest.Mock).mockReturnValue(mockCallable);
 
       await expect(
         CachedSessionService.endSession("completed-session", endData)
-      ).rejects.toThrow("Session is not active or paused");
-    });
-
-    it("ends a paused session", async () => {
-      mockGetDoc.mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          userId: "user-1",
-          locationId: "loc-1",
-          status: "paused",
-          startTime: {
-            toMillis: () => new Date("2026-02-08T10:00:00Z").getTime(),
-          },
-          notes: "",
-        }),
-      } as any);
-
-      mockUpdateDoc.mockResolvedValue(undefined);
-
-      const result = await CachedSessionService.endSession("session-1", endData);
-      expect(result.status).toBe("completed");
+      ).rejects.toThrow("Session is not active.");
     });
   });
 

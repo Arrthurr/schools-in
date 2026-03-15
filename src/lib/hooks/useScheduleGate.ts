@@ -18,6 +18,29 @@ export interface ScheduleGateState {
 }
 
 const GRACE_MINUTES = 15;
+const APP_TIMEZONE = "America/Chicago";
+
+/** Get the current day-of-week (0=Sun) and "HH:MM" in America/Chicago */
+function getNowInChicago(): { dayOfWeek: number; hhmm: string } {
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIMEZONE,
+    hour12: false,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const parts = fmt.formatToParts(now);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  const weekdayMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  const dayOfWeek = weekdayMap[get("weekday")] ?? now.getDay();
+  const hour = get("hour").replace(/^24$/, "00"); // Intl may return "24" for midnight
+  const minute = get("minute");
+  return { dayOfWeek, hhmm: `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}` };
+}
 
 /** Format "HH:MM" 24-hour string to "H:MM AM/PM" */
 function formatTime(hhmm: string): string {
@@ -73,12 +96,24 @@ export function useScheduleGate(
     }
 
     let cancelled = false;
+    let tickTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /** Compute ms from now until a Chicago "HH:MM" time today (0 if already past). */
+    function msUntilGate(gateHhmm: string): number {
+      const [gh, gm] = gateHhmm.split(":").map(Number);
+      const { hhmm: nowHhmm } = getNowInChicago();
+      const [nh, nm] = nowHhmm.split(":").map(Number);
+      const diffMin = (gh * 60 + gm) - (nh * 60 + nm);
+      // Add 1 s buffer so the next tick is just past the gate
+      return diffMin > 0 ? diffMin * 60_000 + 1_000 : 0;
+    }
 
     async function check() {
       setState((s) => ({ ...s, loading: true, error: null }));
 
       try {
-        const today = new Date().getDay(); // 0 = Sunday
+        // Use America/Chicago timezone for consistent day-of-week and time
+        const { dayOfWeek: today, hhmm: currentHhmm } = getNowInChicago();
 
         // Fetch all active schedules for this provider at this location, filter to today
         const allSchedules = await getSchedulesByProviderAndLocation(
@@ -109,10 +144,6 @@ export function useScheduleGate(
 
         const gateTime = subtractMinutes(schedule.startTime, GRACE_MINUTES);
 
-        // Current time in "HH:MM" for comparison
-        const now = new Date();
-        const currentHhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
         const canCheckIn = currentHhmm >= gateTime;
 
         setState({
@@ -124,6 +155,15 @@ export function useScheduleGate(
           loading: false,
           error: null,
         });
+
+        // If still blocked, schedule a re-check when the gate opens
+        if (!canCheckIn && !cancelled) {
+          const delay = msUntilGate(gateTime);
+          // Use the computed delay, but cap the fallback at 60 s so we never sleep too long
+          tickTimer = setTimeout(() => {
+            if (!cancelled) check();
+          }, Math.min(delay || 60_000, 60_000));
+        }
       } catch (err) {
         if (cancelled) return;
         setState({
@@ -140,6 +180,7 @@ export function useScheduleGate(
     check();
     return () => {
       cancelled = true;
+      if (tickTimer) clearTimeout(tickTimer);
     };
   }, [providerId, locationId]);
 

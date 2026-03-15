@@ -494,14 +494,24 @@ exports.startSession = onCall(async (request: any) => {
 
       // Schedule-based time gating for provider manual check-in
       if (userRole === "provider" && data.checkInMethod === "manual") {
-        // Determine the current time in America/Chicago for day-of-week comparisons
-        const nowChicago = new Date().toLocaleString("en-US", {
+        // Determine the current time in America/Chicago using Intl for robust TZ handling
+        const chicagoFmt = new Intl.DateTimeFormat("en-US", {
           timeZone: "America/Chicago",
+          hour12: false,
+          weekday: "short",
+          hour: "2-digit",
+          minute: "2-digit",
         });
-        const chicagoDate = new Date(nowChicago);
-        const dayOfWeek = chicagoDate.getDay();
-        const currentMinutes =
-          chicagoDate.getHours() * 60 + chicagoDate.getMinutes();
+        const chicagoParts = chicagoFmt.formatToParts(new Date());
+        const partVal = (type: string) =>
+          chicagoParts.find((p) => p.type === type)?.value ?? "";
+        const weekdayMap: Record<string, number> = {
+          Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+        };
+        const dayOfWeek = weekdayMap[partVal("weekday")] ?? new Date().getDay();
+        const chicagoHour = Number(partVal("hour").replace(/^24$/, "00"));
+        const chicagoMinute = Number(partVal("minute"));
+        const currentMinutes = chicagoHour * 60 + chicagoMinute;
 
         const schedulesQuery = db
           .collection("schedules")
@@ -694,6 +704,10 @@ exports.endSession = onCall(async (request: any) => {
         durationMinutes,
         updatedAt: admin.firestore.Timestamp.now(),
       };
+
+      if (typeof data.notes === "string" && data.notes.trim()) {
+        updateData.notes = data.notes.trim().slice(0, 1000);
+      }
 
       if (data.checkOutLocation) {
         updateData.checkOutLocation = {
