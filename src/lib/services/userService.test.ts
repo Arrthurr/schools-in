@@ -13,13 +13,13 @@ import {
   searchUsers,
 } from "./userService";
 
-const mockCollection = jest.fn(() => "collection-ref");
+const mockCollection = jest.fn((..._args: any[]): any => "collection-ref");
 const mockQuery = jest.fn();
 const mockWhere = jest.fn();
 const mockOrderBy = jest.fn();
 const mockGetDocs = jest.fn();
 const mockGetDoc = jest.fn();
-const mockDoc = jest.fn(() => "doc-ref");
+const mockDoc = jest.fn((..._args: any[]): any => "doc-ref");
 const mockUpdateDoc = jest.fn();
 const mockDeleteDoc = jest.fn();
 const mockSetDoc = jest.fn();

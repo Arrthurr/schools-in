@@ -182,7 +182,7 @@ describe("useCachedAuth", () => {
       return jest.fn();
     });
 
-    const { result } = renderHook(() => useCachedAuth());
+    renderHook(() => useCachedAuth());
     await act(async () => {});
 
     expect(getCacheManager().setMultiLayer).toHaveBeenCalledWith(
