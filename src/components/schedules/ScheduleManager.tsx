@@ -31,7 +31,7 @@ import {
 } from "@/lib/services/scheduleService";
 import { getAssignedLocations } from "@/lib/services/locationService";
 import { getAllServices } from "@/lib/services/serviceService";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { appLogger } from "@/lib/logging/appLogger";
 
 interface ScheduleManagerProps {
@@ -74,7 +74,7 @@ export function ScheduleManager({
   isOpen,
   onClose,
 }: ScheduleManagerProps) {
-  const { user } = useAuth();
+  const { user } = useCachedAuth();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [services, setServices] = useState<Service[]>([]);

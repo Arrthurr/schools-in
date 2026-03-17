@@ -37,6 +37,7 @@ import {
   UserRecord,
   UserStats,
 } from "@/lib/services/userService";
+import { appLogger } from "@/lib/logging/appLogger";
 
 function UserManagementContent() {
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -83,7 +84,7 @@ function UserManagementContent() {
       setUsers(usersData);
       setStats(statsData);
     } catch (error) {
-      console.error("Error loading users:", error);
+      appLogger.error("Error loading users", { error });
       setError("Failed to load users. Please try again.");
     } finally {
       setIsLoading(false);
@@ -125,7 +126,7 @@ function UserManagementContent() {
         const searchResults = await searchUsers(term);
         setFilteredUsers(searchResults);
       } catch (error) {
-        console.error("Error searching users:", error);
+        appLogger.error("Error searching users", { error });
       }
     }
   };
@@ -138,7 +139,7 @@ function UserManagementContent() {
       await updateUserRole(userId, newRole);
       await loadUsers(); // Reload to get fresh data
     } catch (error) {
-      console.error("Error updating user role:", error);
+      appLogger.error("Error updating user role", { error });
       setError("Failed to update user role");
     }
   };
@@ -182,7 +183,7 @@ function UserManagementContent() {
       setSelectedUsers(new Set());
       await loadUsers();
     } catch (error) {
-      console.error("Error bulk updating user status:", error);
+      appLogger.error("Error bulk updating user status", { error });
       setError("Failed to update users");
     }
   };
@@ -198,7 +199,7 @@ function UserManagementContent() {
         setSelectedUsers(new Set());
         await loadUsers();
       } catch (error) {
-        console.error("Error bulk deleting users:", error);
+        appLogger.error("Error bulk deleting users", { error });
         setError("Failed to delete users");
       }
     }
