@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Home, History, Menu, LogOut, Bell, MessageSquare, CalendarClock } from "lucide-react";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
-import { signOut } from "firebase/auth";
-import { auth } from "../../../firebase.config";
+import { logOut } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
 import { Logo } from "../ui/logo";
 
@@ -63,12 +62,8 @@ export function ProviderNavigation({
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      router.push("/");
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
+    await logOut();
+    router.push("/");
   };
 
   const isActiveRoute = (href: string) => {

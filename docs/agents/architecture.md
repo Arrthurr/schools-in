@@ -215,11 +215,13 @@ All defined in `src/lib/firebase/types.ts`:
 /                         Home / login
 /dashboard                Provider dashboard
 /dashboard/history        Session history
+/dashboard/schedules      Provider read-only schedule view
 /dashboard/schools        Provider schools list
 /admin                    Admin dashboard
 /admin/assignments        Provider-location assignments
 /admin/feedback           Feedback management
 /admin/reports            Reports
+/admin/schedules          Provider schedule management
 /admin/schools            School management
 /admin/services           Service management
 /admin/users              User management

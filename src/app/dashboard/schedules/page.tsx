@@ -18,6 +18,7 @@ import { getSchedulesByProvider } from "@/lib/services/scheduleService";
 import { getAssignedLocations } from "@/lib/services/locationService";
 import { getAllServices } from "@/lib/services/serviceService";
 import { appLogger } from "@/lib/logging/appLogger";
+import { formatTime } from "@/lib/utils/time";
 import { Schedule, Location, Service } from "@/lib/firebase/types";
 
 const DAY_NAMES = [
@@ -29,13 +30,6 @@ const DAY_NAMES = [
   "Friday",
   "Saturday",
 ];
-
-function formatTime(time: string): string {
-  const [hours, minutes] = time.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHour = hours % 12 || 12;
-  return `${displayHour}:${minutes.toString().padStart(2, "0")} ${period}`;
-}
 
 function SchedulesSkeleton() {
   return (
@@ -127,66 +121,6 @@ function MySchedulesContent() {
     return grouped;
   }, [schedules]);
 
-  if (isLoading) {
-    return <SchedulesSkeleton />;
-  }
-
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (schedules.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <CalendarClock className="h-12 w-12 mb-4" />
-        <p className="text-lg font-medium">No schedules assigned</p>
-        <p className="text-sm mt-1">
-          Your administrator will set up your school schedules.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {Object.entries(schedulesByLocation).map(([locationId, locationSchedules]) => (
-        <Card key={locationId}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              {locationNameById[locationId] || "Unknown School"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {locationSchedules.map((schedule) => (
-              <div
-                key={schedule.id}
-                className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50"
-              >
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary" className="w-24 justify-center shrink-0">
-                    {DAY_NAMES[schedule.dayOfWeek]}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {serviceNameById[schedule.serviceId] || "Service"}
-                  </span>
-                </div>
-                <span className="text-sm font-medium tabular-nums">
-                  {formatTime(schedule.startTime)} – {formatTime(schedule.endTime)}
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-function MySchedulesPage() {
   return (
     <div className="space-y-6">
       <div>
@@ -195,7 +129,54 @@ function MySchedulesPage() {
           Your assigned schedule at each school.
         </p>
       </div>
-      <MySchedulesContent />
+
+      {isLoading ? (
+        <SchedulesSkeleton />
+      ) : error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : schedules.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <CalendarClock className="h-12 w-12 mb-4" />
+          <p className="text-lg font-medium">No schedules assigned</p>
+          <p className="text-sm mt-1">
+            Your administrator will set up your school schedules.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(schedulesByLocation).map(([locationId, locationSchedules]) => (
+            <Card key={locationId}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">
+                  {locationNameById[locationId] || "Unknown School"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {locationSchedules.map((schedule) => (
+                  <div
+                    key={schedule.id}
+                    className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="w-24 justify-center shrink-0">
+                        {DAY_NAMES[schedule.dayOfWeek]}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {serviceNameById[schedule.serviceId] || "Service"}
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium tabular-nums">
+                      {formatTime(schedule.startTime)} – {formatTime(schedule.endTime)}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -204,7 +185,7 @@ export default function DashboardSchedulesPage() {
   return (
     <ProtectedRoute roles={["provider"]}>
       <ProviderNavigation>
-        <MySchedulesPage />
+        <MySchedulesContent />
       </ProviderNavigation>
     </ProtectedRoute>
   );
