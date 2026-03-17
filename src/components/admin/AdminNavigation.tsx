@@ -17,6 +17,7 @@ import {
   Activity,
   MessageSquare,
   Package,
+  CalendarClock,
 } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { logOut } from "@/lib/firebase/auth";
@@ -65,6 +66,12 @@ const navigationItems: NavItem[] = [
     label: "Services",
     icon: Package,
     description: "Service types for scheduling",
+  },
+  {
+    href: "/admin/schedules",
+    label: "Schedules",
+    icon: CalendarClock,
+    description: "Manage provider schedules",
   },
   {
     href: "/admin/assignments",
