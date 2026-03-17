@@ -248,6 +248,16 @@ export function calculateDurationMinutes(
 }
 
 /**
+ * Formats an HH:MM time string to 12-hour display format (e.g. "9:00 AM")
+ */
+export function formatTime(time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHour = hours % 12 || 12;
+  return `${displayHour}:${minutes.toString().padStart(2, "0")} ${period}`;
+}
+
+/**
  * Converts minutes to hours with one decimal place
  */
 export function minutesToHours(minutes: number): number {

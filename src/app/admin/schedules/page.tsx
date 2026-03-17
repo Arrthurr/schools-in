@@ -129,18 +129,16 @@ function ScheduleManagementContent() {
       )}
 
       {/* Schedule Manager Dialog */}
-      {scheduleProvider && (
-        <ScheduleManager
-          providerId={scheduleProvider.id}
-          providerName={
-            scheduleProvider.displayName ||
-            scheduleProvider.email ||
-            "Provider"
-          }
-          isOpen={!!scheduleProvider}
-          onClose={() => setScheduleProvider(null)}
-        />
-      )}
+      <ScheduleManager
+        providerId={scheduleProvider?.id ?? ""}
+        providerName={
+          scheduleProvider?.displayName ||
+          scheduleProvider?.email ||
+          "Provider"
+        }
+        isOpen={!!scheduleProvider}
+        onClose={() => setScheduleProvider(null)}
+      />
     </div>
   );
 }

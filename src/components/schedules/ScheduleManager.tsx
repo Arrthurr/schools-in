@@ -17,7 +17,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   CalendarClock,
   Loader2,
-  MapPin,
   Pencil,
   Plus,
   Trash2,
@@ -151,10 +150,6 @@ export function ScheduleManager({
     });
   };
 
-  const validateTimes = (start: string, end: string) => {
-    return start < end;
-  };
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -164,8 +159,13 @@ export function ScheduleManager({
       return;
     }
 
-    if (!validateTimes(form.startTime, form.endTime)) {
+    if (!(form.startTime < form.endTime)) {
       setError("End time must be after start time.");
+      return;
+    }
+
+    if (!form.id && !user?.uid) {
+      setError("You must be signed in to create a schedule.");
       return;
     }
 
@@ -190,7 +190,7 @@ export function ScheduleManager({
           startTime: form.startTime,
           endTime: form.endTime,
           isActive: form.isActive,
-          createdBy: user?.uid || "admin",
+          createdBy: user!.uid,
         });
       }
 
@@ -218,16 +218,11 @@ export function ScheduleManager({
   };
 
   const handleDelete = async (scheduleId: string) => {
+    if (!window.confirm("Delete this schedule? This cannot be undone.")) return;
     try {
       setSaving(true);
       await deleteSchedule(scheduleId);
-      setSchedules((prev) =>
-        prev
-          .map((item) =>
-            item.id === scheduleId ? { ...item, isActive: false } : item
-          )
-          .sort(sortSchedules)
-      );
+      setSchedules((prev) => prev.filter((item) => item.id !== scheduleId));
     } catch (err) {
       appLogger.error("Failed to delete schedule", { err });
       setError("Failed to delete schedule. Please try again.");
@@ -418,10 +413,7 @@ export function ScheduleManager({
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => {
-                        resetForm();
-                        setForm((prev) => ({ ...prev, id: undefined }));
-                      }}
+                      onClick={resetForm}
                     >
                       Clear
                     </Button>
@@ -476,9 +468,7 @@ export function ScheduleManager({
                             </span>
                           </div>
                           <div className="space-y-2">
-                            {daySchedules
-                              .sort(sortSchedules)
-                              .map((schedule) => (
+                            {daySchedules.map((schedule) => (
                                 <div
                                   key={schedule.id}
                                   className="flex items-start justify-between border rounded-md p-3 bg-muted/50"
@@ -508,11 +498,6 @@ export function ScheduleManager({
                                     <div className="flex items-center gap-2 text-sm">
                                       <span className="font-medium">
                                         {schedule.startTime} — {schedule.endTime}
-                                      </span>
-                                      <span className="text-muted-foreground text-xs">
-                                        <MapPin className="h-3 w-3 inline mr-1" />
-                                        {locationNameById[schedule.locationId] ||
-                                          "Unknown school"}
                                       </span>
                                     </div>
                                   </div>
