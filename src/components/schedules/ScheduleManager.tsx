@@ -32,6 +32,7 @@ import {
 import { getAssignedLocations } from "@/lib/services/locationService";
 import { getAllServices } from "@/lib/services/serviceService";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { appLogger } from "@/lib/logging/appLogger";
 
 interface ScheduleManagerProps {
   providerId: string;
@@ -132,7 +133,7 @@ export function ScheduleManager({
         serviceId: serviceData[0]?.id ?? "",
       }));
     } catch (err) {
-      console.error("Failed to load schedules", err);
+      appLogger.error("Failed to load schedules", { err });
       setError("Failed to load schedules. Please try again.");
     } finally {
       setLoading(false);
@@ -197,7 +198,7 @@ export function ScheduleManager({
       setSchedules(refreshed.sort(sortSchedules));
       resetForm();
     } catch (err) {
-      console.error("Failed to save schedule", err);
+      appLogger.error("Failed to save schedule", { err });
       setError("Failed to save schedule. Please try again.");
     } finally {
       setSaving(false);
@@ -228,7 +229,7 @@ export function ScheduleManager({
           .sort(sortSchedules)
       );
     } catch (err) {
-      console.error("Failed to delete schedule", err);
+      appLogger.error("Failed to delete schedule", { err });
       setError("Failed to delete schedule. Please try again.");
     } finally {
       setSaving(false);
