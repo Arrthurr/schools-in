@@ -151,10 +151,12 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
               ...(loc as unknown as Record<string, unknown>),
             });
             if (normalized) {
-              const lat =
-                normalized.latitude ?? normalized.geo.latitude;
-              const lng =
-                normalized.longitude ?? normalized.geo.longitude;
+              const lat = Number.isFinite(normalized.latitude)
+                ? normalized.latitude
+                : normalized.geo.latitude;
+              const lng = Number.isFinite(normalized.longitude)
+                ? normalized.longitude
+                : normalized.geo.longitude;
               setLocationInfo({
                 name: normalized.name || (s as any).name,
                 latitude: lat,

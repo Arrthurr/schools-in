@@ -42,14 +42,21 @@ function mapQueryDocsForCollection<T>(
   }
   const out: Location[] = [];
   for (const docSnapshot of docs) {
-    const data = docSnapshot.data() as Record<string, unknown>;
-    const loc = normalizeLocationData(docSnapshot.id, data);
-    if (loc) {
-      out.push(loc);
-    } else {
-      appLogger.warn("Invalid location skipped (collection query)", {
+    try {
+      const data = docSnapshot.data() as Record<string, unknown>;
+      const loc = normalizeLocationData(docSnapshot.id, data);
+      if (loc) {
+        out.push(loc);
+      } else {
+        appLogger.warn("Invalid location skipped (collection query)", {
+          locationId: docSnapshot.id,
+          name: (data.name as string) ?? "",
+        });
+      }
+    } catch (err) {
+      appLogger.warn("Location normalization threw (collection query)", {
         locationId: docSnapshot.id,
-        name: (data.name as string) ?? "",
+        error: err instanceof Error ? err.message : String(err),
       });
     }
   }
@@ -69,6 +76,10 @@ export const getCachedDocument = async <T>(
     async () => {
       const docSnap = await getDoc(doc(db, collectionName, docId));
       if (docSnap.exists()) {
+        if (collectionName === COLLECTIONS.LOCATIONS) {
+          const loc = normalizeLocationData(docSnap.id, docSnap.data());
+          return (loc as T) ?? null;
+        }
         return { id: docSnap.id, ...docSnap.data() } as T;
       }
       return null;
@@ -449,13 +460,22 @@ export const subscribeToCachedDocument = <T>(
     doc(db, collectionName, docId),
     (docSnap) => {
       if (docSnap.exists()) {
-        const data = { id: docSnap.id, ...docSnap.data() } as T;
+        let data: T | null;
+        if (collectionName === COLLECTIONS.LOCATIONS) {
+          const loc = normalizeLocationData(docSnap.id, docSnap.data());
+          data = loc ? (loc as T) : null;
+        } else {
+          data = { id: docSnap.id, ...docSnap.data() } as T;
+        }
 
-        // Update cache with real-time data
-        const cacheKey = `doc_${collectionName}_${docId}`;
-        FirebaseCache.cacheUserData(cacheKey, () => Promise.resolve(data));
-
-        callback(data);
+        if (data) {
+          // Update cache with real-time data
+          const cacheKey = `doc_${collectionName}_${docId}`;
+          FirebaseCache.cacheUserData(cacheKey, () => Promise.resolve(data));
+          callback(data);
+        } else {
+          callback(null);
+        }
       } else {
         callback(null);
       }

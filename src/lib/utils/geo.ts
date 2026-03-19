@@ -10,7 +10,8 @@ const EARTH_RADIUS_METERS = 6371000;
 export type GeoPointLike =
   | GeoPoint
   | { latitude: number; longitude: number }
-  | { lat: number; lng: number };
+  | { lat: number; lng: number }
+  | { _lat: number; _long: number };
 
 /**
  * Safely extract latitude and longitude from a GeoPoint or plain object.
@@ -155,12 +156,12 @@ export function areValidCoordinates(
   longitude: number
 ): boolean {
   return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
     latitude >= -90 &&
     latitude <= 90 &&
     longitude >= -180 &&
-    longitude <= 180 &&
-    !isNaN(latitude) &&
-    !isNaN(longitude)
+    longitude <= 180
   );
 }
 
@@ -191,7 +192,7 @@ export function getCurrentPosition(
  * This is a convenience function that combines position getting and validation
  */
 export async function validateCurrentPositionAgainstGeofence(
-  locationGeo: GeoPoint,
+  locationGeo: GeoPointLike,
   radiusMeters: number = 300
 ): Promise<{
   latitude: number;
