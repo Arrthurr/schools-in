@@ -5,21 +5,33 @@ const EARTH_RADIUS_METERS = 6371000;
 
 /**
  * Type for geo coordinates that works with both Firebase GeoPoint instances
- * and plain objects (which occur after serialization/caching)
+ * and plain objects (which occur after serialization/caching or legacy writes)
  */
-export type GeoPointLike = GeoPoint | { latitude: number; longitude: number };
+export type GeoPointLike =
+  | GeoPoint
+  | { latitude: number; longitude: number }
+  | { lat: number; lng: number };
 
 /**
- * Safely extract latitude and longitude from a GeoPoint or plain object
- * This handles the case where GeoPoint gets serialized to a plain object
+ * Safely extract latitude and longitude from a GeoPoint or plain object.
+ * Aligns with {@link normalizeLocationData} so lat/lng maps and GeoPoint JSON
+ * deserialize the same way everywhere.
  */
 function extractCoordinates(geo: GeoPointLike): { lat: number; lon: number } {
-  // GeoPoint instance has latitude/longitude as getters, plain objects have them as properties
-  // Both access patterns work the same way in JavaScript
-  return {
-    lat: geo.latitude,
-    lon: geo.longitude,
-  };
+  if (geo instanceof GeoPoint) {
+    return { lat: geo.latitude, lon: geo.longitude };
+  }
+  const g = geo as Record<string, unknown>;
+  if (typeof g.latitude === "number" && typeof g.longitude === "number") {
+    return { lat: g.latitude, lon: g.longitude };
+  }
+  if (typeof g.lat === "number" && typeof g.lng === "number") {
+    return { lat: g.lat, lon: g.lng };
+  }
+  if (typeof g._lat === "number" && typeof g._long === "number") {
+    return { lat: g._lat, lon: g._long };
+  }
+  return { lat: NaN, lon: NaN };
 }
 
 /**

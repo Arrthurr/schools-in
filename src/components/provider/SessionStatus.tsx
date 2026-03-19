@@ -21,6 +21,7 @@ import { Timestamp } from "firebase/firestore";
 import { Session as NormalizedSession, Location } from "@/lib/firebase/types";
 import { getCachedDocument } from "@/lib/firebase/cachedFirestore";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
+import { normalizeLocationData } from "@/lib/services/locationNormalizer";
 
 // Legacy UI shape used previously in the app
 interface LegacySessionData {
@@ -144,21 +145,26 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
           const loc = (await getCachedDocument<Location>(
             COLLECTIONS.LOCATIONS,
             s.locationId
-          )) as any;
-          if (!cancelled) {
-            const lat =
-              loc?.geo?.latitude ??
-              loc?.gpsCoordinates?.latitude ??
-              loc?.latitude;
-            const lng =
-              loc?.geo?.longitude ??
-              loc?.gpsCoordinates?.longitude ??
-              loc?.longitude;
-            setLocationInfo({
-              name: loc?.name || (s as any).name,
-              latitude: lat,
-              longitude: lng,
+          )) as Location | null;
+          if (!cancelled && loc) {
+            const normalized = normalizeLocationData(loc.id, {
+              ...(loc as unknown as Record<string, unknown>),
             });
+            if (normalized) {
+              const lat =
+                normalized.latitude ?? normalized.geo.latitude;
+              const lng =
+                normalized.longitude ?? normalized.geo.longitude;
+              setLocationInfo({
+                name: normalized.name || (s as any).name,
+                latitude: lat,
+                longitude: lng,
+              });
+            } else {
+              setLocationInfo({
+                name: loc.name || (s as any).name,
+              });
+            }
           }
         } catch {
           if (!cancelled) setLocationInfo({ name: (s as any).name });

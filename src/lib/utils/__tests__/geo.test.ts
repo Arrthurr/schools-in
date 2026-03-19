@@ -147,6 +147,13 @@ describe("geo utilities", () => {
       expect(result.isWithinGeofence).toBe(true);
       expect(result.distance).toBeGreaterThan(0);
     });
+
+    it("accepts legacy plain maps with lat/lng keys", () => {
+      const schoolGeo = { lat: 40.7128, lng: -74.006 };
+      const result = validateGeofence(40.7128, -74.006, schoolGeo);
+      expect(result.distance).toBe(0);
+      expect(result.isWithinGeofence).toBe(true);
+    });
   });
 
   describe("createGeoPoint", () => {

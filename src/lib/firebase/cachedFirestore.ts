@@ -26,10 +26,35 @@ import { FirebaseCache, CacheTracker } from "../cache/FirebaseCache";
 import { COLLECTIONS } from "./firestore";
 import { normalizeLocationData } from "@/lib/services/locationNormalizer";
 import { appLogger } from "@/lib/logging/appLogger";
-
 // Re-export types and collections
 export { COLLECTIONS };
 export type { User, Location, Session };
+
+/** Maps query docs to client models; locations are normalized (invalid docs omitted). */
+function mapQueryDocsForCollection<T>(
+  collectionName: string,
+  docs: Array<{ id: string; data: () => unknown }>
+): T[] {
+  if (collectionName !== COLLECTIONS.LOCATIONS) {
+    return docs.map(
+      (d) => ({ id: d.id, ...(d.data() as object) }) as T
+    );
+  }
+  const out: Location[] = [];
+  for (const docSnapshot of docs) {
+    const data = docSnapshot.data() as Record<string, unknown>;
+    const loc = normalizeLocationData(docSnapshot.id, data);
+    if (loc) {
+      out.push(loc);
+    } else {
+      appLogger.warn("Invalid location skipped (collection query)", {
+        locationId: docSnapshot.id,
+        name: (data.name as string) ?? "",
+      });
+    }
+  }
+  return out as T[];
+}
 
 // Cached document operations
 export const getCachedDocument = async <T>(
@@ -115,13 +140,7 @@ export const getCachedCollection = async <T>(
       }
 
       const querySnapshot = await getDocs(queryRef);
-      return querySnapshot.docs.map(
-        (doc) =>
-          ({
-            id: doc.id,
-            ...(doc.data() as object),
-          } as T)
-      );
+      return mapQueryDocsForCollection<T>(collectionName, querySnapshot.docs);
     },
     {
       forceRefresh,
@@ -492,12 +511,9 @@ export const subscribeToCachedCollection = <T>(
   return onSnapshot(
     queryRef,
     (querySnapshot: QuerySnapshot) => {
-      const data = querySnapshot.docs.map(
-        (doc) =>
-          ({
-            id: doc.id,
-            ...(doc.data() as object),
-          } as T)
+      const data = mapQueryDocsForCollection<T>(
+        collectionName,
+        querySnapshot.docs
       );
 
       // Update cache with real-time data

@@ -368,7 +368,8 @@ export function ProviderManualCheckInOut({
                           Out of Range
                         </Badge>
                       )}
-                      {rangeStatus.distance !== null && (
+                      {rangeStatus.distance != null &&
+                        Number.isFinite(rangeStatus.distance) && (
                         <span className="text-sm text-muted-foreground">
                           {formatDistance(rangeStatus.distance)} from{" "}
                           {selectedSchool.name}
