@@ -35,6 +35,7 @@ import {
   isPushSupported,
   requestPushPermission,
   subscribeToPush,
+  unsubscribeFromPush,
   saveAdminAlertSubscriptionToFirebase,
   removeAdminAlertSubscriptionFromFirebase,
 } from "@/lib/pwa/pushReminders";
@@ -238,6 +239,7 @@ export function AdminDashboard() {
     setAlertMessage(null);
     try {
       await removeAdminAlertSubscriptionFromFirebase(user.uid);
+      await unsubscribeFromPush();
       setAlertStatus("idle");
       setAlertMessage("Admin alerts disabled.");
     } catch (err) {
