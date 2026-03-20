@@ -15,6 +15,9 @@ import {
   Activity,
   Calendar,
   Bell,
+  Download,
+  Share,
+  Smartphone,
 } from "lucide-react";
 import { SkeletonCard, Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -35,6 +38,7 @@ import {
   saveAdminAlertSubscriptionToFirebase,
   removeAdminAlertSubscriptionFromFirebase,
 } from "@/lib/pwa/pushReminders";
+import { usePWAInstallState } from "@/lib/hooks/usePWAInstallState";
 import { db, functions } from "../../../firebase.config";
 import { doc, getDoc } from "firebase/firestore";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
@@ -61,6 +65,8 @@ export function AdminDashboard() {
   const [vapidPublicKey, setVapidPublicKey] = useState<string>(
     () => process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ""
   );
+  const { isInstalled, isIOSBrowser, pushSupported, canPromptInstall, promptInstall } =
+    usePWAInstallState();
 
   // Accessibility hooks
   // const { announce } = useAnnouncement();
@@ -449,6 +455,47 @@ export function AdminDashboard() {
                 Enable push notifications to be alerted when a session is
                 automatically closed after timing out.
               </p>
+
+              {/* Show install guidance when push is not supported */}
+              {!pushSupported && !isInstalled && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Smartphone className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                    <p className="text-sm text-amber-800">
+                      {isIOSBrowser
+                        ? "To enable notifications, install this app to your Home Screen."
+                        : "To enable notifications, install this app first."}
+                    </p>
+                  </div>
+
+                  {isIOSBrowser ? (
+                    <div className="text-xs text-amber-700 space-y-1 pl-6">
+                      <p className="flex items-center gap-1.5">
+                        1. Tap the <Share className="h-3.5 w-3.5 inline" /> Share button in Safari
+                      </p>
+                      <p>2. Scroll down and tap <strong>Add to Home Screen</strong></p>
+                      <p>3. Open the app from your Home Screen</p>
+                    </div>
+                  ) : canPromptInstall ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-6"
+                      onClick={promptInstall}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Install App
+                    </Button>
+                  ) : (
+                    <div className="text-xs text-amber-700 space-y-1 pl-6">
+                      <p>1. Open your browser menu</p>
+                      <p>2. Tap <strong>Install app</strong> or <strong>Add to Home Screen</strong></p>
+                      <p>3. Reopen the app from your home screen</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {alertMessage && (
                 <p
                   className={`text-sm ${
@@ -466,7 +513,7 @@ export function AdminDashboard() {
                   size="sm"
                   className="touch-target"
                   onClick={enableAdminAlerts}
-                  disabled={alertStatus === "enabling"}
+                  disabled={alertStatus === "enabling" || !pushSupported}
                 >
                   <Bell className="h-4 w-4 mr-2" />
                   {alertStatus === "enabled"
