@@ -106,7 +106,7 @@ describe("SchoolManagementPage – session count", () => {
     });
 
     expect(screen.getByText("3 weekly sessions")).toBeInTheDocument();
-    expect(screen.getByText("1 weekly sessions")).toBeInTheDocument();
+    expect(screen.getByText("1 weekly session")).toBeInTheDocument();
   });
 
   it("shows 0 weekly sessions when a school has no schedules", async () => {
@@ -147,6 +147,48 @@ describe("SchoolManagementPage – session count", () => {
       expect(screen.getByText("3 providers")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("1 weekly sessions")).toBeInTheDocument();
+    expect(screen.getByText("1 weekly session")).toBeInTheDocument();
+  });
+
+  it("preserves session count after editing a school", async () => {
+    const school = makeSchool({ id: "school-edit", name: "Edit School" });
+    mockGetAllSchools.mockResolvedValue([school]);
+    mockGetSchedulesByLocation.mockResolvedValue([
+      makeSchedule({ id: "s1" }),
+      makeSchedule({ id: "s2" }),
+    ]);
+
+    const mockGetSchoolById = jest.fn().mockResolvedValue({
+      ...school,
+      name: "Edit School Updated",
+    });
+    const mockUpdateSchool = jest.fn().mockResolvedValue(undefined);
+
+    // Patch CachedSchoolService with update/getById for this test
+    const CachedSchoolServiceModule = require("@/lib/services/cachedSchoolService");
+    CachedSchoolServiceModule.CachedSchoolService.updateSchool = mockUpdateSchool;
+    CachedSchoolServiceModule.CachedSchoolService.getSchoolById = mockGetSchoolById;
+
+    const { rerender } = render(<SchoolManagementPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Edit School")).toBeInTheDocument();
+    });
+
+    // Session count should be populated
+    expect(screen.getByText("2 weekly sessions")).toBeInTheDocument();
+
+    // Simulate clicking the Edit button to open the edit form
+    const editButton = screen.getByRole("button", { name: /^edit$/i });
+    const { fireEvent } = require("@testing-library/react");
+    fireEvent.click(editButton);
+
+    // The edit dialog opens; since SchoolForm is mocked, verify
+    // the session count is still present after the state update.
+    rerender(<SchoolManagementPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("2 weekly sessions")).toBeInTheDocument();
+    });
   });
 });

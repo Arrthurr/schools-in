@@ -222,10 +222,16 @@ function SchoolManagementContent() {
       if (refreshed) {
         const mapped = mapSchool(refreshed as unknown as School);
         setSchools((prev) =>
-          prev.map((school) => (school.id === editingSchool.id ? mapped : school))
+          prev.map((school) => {
+            if (school.id !== editingSchool.id) return school;
+            return { ...mapped, totalSessions: school.totalSessions };
+          })
         );
         setFilteredSchools((prev) =>
-          prev.map((school) => (school.id === editingSchool.id ? mapped : school))
+          prev.map((school) => {
+            if (school.id !== editingSchool.id) return school;
+            return { ...mapped, totalSessions: school.totalSessions };
+          })
         );
       }
 
@@ -442,7 +448,7 @@ function SchoolManagementContent() {
                     </div>
                     <div className="flex items-center">
                       <CalendarClock className="h-4 w-4 mr-1" />
-                      <span>{school.totalSessions || 0} weekly sessions</span>
+                      <span>{school.totalSessions || 0} weekly {(school.totalSessions ?? 0) === 1 ? "session" : "sessions"}</span>
                     </div>
                   </div>
 
