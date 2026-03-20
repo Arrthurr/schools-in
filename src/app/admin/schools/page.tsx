@@ -102,8 +102,27 @@ function SchoolManagementContent() {
       );
 
       const normalized = (data as unknown as School[]).map(mapSchool);
-      setSchools(normalized);
-      setFilteredSchools(normalized);
+
+      // Fetch schedule counts for all schools in parallel
+      const scheduleCounts = await Promise.all(
+        normalized.map(async (school) => {
+          try {
+            const schedules = await getSchedulesByLocation(school.id);
+            return { id: school.id, count: schedules.length };
+          } catch {
+            return { id: school.id, count: 0 };
+          }
+        })
+      );
+
+      const countMap = new Map(scheduleCounts.map((s) => [s.id, s.count]));
+      const enriched = normalized.map((school) => ({
+        ...school,
+        totalSessions: countMap.get(school.id) ?? 0,
+      }));
+
+      setSchools(enriched);
+      setFilteredSchools(enriched);
       setError(null);
     } catch (err) {
       console.error("Failed to load schools", err);
@@ -203,10 +222,16 @@ function SchoolManagementContent() {
       if (refreshed) {
         const mapped = mapSchool(refreshed as unknown as School);
         setSchools((prev) =>
-          prev.map((school) => (school.id === editingSchool.id ? mapped : school))
+          prev.map((school) => {
+            if (school.id !== editingSchool.id) return school;
+            return { ...mapped, totalSessions: school.totalSessions };
+          })
         );
         setFilteredSchools((prev) =>
-          prev.map((school) => (school.id === editingSchool.id ? mapped : school))
+          prev.map((school) => {
+            if (school.id !== editingSchool.id) return school;
+            return { ...mapped, totalSessions: school.totalSessions };
+          })
         );
       }
 
@@ -421,8 +446,9 @@ function SchoolManagementContent() {
                       <Users className="h-4 w-4 mr-1" />
                       <span>{providerCount} providers</span>
                     </div>
-                    <div>
-                      <span>{school.totalSessions || 0} sessions</span>
+                    <div className="flex items-center">
+                      <CalendarClock className="h-4 w-4 mr-1" />
+                      <span>{school.totalSessions || 0} weekly {(school.totalSessions ?? 0) === 1 ? "session" : "sessions"}</span>
                     </div>
                   </div>
 
