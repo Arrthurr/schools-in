@@ -33,9 +33,10 @@ type FirestoreDocSnapshot = {
 };
 
 function normalizeSnapshot(
-  docRef: FirestoreDocSnapshot
+  docRef: FirestoreDocSnapshot,
+  options?: { allowMissingGeo?: boolean }
 ): NormalizedLocation | null {
-  return normalizeLocationData(docRef.id, docRef.data());
+  return normalizeLocationData(docRef.id, docRef.data(), options);
 }
 
 export interface SchoolFilters {
@@ -129,8 +130,10 @@ export class CachedSchoolService {
         const snapshot = await getDocs(queryRef);
         let schools = snapshot.docs.reduce<NormalizedLocation[]>(
           (acc, docSnapshot) => {
+            // Admin list: include locations missing geo so they can be fixed in UI
             const normalized = normalizeSnapshot(
-              docSnapshot as unknown as FirestoreDocSnapshot
+              docSnapshot as unknown as FirestoreDocSnapshot,
+              { allowMissingGeo: true }
             );
             if (normalized) {
               acc.push(normalized);
@@ -189,7 +192,9 @@ export class CachedSchoolService {
           schoolId
         );
         if (!raw) return null;
-        return normalizeLocationData(schoolId, raw);
+        return normalizeLocationData(schoolId, raw, {
+          allowMissingGeo: true,
+        });
       },
       {
         forceRefresh,

@@ -180,4 +180,43 @@ describe("locationNormalizer", () => {
 
     expect(normalized).toBeNull();
   });
+
+  it("allows missing geo for admin listing when allowMissingGeo is set", () => {
+    const raw = {
+      name: "Draft School",
+      address: "500 Draft St",
+      assignedProviders: [],
+      radiusMeters: 100,
+      createdAt: { toMillis: () => Timestamp.now().toMillis() },
+      updatedAt: { toMillis: () => Timestamp.now().toMillis() },
+    };
+
+    const normalized = normalizeLocationData("school-draft", raw, {
+      allowMissingGeo: true,
+    });
+
+    expect(normalized).not.toBeNull();
+    if (!normalized) return;
+    expect(normalized.id).toBe("school-draft");
+    expect(normalized.name).toBe("Draft School");
+    expect(normalized.geo).toBeUndefined();
+  });
+
+  it("coerces string latitude/longitude from geo map", () => {
+    const raw = {
+      name: "String Coords School",
+      address: "600 Import St",
+      geo: { latitude: "41.5", longitude: "-87.2" },
+      radiusMeters: 300,
+      assignedProviders: [],
+      createdAt: { toMillis: () => Timestamp.now().toMillis() },
+      updatedAt: { toMillis: () => Timestamp.now().toMillis() },
+    };
+
+    const normalized = normalizeLocationData("school-strings", raw);
+    expect(normalized).not.toBeNull();
+    if (!normalized) return;
+    expect(normalized.latitude).toBeCloseTo(41.5);
+    expect(normalized.longitude).toBeCloseTo(-87.2);
+  });
 });

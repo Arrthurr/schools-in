@@ -8,23 +8,35 @@ type GeoLike =
   | null
   | undefined;
 
+/** Firestore / imports sometimes store lat-lng as numeric strings */
+function coerceFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
 function extractLatitude(geo: GeoLike, fallback?: number): number | undefined {
   if (!geo) return fallback;
   if (geo instanceof GeoPoint) return geo.latitude;
-  if (typeof (geo as any).latitude === "number") return (geo as any).latitude;
-  if (typeof (geo as any).lat === "number") return (geo as any).lat;
-  // Handle spread GeoPoint objects that expose internal _lat property
-  if (typeof (geo as any)._lat === "number") return (geo as any)._lat;
+  const fromLat =
+    coerceFiniteNumber((geo as any).latitude) ??
+    coerceFiniteNumber((geo as any).lat) ??
+    coerceFiniteNumber((geo as any)._lat);
+  if (fromLat !== undefined) return fromLat;
   return fallback;
 }
 
 function extractLongitude(geo: GeoLike, fallback?: number): number | undefined {
   if (!geo) return fallback;
   if (geo instanceof GeoPoint) return geo.longitude;
-  if (typeof (geo as any).longitude === "number") return (geo as any).longitude;
-  if (typeof (geo as any).lng === "number") return (geo as any).lng;
-  // Handle spread GeoPoint objects that expose internal _long property
-  if (typeof (geo as any)._long === "number") return (geo as any)._long;
+  const fromLng =
+    coerceFiniteNumber((geo as any).longitude) ??
+    coerceFiniteNumber((geo as any).lng) ??
+    coerceFiniteNumber((geo as any)._long);
+  if (fromLng !== undefined) return fromLng;
   return fallback;
 }
 
@@ -41,22 +53,22 @@ export type NormalizedLocation = Location & {
 
 export function normalizeLocationData(
   docId: string,
-  rawData: Record<string, any>
+  rawData: Record<string, any>,
+  options?: { allowMissingGeo?: boolean }
 ): NormalizedLocation | null {
   const baseData = rawData ?? {};
+  const allowMissingGeo = options?.allowMissingGeo === true;
 
   const geoSource: GeoLike =
     baseData.geo ?? baseData.gpsCoordinates ?? baseData.coordinates;
 
   let latitude =
-    baseData.latitude !== undefined
-      ? baseData.latitude
-      : extractLatitude(geoSource);
+    coerceFiniteNumber(baseData.latitude) ??
+    extractLatitude(geoSource);
 
   let longitude =
-    baseData.longitude !== undefined
-      ? baseData.longitude
-      : extractLongitude(geoSource);
+    coerceFiniteNumber(baseData.longitude) ??
+    extractLongitude(geoSource);
 
   // If coordinates provided separately, prefer them for consistency
   if (baseData.coordinates) {
@@ -103,16 +115,16 @@ export function normalizeLocationData(
       ? baseData.isActive
       : true;
 
-  // If we cannot resolve valid coordinates, treat the document as invalid
+  // If we cannot resolve valid coordinates, treat the document as invalid (unless admin listing)
   const hasValidGeo =
     geoPoint &&
     typeof geoPoint.latitude === "number" &&
     typeof geoPoint.longitude === "number";
-  if (!hasValidGeo) {
+  if (!hasValidGeo && !allowMissingGeo) {
     return null;
   }
 
-  const resolvedGeo = geoPoint;
+  const resolvedGeo = hasValidGeo ? geoPoint : undefined;
 
   const location: Partial<NormalizedLocation> = {
     id: docId,
@@ -133,11 +145,15 @@ export function normalizeLocationData(
     description: baseData.description,
     totalSessions: baseData.totalSessions,
     activeProviders: assignedProviders.length, // Compute from assignedProviders array
-    geo: resolvedGeo,
-    gpsCoordinates:
-      baseData.gpsCoordinates instanceof GeoPoint
-        ? baseData.gpsCoordinates
-        : resolvedGeo,
+    ...(resolvedGeo
+      ? {
+          geo: resolvedGeo,
+          gpsCoordinates:
+            baseData.gpsCoordinates instanceof GeoPoint
+              ? baseData.gpsCoordinates
+              : resolvedGeo,
+        }
+      : {}),
   };
 
   return location as NormalizedLocation;
