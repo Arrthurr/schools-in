@@ -95,6 +95,21 @@ export async function subscribeToPush(
     // Check for existing subscription
     let subscription = await registration.pushManager.getSubscription();
 
+    if (subscription) {
+      // Validate the existing subscription is still usable
+      try {
+        extractSubscriptionData(subscription);
+      } catch {
+        // Stale/invalid subscription — unsubscribe and create a fresh one
+        appLogger.warn("Existing push subscription is invalid, re-creating");
+        const unsubscribed = await subscription.unsubscribe();
+        if (!unsubscribed) {
+          appLogger.warn("Push unsubscribe returned false for stale subscription");
+        }
+        subscription = null;
+      }
+    }
+
     if (!subscription) {
       // Create new subscription
       subscription = await registration.pushManager.subscribe({
@@ -130,7 +145,11 @@ export async function unsubscribeFromPush(): Promise<boolean> {
     const subscription = await registration.pushManager.getSubscription();
 
     if (subscription) {
-      await subscription.unsubscribe();
+      const unsubscribed = await subscription.unsubscribe();
+      if (!unsubscribed) {
+        appLogger.warn("Push unsubscribe returned false");
+        return false;
+      }
       appLogger.info("Unsubscribed from push notifications");
     }
 
@@ -255,13 +274,18 @@ function extractSubscriptionData(
 ): PushSubscriptionData {
   const json = subscription.toJSON();
 
+  const endpoint = subscription.endpoint;
+  const p256dh = json.keys?.p256dh;
+  const auth = json.keys?.auth;
+
+  if (!endpoint || !p256dh || !auth) {
+    throw new Error("Invalid push subscription: missing endpoint or keys");
+  }
+
   return {
-    endpoint: subscription.endpoint,
+    endpoint,
     expirationTime: subscription.expirationTime,
-    keys: {
-      p256dh: json.keys?.p256dh || "",
-      auth: json.keys?.auth || "",
-    },
+    keys: { p256dh, auth },
   };
 }
 
