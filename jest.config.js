@@ -64,8 +64,7 @@ const config = {
     // Services without test coverage (remove as tests are added)
     "!src/lib/services/cachedSchoolService.ts",
     "!src/lib/services/cachedUserService.ts",
-    "!src/lib/services/reportScheduleService.ts",
-    "!src/lib/services/scheduleService.ts",
+
     "!src/lib/services/serviceManager.ts",
     "!src/lib/services/serviceService.ts",
     "!src/lib/services/userPreferences.ts",

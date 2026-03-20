@@ -29,6 +29,7 @@
     "test:firestore-rules": "firebase emulators:exec --only firestore \"jest --config jest.rules.config.js --runTestsByPath tests/firestore.rules.test.js\"",
     "test:storage-rules": "firebase emulators:exec --only firestore,storage \"jest --config jest.rules.config.js --runTestsByPath tests/storage.rules.test.js\"",
     "test:ci": "jest --coverage --watchAll=false --ci --reporters=default --reporters=jest-junit",
+    "test:all": "jest --coverage --watchAll=false && cd functions && npx jest --coverage",
     "firebase:emulators": "firebase emulators:start",
     "firebase:emulators:ui": "firebase emulators:start --only auth,firestore,storage",
     "firebase:deploy": "firebase deploy",

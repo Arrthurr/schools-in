@@ -15,12 +15,31 @@ import {
   sendPushNotification,
   PRODUCTION_CONFIG,
   SESSION_LIMIT_MS,
-  RECENTLY_CREATED_GRACE_MS,
   type SyncResult,
   type PushSubscription,
   locationMatchesGroup,
   normalizeCanonicalName,
 } from "./utils";
+
+import {
+  validateStartSessionInput,
+  validateCheckInMethod,
+  validateUserForSession,
+  validateProviderAssignment,
+  validateLocationActive,
+  validateGeofence,
+  validateEndSessionInput,
+  validateSessionOwnership,
+  validateSessionStatus,
+  calculateDurationMinutes,
+  validateScheduleGating,
+} from "./sessionLifecycle";
+
+import {
+  isRecentlyCreated,
+  calculateStaleDuration,
+  type StaleSessionData,
+} from "./cleanupLogic";
 
 admin.initializeApp();
 
@@ -315,28 +334,7 @@ exports.startSession = onCall(async (request: any) => {
       throw new Error("Authentication required");
     }
 
-    // Validate input data
-    if (
-      !data ||
-      !data.locationId ||
-      !data.startTime ||
-      !data.checkInMethod ||
-      !data.dayKey
-    ) {
-      throw new Error(
-        "Missing required session data: locationId, startTime, checkInMethod, dayKey"
-      );
-    }
-
-    // Validate checkInMethod
-    const validMethods = ["geo", "manual", "offline-sync"];
-    if (!validMethods.includes(data.checkInMethod)) {
-      throw new Error(
-        `Invalid checkInMethod: ${
-          data.checkInMethod
-        }. Must be one of: ${validMethods.join(", ")}`
-      );
-    }
+    validateStartSessionInput(data);
 
     const db = admin.firestore();
     const userId = auth.uid;
@@ -354,24 +352,8 @@ exports.startSession = onCall(async (request: any) => {
       const userData = userDoc.data();
       const userRole = userData.role as "provider" | "admin";
 
-      // Validate role-based checkInMethod
-      if (userRole === "provider") {
-        // Providers can use geo (auto), manual, or offline-sync
-        if (!["geo", "manual", "offline-sync"].includes(data.checkInMethod)) {
-          throw new Error("Invalid check-in method for provider.");
-        }
-      } else if (userRole === "admin") {
-        // Admins can only use manual check-in
-        if (data.checkInMethod !== "manual") {
-          throw new Error("Admins must use manual check-in method.");
-        }
-      } else {
-        throw new Error("Invalid user role for session creation");
-      }
-
-      if (userData.isActive === false || userData.disabled === true) {
-        throw new Error("User account is not active");
-      }
+      validateUserForSession(userData);
+      validateCheckInMethod(userRole, data.checkInMethod);
 
       // Check for existing active or paused sessions for this user
       const existingSessionsQuery = db
@@ -435,61 +417,30 @@ exports.startSession = onCall(async (request: any) => {
       }
 
       const locationData = locationDoc.data();
-      if (locationData.active === false) {
-        throw new Error("Location is not active");
-      }
+      validateLocationActive(locationData);
+      validateProviderAssignment(userRole, userId, locationData);
 
-      // Role-based location access check
-      if (userRole === "provider") {
-        // Check if provider is assigned to this location
-        if (
-          !locationData.assignedProviders ||
-          !locationData.assignedProviders.includes(userId)
-        ) {
-          throw new Error("Provider is not assigned to this location");
-        }
-      }
-      // Admins can access any location (no assignment check needed)
-
-      // Calculate distance from center and enforce geofence for both roles
-      let distanceFromCenter = data.distanceFromCenterAtCheckIn || 0;
       const radiusMeters = locationData.radiusMeters || 300;
+      const distanceFromCenter = validateGeofence(
+        data.checkInMethod,
+        data.checkInLocation,
+        locationData.geo,
+        radiusMeters,
+        data.distanceFromCenterAtCheckIn
+      );
 
-      // If checkInLocation is provided, calculate distance server-side
       if (
         data.checkInLocation &&
         typeof data.checkInLocation.latitude === "number" &&
         typeof data.checkInLocation.longitude === "number" &&
         locationData.geo
       ) {
-        const locGeo = locationData.geo;
-        distanceFromCenter = calculateDistance(
-          data.checkInLocation.latitude,
-          data.checkInLocation.longitude,
-          locGeo.latitude,
-          locGeo.longitude
-        );
-
-        // Enforce geofence - must be within radius
-        if (distanceFromCenter > radiusMeters) {
-          const distance = Math.round(distanceFromCenter);
-          throw new Error(
-            `You must be within ${radiusMeters}m of the location to check in. ` +
-              `Current distance: ${distance}m`
-          );
-        }
-
         logger.info("Server-side geofence validation passed", {
           userId,
           locationId: data.locationId,
           distance: Math.round(distanceFromCenter),
           radiusMeters,
         });
-      } else if (data.checkInMethod === "manual") {
-        // For manual check-in (admin or provider), checkInLocation is required
-        throw new Error(
-          "Manual check-in requires checkInLocation with latitude and longitude"
-        );
       }
 
       // Schedule-based time gating for provider manual check-in
@@ -526,28 +477,7 @@ exports.startSession = onCall(async (request: any) => {
           .map((doc: any) => doc.data().startTime as string)
           .sort();
 
-        if (activeStartTimes.length > 0) {
-          const earliestStartTime = activeStartTimes[0]; // "HH:MM" 24-hour
-          const [hours, minutes] = earliestStartTime.split(":").map(Number);
-          const scheduleMinutes = hours * 60 + minutes;
-          const earliestCheckInMinutes = scheduleMinutes - 15;
-
-          if (currentMinutes < earliestCheckInMinutes) {
-            const checkInHour = Math.floor(earliestCheckInMinutes / 60);
-            const checkInMin = earliestCheckInMinutes % 60;
-            const ampm = checkInHour >= 12 ? "PM" : "AM";
-            const displayHour =
-              checkInHour > 12
-                ? checkInHour - 12
-                : checkInHour === 0
-                ? 12
-                : checkInHour;
-            const timeStr = `${displayHour}:${String(checkInMin).padStart(2, "0")} ${ampm}`;
-            throw new Error(
-              `Check-in opens at ${timeStr}. Your first session starts at ${earliestStartTime}.`
-            );
-          }
-        }
+        validateScheduleGating(currentMinutes, activeStartTimes);
       }
 
       // Create the new session document
@@ -656,9 +586,7 @@ exports.endSession = onCall(async (request: any) => {
       throw new Error("Authentication required");
     }
 
-    if (!data?.sessionId || !data?.checkOutTime) {
-      throw new Error("Missing required session data: sessionId, checkOutTime");
-    }
+    validateEndSessionInput(data);
 
     const db = admin.firestore();
     const userId = auth.uid;
@@ -673,13 +601,8 @@ exports.endSession = onCall(async (request: any) => {
 
       const sessionData = sessionDoc.data();
 
-      if (sessionData.userId !== userId) {
-        throw new Error("You are not authorized to end this session.");
-      }
-
-      if (!["active", "paused"].includes(sessionData.status)) {
-        throw new Error("Session is not active.");
-      }
+      validateSessionOwnership(sessionData.userId, userId);
+      validateSessionStatus(sessionData.status);
 
       const startTime = sessionData.startTime || sessionData.checkInTime;
       if (!startTime) {
@@ -689,11 +612,9 @@ exports.endSession = onCall(async (request: any) => {
       const checkOutTimestamp = admin.firestore.Timestamp.fromDate(
         new Date(data.checkOutTime)
       );
-      const durationMinutes = Math.max(
-        0,
-        Math.floor(
-          (checkOutTimestamp.toMillis() - startTime.toMillis()) / (1000 * 60)
-        )
+      const durationMinutes = calculateDurationMinutes(
+        startTime.toMillis(),
+        checkOutTimestamp.toMillis()
       );
 
       const updateData: Record<string, any> = {
@@ -772,8 +693,6 @@ exports.endSession = onCall(async (request: any) => {
     throw error instanceof Error ? error : new Error("Failed to end session");
   }
 });
-
-// RECENTLY_CREATED_GRACE_MS imported from ./utils
 
 exports.cleanupStaleSessions = onSchedule(
   {
@@ -977,50 +896,51 @@ exports.cleanupStaleSessions = onSchedule(
       const updateTime = admin.firestore.Timestamp.now();
       const staleSessionIds: string[] = [];
       let skippedRecentlyCreated = 0;
+      const nowMs = now.toMillis();
 
       sessionMap.forEach((doc, docId) => {
         const data = doc.data();
         if (!data) return;
 
-        // Skip sessions that were recently created/synced (offline sync grace period)
-        // This prevents offline-synced sessions with backdated checkInTime from being
-        // immediately terminated when they sync
-        const createdAt =
-          data.createdAt?.toMillis?.() || data.updatedAt?.toMillis?.() || 0;
-        const sessionAge = now.toMillis() - createdAt;
+        const sessionEntry: StaleSessionData = {
+          id: docId,
+          status: data.status,
+          startTime: data.startTime,
+          checkInTime: data.checkInTime,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+        };
 
-        if (sessionAge < RECENTLY_CREATED_GRACE_MS) {
+        if (isRecentlyCreated(sessionEntry, nowMs)) {
+          const createdAt =
+            data.createdAt?.toMillis?.() || data.updatedAt?.toMillis?.() || 0;
+          const sessionAge = nowMs - createdAt;
           logger.info(
             `Skipping recently-synced session: ${docId} (age: ${Math.round(
               sessionAge / 1000
             )}s)`
           );
           skippedRecentlyCreated++;
-          return; // Skip this session - give it time to be properly checked out
+          return;
         }
 
-        // Calculate actual duration from session start time to now (not cutoff).
-        // cutoff is `now - sessionLimit`, so using it would undercount by the
-        // amount the session exceeded the limit.
-        const sessionStart =
-          data.startTime?.toMillis?.() || data.checkInTime?.toMillis?.() || 0;
-        const actualDurationMs = now.toMillis() - sessionStart;
-        const actualDurationMinutes =
-          sessionStart > 0
-            ? Math.floor(actualDurationMs / 60000)
-            : durationMinutes; // fallback to max if no start time
+        const actualDurationMinutes = calculateStaleDuration(
+          sessionEntry,
+          nowMs,
+          durationMinutes
+        );
 
         logger.info(`Found stale session: ${docId} (duration: ${actualDurationMinutes}min)`);
         staleSessionIds.push(docId);
         const sessionRef = sessionsRef.doc(docId);
         batch.update(sessionRef, {
           status: "error",
-          active: false, // Ensures legacy listener drops the session
-          endTime: updateTime, // Actual time the session was terminated by cleanup
-          checkOutTime: updateTime, // Legacy compatibility
-          durationMinutes: actualDurationMinutes, // Actual elapsed duration in minutes
+          active: false,
+          endTime: updateTime,
+          checkOutTime: updateTime,
+          durationMinutes: actualDurationMinutes,
           notes: "Session automatically closed due to timeout.",
-          updatedAt: updateTime, // Track update time
+          updatedAt: updateTime,
           errorCode: "timeout_auto_close",
           needsAdminReview: true,
           adminReviewStatus: "unreviewed",
