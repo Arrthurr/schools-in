@@ -68,7 +68,7 @@ Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions
 |----------|------|---------|
 | `startSession` | Callable | Create session with geofence validation |
 | `endSession` | Callable | End session, calculate duration |
-| `cleanupStaleSessions` | Scheduled (30 min) | Warn at 6h 30m, auto-close at 7 hr |
+| `cleanupStaleSessions` | Scheduled (30 min) | Warn at 8h 30m, auto-close at 9h |
 | `generateDailyStats` | Scheduled (02:00 daily) | Aggregate daily session statistics |
 | `syncUserFromM365` | Callable | Sync roles and assignments from M365 groups |
 | `requestM365Resync` | Callable | Request M365 group resync |

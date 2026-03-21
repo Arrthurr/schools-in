@@ -10,6 +10,8 @@ Next.js 14 PWA with Firebase backend for school provider check-in/out via geofen
 
 ## Commands
 
+### Development
+
 | Task | Command |
 |------|---------|
 | Dev | `npm run dev` |
@@ -18,16 +20,46 @@ Next.js 14 PWA with Firebase backend for school provider check-in/out via geofen
 | Typecheck | `npx tsc --noEmit` |
 | Lint | `npm run lint` |
 | Lint + fix | `npm run lint:fix` |
-| Unit tests | `npm test` |
-| Unit tests (watch) | `npm run test:watch` |
-| Single test file | `npm test -- path/to/file.test.ts` |
-| E2E tests | `npm run test:e2e` |
-| E2E headless | `npm run test:e2e:headless` |
-| Cloud Functions tests | `cd functions && npm test` |
-| Firestore rules tests | `npm run test:firestore-rules` |
-| Storage rules tests | `npm run test:storage-rules` |
+| Bundle analysis | `npm run analyze` |
 
 > **Critical**: Always run `npx tsc --noEmit` before committing. The `next build` command enforces type checking.
+
+### Testing
+
+| Task | Command |
+|------|---------|
+| Unit tests | `npm test` |
+| Unit tests (watch) | `npm run test:watch` |
+| Unit tests (CI, coverage + junit) | `npm run test:ci` |
+| Single test file | `npm test -- path/to/file.test.ts` |
+| E2E interactive | `npm run test:e2e` |
+| E2E headless | `npm run test:e2e:headless` |
+| E2E with dev server | `npm run test:e2e:dev` |
+| E2E CI | `npm run test:e2e:ci` |
+| Performance tests | `npm run test:performance` |
+| Accessibility tests | `npm run test:a11y` |
+| Firestore rules tests | `npm run test:firestore-rules` |
+| Storage rules tests | `npm run test:storage-rules` |
+| Cloud Functions tests | `cd functions && npm test` |
+| Cloud Functions (watch) | `cd functions && npm run test:watch` |
+| Cloud Functions (coverage) | `cd functions && npm run test:coverage` |
+| Lighthouse | `npm run lighthouse` or `npm run lighthouse:local` |
+
+### Firebase
+
+| Task | Command |
+|------|---------|
+| All emulators | `npm run firebase:emulators` |
+| Emulators with UI | `npm run firebase:emulators:ui` |
+| Deploy everything | `npm run firebase:deploy` |
+| Deploy hosting only | `npm run firebase:deploy:hosting` |
+| Deploy rules only | `npm run firebase:deploy:rules` |
+| Full production deploy | `npm run firebase:deploy:production` |
+| Production dry-run | `npm run firebase:deploy:dry-run` |
+| Staging channel | `npm run firebase:deploy:staging` |
+| Rollback (interactive) | `npm run firebase:rollback` |
+| Emergency rollback | `npm run firebase:rollback:emergency` |
+| Seed Firestore | `npm run db:seed` |
 
 ## Architecture
 
@@ -43,7 +75,7 @@ See [`docs/agents/architecture.md`](docs/agents/architecture.md) for the full re
 - **`src/lib/utils/`** — Pure utilities (geo, time, CSV, logging)
 - **`src/lib/offline/`** — Offline support (IndexedDB, sync manager, offline queue)
 - **`src/lib/cache/`** — Multi-layer caching (Memory → Session → Local → IndexedDB)
-- **`functions/src/`** — Firebase Cloud Functions (session management, M365 sync, scheduled jobs)
+- **`functions/src/`** — Firebase Cloud Functions (session management, M365 sync, scheduled jobs); requires Node 20
 
 ### Key Constraints
 
@@ -63,6 +95,15 @@ Check-in (`startSession` Cloud Function) → active session → warning push at 
 ### Offline Queue
 
 `actionQueue.ts` → `queueManager.ts` → `syncManager.ts`. Online: calls Cloud Functions directly. Offline: queues to IndexedDB, replays on reconnection via `useConnectivityRestoration`.
+
+When calling `checkIn` or `checkOut`, always pass actual geofence distance through the full chain:
+
+```
+useAutoGeofenceCheck → useSession.checkIn(schoolId, location, distanceFromCenter)
+  → serviceManager.checkIn → queueManager.checkIn → actionQueue.queueCheckIn
+```
+
+`distanceFromCenter` is optional and falls back to `location.accuracy` if omitted.
 
 ## Code Conventions
 
