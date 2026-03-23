@@ -48,7 +48,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   className = "",
 }) => {
   const { user } = useAuth();
-  const { sessions, loading, error, loadSessions, totalSessions, hasMore } =
+  const { sessions, loading, error, loadSessions, totalSessions, hasMore, updateNote } =
     useSession();
   const [schoolNames, setSchoolNames] = useState<Map<string, string>>(
     new Map()
@@ -453,6 +453,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
           setIsModalOpen(false);
           setSelectedSession(null);
         }}
+        onSaveNote={updateNote}
       />
     </Card>
   );

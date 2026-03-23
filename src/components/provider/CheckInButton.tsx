@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
+import { Textarea } from "../ui/textarea";
 import { MapPin, Loader2, AlertCircle, Clock } from "lucide-react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useSession } from "../../lib/hooks/useSession";
@@ -66,6 +67,7 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
   const [distance, setDistance] = useState<number | null>(null);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [sessionDuration, setSessionDuration] = useState<number | null>(null);
+  const [checkoutNotes, setCheckoutNotes] = useState("");
   // const { announce } = useAnnouncement();
   const announce = (_message: string, _priority?: string) => {}; // No-op function placeholder
 
@@ -201,8 +203,9 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
         accuracy: 0,
       };
 
-      await checkOut(currentSessionId, locationForCheckout);
+      await checkOut(currentSessionId, locationForCheckout, checkoutNotes.trim() || undefined);
       setShowCheckOutDialog(false);
+      setCheckoutNotes("");
       announce(`Successfully checked out from ${school.name}`);
     } catch (error) {
       setLocationError({ message: "Failed to check out. Please try again." });
@@ -300,11 +303,29 @@ export const CheckInButton: React.FC<CheckInButtonProps> = ({
               You are checking out from {school.name}.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <p>School: {school.name}</p>
-            {sessionDuration !== null && (
-              <p>Session Duration: {formatDuration(sessionDuration)}</p>
-            )}
+          <div className="py-4 space-y-4">
+            <div>
+              <p>School: {school.name}</p>
+              {sessionDuration !== null && (
+                <p>Session Duration: {formatDuration(sessionDuration)}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="checkout-notes" className="text-sm font-medium">
+                Note (optional)
+              </label>
+              <Textarea
+                id="checkout-notes"
+                value={checkoutNotes}
+                onChange={(e) => setCheckoutNotes(e.target.value.slice(0, 500))}
+                placeholder="Reason for early checkout, session notes..."
+                className="min-h-[60px]"
+                aria-label="Checkout note"
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {checkoutNotes.length}/500
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button

@@ -29,12 +29,14 @@ import {
   formatSessionTime,
   formatDurationDetailed,
 } from "@/lib/utils/session";
+import { SessionNoteEditor } from "./SessionNoteEditor";
 
 interface SessionDetailModalProps {
   session: SessionData | null;
   schoolName?: string;
   isOpen: boolean;
   onClose: () => void;
+  onSaveNote?: (sessionId: string, noteText: string) => Promise<boolean>;
 }
 
 export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
@@ -42,6 +44,7 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
   schoolName,
   isOpen,
   onClose,
+  onSaveNote,
 }) => {
   const [realTimeDuration, setRealTimeDuration] = useState<number | null>(null);
 
@@ -231,19 +234,26 @@ export const SessionDetailModal: React.FC<SessionDetailModalProps> = ({
           </Card>
 
           {/* Notes */}
-          {session.notes && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Notes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{session.notes}</p>
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center">
+                <FileText className="w-4 h-4 mr-2" />
+                Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {onSaveNote && session.id ? (
+                <SessionNoteEditor
+                  initialValue={session.notes || ""}
+                  onSave={(noteText) => onSaveNote(session.id!, noteText)}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {session.notes || "No notes"}
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </DialogContent>
     </Dialog>

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Home, History, Menu, LogOut, Bell, MessageSquare, CalendarClock } from "lucide-react";
+import { Home, History, Menu, LogOut, Bell, FileText, CalendarClock } from "lucide-react";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
 import { logOut } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
@@ -46,9 +46,9 @@ const navigationItems: NavItem[] = [
   },
   {
     href: "/provider/feedback",
-    label: "Feedback",
-    icon: MessageSquare,
-    description: "Help and support",
+    label: "Notes",
+    icon: FileText,
+    description: "Session notes for admins",
   },
 ];
 
