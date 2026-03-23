@@ -178,7 +178,7 @@ describe("QueueManager", () => {
       const result = await manager.checkOut("session123", "user123", mockLocation);
 
       expect(result).toEqual({ success: true, actionId: "checkout123", offline: true });
-      expect(actionQueueMocks.queueCheckOut).toHaveBeenCalledWith("session123", "user123", mockLocation);
+      expect(actionQueueMocks.queueCheckOut).toHaveBeenCalledWith("session123", "user123", mockLocation, undefined);
     });
 
     it("returns failure when queuing check-out throws", async () => {

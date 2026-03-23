@@ -354,7 +354,8 @@ describe("useSession", () => {
     expect(mockQueueManager.checkOut).toHaveBeenCalledWith(
       "session-1",
       "user-123",
-      { latitude: 34.0522, longitude: -118.2437, accuracy: 10 }
+      { latitude: 34.0522, longitude: -118.2437, accuracy: 10 },
+      undefined
     );
     expect(result.current.error).toBe("Offline: check-out queued for sync");
   });
