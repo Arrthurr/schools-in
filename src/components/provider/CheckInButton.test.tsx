@@ -71,6 +71,7 @@ describe("CheckInButton", () => {
   const mockSession = {
     checkIn: jest.fn(),
     checkOut: jest.fn(),
+    updateNote: jest.fn().mockResolvedValue(true),
     loading: false,
     currentSession: null,
     sessions: [],
