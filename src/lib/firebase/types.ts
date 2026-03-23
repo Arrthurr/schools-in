@@ -48,6 +48,7 @@ export interface Session {
   distanceFromCenterAtCheckIn: number; // in meters
   dayKey: string; // YYYY-MM-DD for America/Chicago, computed from startTime
   notes?: string;
+  notesUpdatedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   // Error/review metadata
@@ -75,6 +76,18 @@ export interface Feedback {
   status: "open" | "in_progress" | "resolved" | "closed";
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface AppNotification {
+  id: string;
+  type: "session_note";
+  sessionId: string;
+  providerId: string;
+  providerName: string;
+  locationName: string;
+  notePreview: string;
+  read: boolean;
+  createdAt: Timestamp;
 }
 
 export interface Service {

@@ -11,6 +11,11 @@ export interface StartSessionInput {
   durationMinutes?: number;
 }
 
+export interface UpdateSessionNoteInput {
+  sessionId: string;
+  notes: string;
+}
+
 export interface UserData {
   role: "provider" | "admin";
   isActive?: boolean;
