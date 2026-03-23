@@ -75,6 +75,18 @@ export interface AppNotification {
   createdAt: Timestamp;
 }
 
+export interface AppNotification {
+  id: string;
+  type: "session_note";
+  sessionId: string;
+  providerId: string;
+  providerName: string;
+  locationName: string;
+  notePreview: string;
+  read: boolean;
+  createdAt: Timestamp;
+}
+
 export interface Service {
   id: string;
   name: string;
