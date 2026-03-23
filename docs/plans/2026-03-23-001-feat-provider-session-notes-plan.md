@@ -1,7 +1,7 @@
 ---
 title: "feat: Provider Session Notes"
 type: feat
-status: active
+status: completed
 date: 2026-03-23
 ---
 
@@ -58,31 +58,31 @@ When a provider checks out early or skips a check-in due to an unforeseen event 
 
 ### Functional Requirements
 
-- [ ] Provider can add a note (≤ 500 chars) to an active session via session detail view
-- [ ] Provider can add a note during the checkout flow (optional textarea in checkout confirmation)
-- [ ] Provider can add/edit a note retroactively on any past session they own
-- [ ] Provider can see their own notes on the session detail modal and on `/provider/feedback` (repurposed as "Session Notes")
-- [ ] Admin can see all session notes from all providers on `/admin/feedback` (repurposed as "Session Notes")
-- [ ] Existing Bell button in `AdminNavigation.tsx` shows unread badge and dropdown when notes arrive
-- [ ] Admin receives a web push notification when a provider submits a new note (if push is enabled)
-- [ ] Notes persist correctly when submitted offline and sync when connectivity returns
-- [ ] The Help & Feedback feature is fully removed (routes repurposed, dead code cleaned up)
+- [x] Provider can add a note (≤ 500 chars) to an active session via session detail view
+- [x] Provider can add a note during the checkout flow (optional textarea in checkout confirmation)
+- [x] Provider can add/edit a note retroactively on any past session they own
+- [x] Provider can see their own notes on the session detail modal and on `/provider/feedback` (repurposed as "Session Notes")
+- [x] Admin can see all session notes from all providers on `/admin/feedback` (repurposed as "Session Notes")
+- [x] Existing Bell button in `AdminNavigation.tsx` shows unread badge and dropdown when notes arrive
+- [x] Admin receives a web push notification when a provider submits a new note (if push is enabled)
+- [x] Notes persist correctly when submitted offline and sync when connectivity returns
+- [x] The Help & Feedback feature is fully removed (routes repurposed, dead code cleaned up)
 
 ### Non-Functional Requirements
 
-- [ ] Note writes enforce 500-char limit server-side in Cloud Function
-- [ ] Note content is plain text only (no HTML/XSS risk)
-- [ ] Offline queue deduplicates `UPDATE_NOTE` actions by `sessionId`
-- [ ] Notes pages paginate (no unbounded queries)
-- [ ] Notification bell uses real-time listener (not polling)
+- [x] Note writes enforce 500-char limit server-side in Cloud Function
+- [x] Note content is plain text only (no HTML/XSS risk)
+- [x] Offline queue deduplicates `UPDATE_NOTE` actions by `sessionId`
+- [x] Notes pages paginate (no unbounded queries)
+- [x] Notification bell uses real-time listener (not polling)
 
 ### Quality Gates
 
-- [ ] `npx tsc --noEmit` passes
-- [ ] All existing tests pass
-- [ ] New unit tests for `updateSessionNote` Cloud Function
-- [ ] New unit tests for offline queue `UPDATE_NOTE` action
-- [ ] Coverage thresholds maintained (70% branches, 58% functions, 68% lines)
+- [x] `npx tsc --noEmit` passes
+- [x] All existing tests pass
+- [x] New unit tests for `updateSessionNote` Cloud Function
+- [x] New unit tests for offline queue `UPDATE_NOTE` action
+- [x] Coverage thresholds maintained (70% branches, 58% functions, 68% lines)
 
 ## Implementation Phases
 
