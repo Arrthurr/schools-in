@@ -128,7 +128,7 @@ describe("SessionDetailModal Component", () => {
     expect(screen.getByText("Unknown School")).toBeInTheDocument();
   });
 
-  it("does not show notes section when notes are not provided", () => {
+  it("shows 'No notes' when notes are not provided", () => {
     render(
       <SessionDetailModal
         session={mockActiveSession}
@@ -138,7 +138,7 @@ describe("SessionDetailModal Component", () => {
       />
     );
 
-    expect(screen.queryByText("Notes")).not.toBeInTheDocument();
+    expect(screen.getByText("No notes")).toBeInTheDocument();
     expect(
       screen.queryByText("Great session with the students")
     ).not.toBeInTheDocument();

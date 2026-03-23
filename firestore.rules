@@ -82,6 +82,15 @@ service cloud.firestore {
       allow list: if isAdmin();
     }
 
+    // In-app notifications (per-user subcollection)
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, list: if isOwner(userId);
+      allow update: if isOwner(userId) &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      // Only Cloud Functions (Admin SDK) can create/delete notifications
+      allow create, delete: if false;
+    }
+
     // Push subscriptions (per-user subcollection)
     match /users/{userId}/pushSubscriptions/{subscriptionId} {
       allow create, update: if isOwner(userId) && isValidPushSubscription(request.resource.data);
@@ -147,26 +156,6 @@ service cloud.firestore {
       // List operations - admins can list all, providers can query their own sessions
       allow list: if isAdmin() || 
                      (isProvider() && isActiveUser());
-    }
-
-    // Feedback collection rules
-    match /feedback/{feedbackId} {
-      // Authenticated users (providers/admins) can create feedback
-      allow create: if isAuthenticated() &&
-                       request.resource.data.providerId == request.auth.uid &&
-                       request.resource.data.description is string &&
-                       request.resource.data.category in ['bug', 'feature_request', 'general', 'other'] &&
-                       request.resource.data.severity in ['low', 'medium', 'high', 'critical'] &&
-                       request.resource.data.status == 'open' &&
-                       hasValidTimestamp(request.resource.data);
-
-      // Admins can read/update/delete all feedback
-      allow read, update, delete: if isAdmin();
-      
-      // Admins can update feedback status
-      allow update: if isAdmin() &&
-                      hasValidTimestamp(request.resource.data) &&
-                      request.resource.data.status in ['open', 'in_progress', 'resolved', 'closed'];
     }
 
     // Services collection rules

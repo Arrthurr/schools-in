@@ -48,6 +48,7 @@ export interface Session {
   distanceFromCenterAtCheckIn: number; // in meters
   dayKey: string; // YYYY-MM-DD for America/Chicago, computed from startTime
   notes?: string;
+  notesUpdatedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   // Error/review metadata
@@ -62,19 +63,16 @@ export interface Session {
   duration?: number; // legacy total minutes
 }
 
-export interface Feedback {
+export interface AppNotification {
   id: string;
+  type: "session_note";
+  sessionId: string;
   providerId: string;
-  providerEmail?: string;
-  providerName?: string;
-  category: "bug" | "feature_request" | "general" | "other";
-  severity: "low" | "medium" | "high" | "critical";
-  description: string;
-  url?: string;
-  userAgent?: string;
-  status: "open" | "in_progress" | "resolved" | "closed";
+  providerName: string;
+  locationName: string;
+  notePreview: string;
+  read: boolean;
   createdAt: Timestamp;
-  updatedAt: Timestamp;
 }
 
 export interface Service {

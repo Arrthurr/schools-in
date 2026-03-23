@@ -5,6 +5,7 @@ import {
   initActionQueue,
   queueCheckIn,
   queueCheckOut,
+  queueUpdateNote,
   processQueue,
   getPendingActions,
   getQueueStats,
@@ -184,7 +185,8 @@ class QueueManager {
   async checkOut(
     sessionId: string,
     userId: string,
-    location: { latitude: number; longitude: number; accuracy?: number }
+    location: { latitude: number; longitude: number; accuracy?: number },
+    notes?: string
   ): Promise<{ success: boolean; actionId?: string; offline?: boolean }> {
     if (!this.isInitialized) {
       throw new Error("QueueManager not initialized");
@@ -197,7 +199,7 @@ class QueueManager {
           const endSessionFn = httpsCallable(functions, "endSession");
           const checkOutDate = new Date();
 
-          const response = await endSessionFn({
+          const endPayload: Record<string, any> = {
             sessionId,
             checkOutTime: checkOutDate.toISOString(),
             checkOutLocation: {
@@ -206,7 +208,13 @@ class QueueManager {
               accuracy: location.accuracy,
             },
             distanceFromCenterAtCheckOut: location.accuracy ?? undefined,
-          });
+          };
+
+          if (notes) {
+            endPayload.notes = notes;
+          }
+
+          const response = await endSessionFn(endPayload);
 
           const data = (response as any)?.data;
           if (!data?.success) {
@@ -229,7 +237,7 @@ class QueueManager {
       }
 
       // Queue the action for offline processing
-      const actionId = await queueCheckOut(sessionId, userId, location);
+      const actionId = await queueCheckOut(sessionId, userId, location, notes);
 
       if (this.config.debugMode) {
         console.log("Check-out queued for offline processing:", actionId);
@@ -245,6 +253,57 @@ class QueueManager {
       };
     } catch (error) {
       console.error("Failed to process check-out:", error);
+      return { success: false };
+    }
+  }
+
+  // Update session note with offline support
+  async updateNote(
+    sessionId: string,
+    userId: string,
+    noteText: string
+  ): Promise<{ success: boolean; actionId?: string; offline?: boolean }> {
+    if (!this.isInitialized) {
+      throw new Error("QueueManager not initialized");
+    }
+
+    try {
+      if (navigator.onLine) {
+        try {
+          const updateSessionNoteFn = httpsCallable(functions, "updateSessionNote");
+          const response = await updateSessionNoteFn({
+            sessionId,
+            notes: noteText,
+          });
+
+          const data = (response as any)?.data;
+          if (!data?.success) {
+            throw new Error("updateSessionNote callable returned failure");
+          }
+
+          if (this.config.debugMode) {
+            console.log("Session note updated online:", { sessionId });
+          }
+          return { success: true, offline: false };
+        } catch (error) {
+          if (this.config.debugMode) {
+            console.log("Firebase call failed, falling back to offline queue:", error);
+          }
+        }
+      }
+
+      // Queue the action for offline processing
+      const actionId = await queueUpdateNote(sessionId, userId, noteText);
+
+      if (this.config.debugMode) {
+        console.log("Session note queued for offline processing:", actionId);
+      }
+
+      this.notifyListeners();
+
+      return { success: true, actionId, offline: true };
+    } catch (error) {
+      console.error("Failed to update session note:", error);
       return { success: false };
     }
   }

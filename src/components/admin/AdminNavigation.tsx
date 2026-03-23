@@ -13,9 +13,7 @@ import {
   Users,
   Menu,
   LogOut,
-  Bell,
   Activity,
-  MessageSquare,
   Package,
   CalendarClock,
 } from "lucide-react";
@@ -23,6 +21,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { logOut } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
 import { Logo } from "../ui/logo";
+import { NotificationBell } from "../ui/NotificationBell";
 
 interface AdminNavigationProps {
   children: React.ReactNode;
@@ -81,9 +80,9 @@ const navigationItems: NavItem[] = [
   },
   {
     href: "/admin/feedback",
-    label: "Feedback",
-    icon: MessageSquare,
-    description: "User feedback and issues",
+    label: "Notes",
+    icon: FileText,
+    description: "Provider session notes",
   },
 ];
 
@@ -234,9 +233,7 @@ export function AdminNavigation({ children }: AdminNavigationProps) {
             </div>
 
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" aria-label="Notifications">
-                <Bell className="h-4 w-4" />
-              </Button>
+              <NotificationBell />
               <div className="hidden sm:flex items-center space-x-2 pl-2 border-l">
                 <div className="text-right">
                   <p className="text-sm font-medium">

@@ -121,6 +121,7 @@ async function releaseActionQueueLock(ownerId: string): Promise<void> {
 export const QUEUE_ACTIONS = {
   CHECK_IN: "check_in",
   CHECK_OUT: "check_out",
+  UPDATE_NOTE: "update_note",
 } as const;
 
 export type QueueActionType = typeof QUEUE_ACTIONS[keyof typeof QUEUE_ACTIONS];
@@ -196,7 +197,7 @@ export async function queueAction(
   metadata?: Partial<QueuedAction>
 ): Promise<string> {
   try {
-    if (![QUEUE_ACTIONS.CHECK_IN, QUEUE_ACTIONS.CHECK_OUT].includes(type)) {
+    if (![QUEUE_ACTIONS.CHECK_IN, QUEUE_ACTIONS.CHECK_OUT, QUEUE_ACTIONS.UPDATE_NOTE].includes(type)) {
       throw new Error(`Unsupported action type: ${type}`);
     }
 
@@ -276,9 +277,10 @@ export async function queueCheckIn(
 export async function queueCheckOut(
   sessionId: string,
   userId: string,
-  location: { latitude: number; longitude: number; accuracy?: number }
+  location: { latitude: number; longitude: number; accuracy?: number },
+  notes?: string
 ): Promise<string> {
-  const payload = {
+  const payload: Record<string, any> = {
     sessionId,
     userId,
     location: {
@@ -289,12 +291,46 @@ export async function queueCheckOut(
     timestamp: Date.now(),
   };
 
+  if (notes) {
+    payload.notes = notes;
+  }
+
   return queueAction(QUEUE_ACTIONS.CHECK_OUT, payload, userId, {
     sessionId,
     location: {
       ...location,
       timestamp: Date.now(),
     },
+  });
+}
+
+// Queue an update-note action (deduplicated by sessionId — only latest note kept)
+export async function queueUpdateNote(
+  sessionId: string,
+  userId: string,
+  noteText: string
+): Promise<string> {
+  // Deduplicate: remove any existing pending UPDATE_NOTE for the same session
+  try {
+    const pending = await getPendingActions(userId);
+    const existingNoteAction = pending.find(
+      (a) => a.type === QUEUE_ACTIONS.UPDATE_NOTE && a.payload?.sessionId === sessionId
+    );
+    if (existingNoteAction) {
+      await updateActionStatus(existingNoteAction.id, QUEUE_STATUS.CANCELLED);
+    }
+  } catch {
+    // If dedup fails, proceed with queueing — worst case the server gets two writes
+  }
+
+  const payload = {
+    sessionId,
+    notes: noteText,
+    timestamp: Date.now(),
+  };
+
+  return queueAction(QUEUE_ACTIONS.UPDATE_NOTE, payload, userId, {
+    sessionId,
   });
 }
 
@@ -505,6 +541,8 @@ async function syncActionByType(action: QueuedAction): Promise<boolean> {
       return syncCheckIn(action);
     case QUEUE_ACTIONS.CHECK_OUT:
       return syncCheckOut(action);
+    case QUEUE_ACTIONS.UPDATE_NOTE:
+      return syncUpdateNote(action);
     default:
       console.warn(`Unknown action type: ${action.type}`);
       return false;
@@ -570,7 +608,7 @@ async function syncCheckOut(action: QueuedAction): Promise<boolean> {
   const endSessionFn = httpsCallable(functions, "endSession");
 
   try {
-    const response = await endSessionFn({
+    const endPayload: Record<string, any> = {
       sessionId,
       checkOutTime: checkoutDate.toISOString(),
       checkOutLocation: action.payload.location
@@ -584,7 +622,13 @@ async function syncCheckOut(action: QueuedAction): Promise<boolean> {
         action.payload.location?.accuracy ??
         action.payload.distanceFromCenterAtCheckOut ??
         undefined,
-    });
+    };
+
+    if (action.payload.notes) {
+      endPayload.notes = action.payload.notes;
+    }
+
+    const response = await endSessionFn(endPayload);
 
     const data = (response as any)?.data;
     if (!data?.success) {
@@ -598,6 +642,38 @@ async function syncCheckOut(action: QueuedAction): Promise<boolean> {
     return true;
   } catch (error) {
     console.error("Failed to sync check-out:", error);
+    return false;
+  }
+}
+
+// Sync update-note action using Cloud Function
+async function syncUpdateNote(action: QueuedAction): Promise<boolean> {
+  const sessionId = action.sessionId || action.payload.sessionId;
+  if (!sessionId) {
+    console.error("Session ID is required for update-note");
+    return false;
+  }
+
+  const updateSessionNoteFn = httpsCallable(functions, "updateSessionNote");
+
+  try {
+    const response = await updateSessionNoteFn({
+      sessionId,
+      notes: action.payload.notes || "",
+    });
+
+    const data = (response as any)?.data;
+    if (!data?.success) {
+      throw new Error("updateSessionNote callable returned failure");
+    }
+
+    console.log("Session note synced successfully:", {
+      sessionId,
+      actionId: action.id,
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to sync session note:", error);
     return false;
   }
 }

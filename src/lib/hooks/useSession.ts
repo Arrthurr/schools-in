@@ -22,7 +22,8 @@ interface UseSessionReturn {
   totalSessions: number;
   hasMore: boolean;
   checkIn: (schoolId: string, location: Coordinates, distanceFromCenter?: number) => Promise<void>;
-  checkOut: (sessionId: string, location: Coordinates) => Promise<void>;
+  checkOut: (sessionId: string, location: Coordinates, notes?: string) => Promise<void>;
+  updateNote: (sessionId: string, noteText: string) => Promise<boolean>;
   loadSessions: (
     userId?: string,
     page?: number,
@@ -139,7 +140,7 @@ export const useSession = (): UseSessionReturn => {
   );
 
   const checkOut = useCallback(
-    async (sessionId: string, location: Coordinates) => {
+    async (sessionId: string, location: Coordinates, notes?: string) => {
       setLoading(true);
       setError(null);
 
@@ -147,7 +148,7 @@ export const useSession = (): UseSessionReturn => {
         const checkOutDate = new Date();
 
         const endSessionFn = httpsCallable(functions, "endSession");
-        const response = await endSessionFn({
+        const endPayload: Record<string, any> = {
           sessionId,
           checkOutTime: checkOutDate.toISOString(),
           checkOutLocation: {
@@ -156,7 +157,13 @@ export const useSession = (): UseSessionReturn => {
             accuracy: location.accuracy,
           },
           distanceFromCenterAtCheckOut: location.accuracy ?? undefined,
-        });
+        };
+
+        if (notes) {
+          endPayload.notes = notes;
+        }
+
+        const response = await endSessionFn(endPayload);
 
         const data = response.data as any;
         if (!data?.success) {
@@ -183,7 +190,7 @@ export const useSession = (): UseSessionReturn => {
             latitude: location.latitude,
             longitude: location.longitude,
             accuracy: location.accuracy,
-          });
+          }, notes);
 
           if (queued.offline) {
             setError("Offline: check-out queued for sync");
@@ -204,6 +211,32 @@ export const useSession = (): UseSessionReturn => {
       }
     },
     [user?.uid]
+  );
+
+  const updateNote = useCallback(
+    async (sessionId: string, noteText: string): Promise<boolean> => {
+      if (!user) {
+        setError("User must be authenticated to update notes");
+        return false;
+      }
+
+      try {
+        const result = await queueManager.updateNote(sessionId, user.uid, noteText);
+
+        if (result.offline) {
+          setError("Offline: note will sync when connected");
+        }
+
+        return result.success;
+      } catch (err) {
+        console.error("Failed to update session note:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to update note"
+        );
+        return false;
+      }
+    },
+    [user]
   );
 
   const loadSessions = useCallback(
@@ -341,6 +374,7 @@ export const useSession = (): UseSessionReturn => {
     hasMore,
     checkIn,
     checkOut,
+    updateNote,
     loadSessions,
     clearError,
   };

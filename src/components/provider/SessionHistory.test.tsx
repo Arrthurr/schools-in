@@ -105,6 +105,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -134,6 +135,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -154,6 +156,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -177,6 +180,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -204,6 +208,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -244,6 +249,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -266,6 +272,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -288,6 +295,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -311,6 +319,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -338,6 +347,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -363,6 +373,7 @@ describe("SessionHistory Component", () => {
       hasMore: true,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -387,6 +398,7 @@ describe("SessionHistory Component", () => {
       hasMore: true,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -407,6 +419,7 @@ describe("SessionHistory Component", () => {
       hasMore: true,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -427,6 +440,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -447,6 +461,7 @@ describe("SessionHistory Component", () => {
       hasMore: true,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -471,6 +486,7 @@ describe("SessionHistory Component", () => {
       hasMore: true,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -493,6 +509,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -519,6 +536,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -546,6 +564,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -565,6 +584,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });
@@ -588,6 +608,7 @@ describe("SessionHistory Component", () => {
       hasMore: false,
       checkIn: jest.fn(),
       checkOut: jest.fn(),
+      updateNote: jest.fn().mockResolvedValue(true),
       loadSessions: mockLoadSessions,
       clearError: jest.fn(),
     });

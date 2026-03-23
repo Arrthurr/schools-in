@@ -33,6 +33,7 @@ import {
   validateSessionStatus,
   calculateDurationMinutes,
   validateScheduleGating,
+  type UpdateSessionNoteInput,
 } from "./sessionLifecycle";
 
 import {
@@ -495,7 +496,7 @@ exports.startSession = onCall(async (request: any) => {
         checkInMethod: data.checkInMethod,
         distanceFromCenterAtCheckIn: Math.round(distanceFromCenter),
         dayKey: data.dayKey,
-        notes: data.notes || "",
+        notes: typeof data.notes === "string" ? data.notes.trim().slice(0, 500) : "",
         createdAt: admin.firestore.Timestamp.now(),
         updatedAt: admin.firestore.Timestamp.now(),
       };
@@ -627,7 +628,8 @@ exports.endSession = onCall(async (request: any) => {
       };
 
       if (typeof data.notes === "string" && data.notes.trim()) {
-        updateData.notes = data.notes.trim().slice(0, 1000);
+        updateData.notes = data.notes.trim().slice(0, 500);
+        updateData.notesUpdatedAt = admin.firestore.Timestamp.now();
       }
 
       if (data.checkOutLocation) {
@@ -1497,6 +1499,165 @@ View in Admin Console: ${feedbackUrl}
       logger.error("Error sending feedback notification email:", error);
       // Don't throw - we don't want to fail the feedback creation if email fails
       // The feedback is already saved, email is just a notification
+    }
+  }
+);
+
+/**
+ * Callable function to add or update a note on a session.
+ * Validates ownership, enforces 500-char limit, and notifies admins.
+ */
+exports.updateSessionNote = onCall(
+  {
+    secrets: ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL"],
+  },
+  async (request: any) => {
+    try {
+      const { data, auth } = request;
+
+      if (!auth) {
+        throw new Error("Authentication required");
+      }
+
+      const input = data as UpdateSessionNoteInput;
+      if (!input.sessionId || typeof input.notes !== "string") {
+        throw new Error("Missing required fields: sessionId, notes");
+      }
+
+      const db = admin.firestore();
+      const userId = auth.uid;
+      const noteText = input.notes.trim().slice(0, 500);
+
+      // Validate user is a provider
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (!userDoc.exists) {
+        throw new Error("User not found");
+      }
+      const userData = userDoc.data();
+      if (userData?.role !== "provider") {
+        throw new Error("Only providers can add session notes");
+      }
+
+      // Validate session exists and user owns it
+      const sessionRef = db.collection("sessions").doc(input.sessionId);
+      const sessionDoc = await sessionRef.get();
+      if (!sessionDoc.exists) {
+        throw new Error("Session not found");
+      }
+      const sessionData = sessionDoc.data();
+      if (sessionData?.userId !== userId) {
+        throw new Error("You are not authorized to update this session");
+      }
+
+      // Update the session note
+      const now = admin.firestore.Timestamp.now();
+      await sessionRef.update({
+        notes: noteText,
+        notesUpdatedAt: now,
+        updatedAt: now,
+      });
+
+      // Look up location name for notification
+      let locationName = "Unknown location";
+      if (sessionData?.locationId) {
+        const locationDoc = await db
+          .collection("locations")
+          .doc(sessionData.locationId)
+          .get();
+        if (locationDoc.exists) {
+          locationName = locationDoc.data()?.name || locationName;
+        }
+      }
+
+      const providerName = userData?.displayName || userData?.email || "Provider";
+      const notePreview =
+        noteText.length > 100 ? noteText.slice(0, 100) + "..." : noteText;
+
+      // Find all admin users and create notifications + send push
+      const adminsSnapshot = await db
+        .collection("users")
+        .where("role", "==", "admin")
+        .get();
+
+      let pushEnabled = false;
+      try {
+        pushEnabled = initializeWebPush();
+      } catch {
+        logger.warn("Failed to initialize web push for session note notification");
+      }
+
+      const batch = db.batch();
+      const pushPromises: Promise<boolean>[] = [];
+
+      for (const adminDoc of adminsSnapshot.docs) {
+        const adminId = adminDoc.id;
+
+        // Create in-app notification
+        const notifRef = db
+          .collection("users")
+          .doc(adminId)
+          .collection("notifications")
+          .doc();
+
+        batch.set(notifRef, {
+          id: notifRef.id,
+          type: "session_note",
+          sessionId: input.sessionId,
+          providerId: userId,
+          providerName,
+          locationName,
+          notePreview,
+          read: false,
+          createdAt: now,
+        });
+
+        // Send web push if enabled
+        if (pushEnabled) {
+          const pushSubDoc = await db
+            .collection("users")
+            .doc(adminId)
+            .collection("pushSubscriptions")
+            .doc("adminAlerts")
+            .get();
+
+          if (pushSubDoc.exists) {
+            const subscription = pushSubDoc.data() as PushSubscription;
+            pushPromises.push(
+              sendPushNotification(subscription, {
+                title: "New Session Note",
+                body: `${providerName} added a note at ${locationName}: "${notePreview}"`,
+                data: {
+                  type: "session_note",
+                  sessionId: input.sessionId,
+                  url: `/admin/feedback`,
+                },
+              })
+            );
+          }
+        }
+      }
+
+      await batch.commit();
+      await Promise.allSettled(pushPromises);
+
+      logger.info("Session note updated", {
+        sessionId: input.sessionId,
+        userId,
+        noteLength: noteText.length,
+        adminsNotified: adminsSnapshot.size,
+      });
+
+      return {
+        success: true,
+        sessionId: input.sessionId,
+        notes: noteText,
+        notesUpdatedAt: now.toDate().toISOString(),
+      };
+    } catch (error) {
+      logger.error("Error updating session note:", error);
+      throw error instanceof Error
+        ? error
+        : new Error("Failed to update session note");
     }
   }
 );
