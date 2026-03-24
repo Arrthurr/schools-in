@@ -32,6 +32,7 @@ jest.mock("../../offline/queueManager", () => ({
   queueManager: {
     checkIn: jest.fn(),
     checkOut: jest.fn(),
+    updateNote: jest.fn(),
   },
 }));
 jest.mock("../../../../firebase.config", () => ({
@@ -484,5 +485,145 @@ describe("useSession", () => {
       expect(result.current.currentSession).toBeNull();
       expect(result.current.sessions).toEqual([]);
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // updateNote
+  // ---------------------------------------------------------------------------
+
+  it("calls queueManager.updateNote and returns true on success", async () => {
+    mockUseAuth.mockReturnValue({ user: mockUser, loading: false } as any);
+    mockQueueManager.updateNote.mockResolvedValue({
+      success: true,
+      offline: false,
+    });
+
+    const { result } = renderHook(() => useSession());
+
+    let success: boolean;
+    await act(async () => {
+      success = await result.current.updateNote("sess-1", "My note");
+    });
+
+    expect(success!).toBe(true);
+    expect(mockQueueManager.updateNote).toHaveBeenCalledWith(
+      "sess-1",
+      "user-123",
+      "My note"
+    );
+    expect(result.current.error).toBeNull();
+  });
+
+  it("returns false and sets error when user is missing", async () => {
+    mockUseAuth.mockReturnValue({ user: null, loading: false } as any);
+
+    const { result } = renderHook(() => useSession());
+
+    let success: boolean;
+    await act(async () => {
+      success = await result.current.updateNote("sess-1", "No user");
+    });
+
+    expect(success!).toBe(false);
+    expect(result.current.error).toBe(
+      "User must be authenticated to update notes"
+    );
+    expect(mockQueueManager.updateNote).not.toHaveBeenCalled();
+  });
+
+  it("sets offline message when updateNote returns offline result", async () => {
+    mockUseAuth.mockReturnValue({ user: mockUser, loading: false } as any);
+    mockQueueManager.updateNote.mockResolvedValue({
+      success: true,
+      offline: true,
+    });
+
+    const { result } = renderHook(() => useSession());
+
+    let success: boolean;
+    await act(async () => {
+      success = await result.current.updateNote("sess-1", "Offline note");
+    });
+
+    expect(success!).toBe(true);
+    expect(result.current.error).toBe(
+      "Offline: note will sync when connected"
+    );
+  });
+
+  it("returns false and sets error when queueManager throws", async () => {
+    mockUseAuth.mockReturnValue({ user: mockUser, loading: false } as any);
+    mockQueueManager.updateNote.mockRejectedValue(
+      new Error("Queue exploded")
+    );
+
+    const { result } = renderHook(() => useSession());
+
+    let success: boolean;
+    await act(async () => {
+      success = await result.current.updateNote("sess-1", "Will fail");
+    });
+
+    expect(success!).toBe(false);
+    expect(result.current.error).toBe("Queue exploded");
+  });
+
+  // ---------------------------------------------------------------------------
+  // checkOut with notes
+  // ---------------------------------------------------------------------------
+
+  it("passes notes to endSession callable when provided", async () => {
+    mockUseAuth.mockReturnValue({ user: mockUser, loading: false } as any);
+    mockEndSessionFn.mockResolvedValue({
+      data: { success: true },
+    });
+
+    const { result } = renderHook(() => useSession());
+
+    await act(async () => {
+      await result.current.checkOut("sess-1", mockLocation, "Checkout note");
+    });
+
+    expect(mockEndSessionFn).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: "Checkout note" })
+    );
+  });
+
+  it("omits notes from endSession when undefined", async () => {
+    mockUseAuth.mockReturnValue({ user: mockUser, loading: false } as any);
+    mockEndSessionFn.mockResolvedValue({
+      data: { success: true },
+    });
+
+    const { result } = renderHook(() => useSession());
+
+    await act(async () => {
+      await result.current.checkOut("sess-1", mockLocation);
+    });
+
+    const callArgs = mockEndSessionFn.mock.calls[0][0];
+    expect(callArgs.notes).toBeUndefined();
+  });
+
+  it("passes notes to queueManager.checkOut on offline fallback", async () => {
+    mockUseAuth.mockReturnValue({ user: mockUser, loading: false } as any);
+    mockEndSessionFn.mockRejectedValue(new Error("Network error"));
+    mockQueueManager.checkOut.mockResolvedValue({
+      offline: true,
+      success: true,
+    } as any);
+
+    const { result } = renderHook(() => useSession());
+
+    await act(async () => {
+      await result.current.checkOut("sess-1", mockLocation, "Offline note");
+    });
+
+    expect(mockQueueManager.checkOut).toHaveBeenCalledWith(
+      "sess-1",
+      "user-123",
+      { latitude: 34.0522, longitude: -118.2437, accuracy: 10 },
+      "Offline note"
+    );
   });
 });
