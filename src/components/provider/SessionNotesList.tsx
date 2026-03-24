@@ -10,6 +10,8 @@ import {
   getDocs,
   startAfter,
   DocumentSnapshot,
+  doc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
@@ -20,15 +22,16 @@ import { Button } from "@/components/ui/button";
 import { FileText, ChevronDown, Loader2 } from "lucide-react";
 import { SessionNoteEditor } from "./SessionNoteEditor";
 import { cn } from "@/lib/utils";
+import { formatShortDate, formatShortTime, type FirestoreTimestamp } from "@/lib/utils/time";
 
 interface SessionWithNote {
   id: string;
   locationId: string;
-  startTime: any;
-  endTime?: any;
+  startTime: FirestoreTimestamp;
+  endTime?: FirestoreTimestamp;
   status: string;
   notes?: string;
-  notesUpdatedAt?: any;
+  notesUpdatedAt?: FirestoreTimestamp;
 }
 
 const PAGE_SIZE = 20;
@@ -95,20 +98,15 @@ export const SessionNotesList: React.FC = () => {
         if (newLocationIds.length > 0) {
           const locationDocs = await Promise.all(
             newLocationIds.map((id) =>
-              getDocs(
-                query(
-                  collection(db, COLLECTIONS.LOCATIONS),
-                  where("__name__", "==", id)
-                )
-              )
+              getDoc(doc(db, COLLECTIONS.LOCATIONS, id))
             )
           );
 
           const newNames: Record<string, string> = {};
-          locationDocs.forEach((snap) => {
-            snap.docs.forEach((doc) => {
-              newNames[doc.id] = doc.data().name || "Unknown";
-            });
+          locationDocs.forEach((d) => {
+            if (d.exists()) {
+              newNames[d.id] = d.data().name || "Unknown";
+            }
           });
 
           setLocationNames((prev) => ({ ...prev, ...newNames }));
@@ -147,25 +145,6 @@ export const SessionNotesList: React.FC = () => {
     return success;
   };
 
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return "—";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (timestamp: any) => {
-    if (!timestamp) return "";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -193,12 +172,12 @@ export const SessionNotesList: React.FC = () => {
                 {locationNames[session.locationId] || "Loading..."}
               </CardTitle>
               <span className="text-xs text-muted-foreground">
-                {formatDate(session.startTime)}
+                {formatShortDate(session.startTime)}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatTime(session.startTime)}
-              {session.endTime && ` — ${formatTime(session.endTime)}`}
+              {formatShortTime(session.startTime)}
+              {session.endTime && ` — ${formatShortTime(session.endTime)}`}
               {" · "}
               <span
                 className={cn(

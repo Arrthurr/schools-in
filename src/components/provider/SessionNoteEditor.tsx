@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -25,6 +25,11 @@ export const SessionNoteEditor: React.FC<SessionNoteEditorProps> = ({
   const [noteText, setNoteText] = useState(initialValue);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => clearTimeout(timerRef.current);
+  }, []);
 
   const charCount = noteText.length;
   const isOverLimit = charCount > MAX_NOTE_LENGTH;
@@ -39,7 +44,7 @@ export const SessionNoteEditor: React.FC<SessionNoteEditorProps> = ({
       const success = await onSave(noteText.trim());
       if (success) {
         setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        timerRef.current = setTimeout(() => setSaved(false), 2000);
       }
     } finally {
       setSaving(false);

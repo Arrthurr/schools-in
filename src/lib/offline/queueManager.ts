@@ -24,6 +24,7 @@ import { httpsCallable } from "firebase/functions";
 import { Timestamp } from "firebase/firestore";
 import { getDayKey } from "@/lib/utils/time";
 import { functions } from "../../../firebase.config";
+import { appLogger } from "@/lib/logging/appLogger";
 
 export interface QueueManagerConfig {
   enableAutoSync: boolean;
@@ -40,7 +41,7 @@ class QueueManager {
   private syncInterval: NodeJS.Timeout | null = null;
   private isInitialized = false;
   private isProcessing = false;
-  private listeners: Set<(stats: any) => void> = new Set();
+  private listeners: Set<(stats: Awaited<ReturnType<typeof getQueueStats>>) => void> = new Set();
   private networkStatus: NetworkStatus | null = null;
   private lastSyncResult: SyncResult | null = null;
   private lastKnownStats: Awaited<ReturnType<typeof getQueueStats>> | null = null;
@@ -89,10 +90,10 @@ class QueueManager {
       this.setupNetworkListeners();
 
       if (this.config.debugMode) {
-        console.log("QueueManager initialized with config:", this.config);
+        appLogger.debug("QueueManager initialized", { config: this.config as unknown as Record<string, unknown> });
       }
     } catch (error) {
-      console.error("Failed to initialize QueueManager:", error);
+      appLogger.error("Failed to initialize QueueManager", { error });
     }
   }
 
@@ -137,7 +138,7 @@ class QueueManager {
             },
           });
 
-          const data = (response as any)?.data;
+          const data = response.data as { success: boolean; sessionId?: string };
           if (!data?.success) {
             throw new Error("startSession callable returned failure");
           }
@@ -145,7 +146,7 @@ class QueueManager {
           const sessionId = data.sessionId;
 
           if (this.config.debugMode) {
-            console.log("Check-in completed online:", { sessionId });
+            appLogger.debug("Check-in completed online", { sessionId });
           }
           return {
             success: true,
@@ -155,7 +156,7 @@ class QueueManager {
         } catch (error) {
           // Firebase call failed, fall back to offline queue
           if (this.config.debugMode) {
-            console.log("Firebase call failed, falling back to offline queue:", error);
+            appLogger.debug("Firebase call failed, falling back to offline queue", { error });
           }
         }
       }
@@ -164,7 +165,7 @@ class QueueManager {
       const actionId = await queueCheckIn(schoolId, userId, location, distanceFromCenter);
 
       if (this.config.debugMode) {
-        console.log("Check-in queued for offline processing:", actionId);
+        appLogger.debug("Check-in queued for offline processing", { actionId });
       }
 
       // Notify listeners
@@ -176,7 +177,7 @@ class QueueManager {
         offline: true,
       };
     } catch (error) {
-      console.error("Failed to process check-in:", error);
+      appLogger.error("Failed to process check-in", { error });
       return { success: false };
     }
   }
@@ -199,7 +200,13 @@ class QueueManager {
           const endSessionFn = httpsCallable(functions, "endSession");
           const checkOutDate = new Date();
 
-          const endPayload: Record<string, any> = {
+          const endPayload: {
+            sessionId: string;
+            checkOutTime: string;
+            checkOutLocation: { latitude: number; longitude: number; accuracy?: number };
+            distanceFromCenterAtCheckOut?: number;
+            notes?: string;
+          } = {
             sessionId,
             checkOutTime: checkOutDate.toISOString(),
             checkOutLocation: {
@@ -216,13 +223,13 @@ class QueueManager {
 
           const response = await endSessionFn(endPayload);
 
-          const data = (response as any)?.data;
+          const data = response.data as { success: boolean; sessionId?: string };
           if (!data?.success) {
             throw new Error("endSession callable returned failure");
           }
 
           if (this.config.debugMode) {
-            console.log("Check-out completed online:", { sessionId });
+            appLogger.debug("Check-out completed online", { sessionId });
           }
           return {
             success: true,
@@ -231,7 +238,7 @@ class QueueManager {
         } catch (error) {
           // Firebase call failed, fall back to offline queue
           if (this.config.debugMode) {
-            console.log("Firebase call failed, falling back to offline queue:", error);
+            appLogger.debug("Firebase call failed, falling back to offline queue", { error });
           }
         }
       }
@@ -240,7 +247,7 @@ class QueueManager {
       const actionId = await queueCheckOut(sessionId, userId, location, notes);
 
       if (this.config.debugMode) {
-        console.log("Check-out queued for offline processing:", actionId);
+        appLogger.debug("Check-out queued for offline processing", { actionId });
       }
 
       // Notify listeners
@@ -252,7 +259,7 @@ class QueueManager {
         offline: true,
       };
     } catch (error) {
-      console.error("Failed to process check-out:", error);
+      appLogger.error("Failed to process check-out", { error });
       return { success: false };
     }
   }
@@ -276,18 +283,18 @@ class QueueManager {
             notes: noteText,
           });
 
-          const data = (response as any)?.data;
+          const data = response.data as { success: boolean; sessionId?: string };
           if (!data?.success) {
             throw new Error("updateSessionNote callable returned failure");
           }
 
           if (this.config.debugMode) {
-            console.log("Session note updated online:", { sessionId });
+            appLogger.debug("Session note updated online", { sessionId });
           }
           return { success: true, offline: false };
         } catch (error) {
           if (this.config.debugMode) {
-            console.log("Firebase call failed, falling back to offline queue:", error);
+            appLogger.debug("Firebase call failed, falling back to offline queue", { error });
           }
         }
       }
@@ -296,14 +303,14 @@ class QueueManager {
       const actionId = await queueUpdateNote(sessionId, userId, noteText);
 
       if (this.config.debugMode) {
-        console.log("Session note queued for offline processing:", actionId);
+        appLogger.debug("Session note queued for offline processing", { actionId });
       }
 
       this.notifyListeners();
 
       return { success: true, actionId, offline: true };
     } catch (error) {
-      console.error("Failed to update session note:", error);
+      appLogger.error("Failed to update session note", { error });
       return { success: false };
     }
   }
@@ -317,13 +324,13 @@ class QueueManager {
     try {
       return await getPendingActions(userId);
     } catch (error) {
-      console.error("Failed to get pending actions:", error);
+      appLogger.error("Failed to get pending actions", { error });
       return [];
     }
   }
 
   // Get queue statistics
-  async getStats(): Promise<any> {
+  async getStats(): Promise<Awaited<ReturnType<typeof getQueueStats>>> {
     if (!this.isInitialized) {
       return {
         total: 0,
@@ -341,7 +348,7 @@ class QueueManager {
       this.lastStatsAt = Date.now();
       return stats;
     } catch (error) {
-      console.error("Failed to get queue stats:", error);
+      appLogger.error("Failed to get queue stats", { error });
       const fallback = {
         total: 0,
         pending: 0,
@@ -370,7 +377,7 @@ class QueueManager {
 
     if (this.isProcessing && !forceSync) {
       if (this.config.debugMode) {
-        console.log("Sync already in progress, skipping");
+        appLogger.debug("Sync already in progress, skipping");
       }
       return null;
     }
@@ -381,7 +388,7 @@ class QueueManager {
       // Use intelligent sync if enabled and network status available
       if (this.config.enableIntelligentSync && this.networkStatus) {
         if (this.config.debugMode) {
-          console.log("Using intelligent sync strategy");
+          appLogger.debug("Using intelligent sync strategy");
         }
 
         const syncResult = await syncManager.sync(
@@ -391,7 +398,7 @@ class QueueManager {
         this.lastSyncResult = syncResult;
 
         if (this.config.debugMode) {
-          console.log("Intelligent sync completed:", syncResult);
+          appLogger.debug("Intelligent sync completed", { syncResult: syncResult as unknown as Record<string, unknown> });
         }
 
         // Notify listeners
@@ -408,7 +415,7 @@ class QueueManager {
         // Fall back to basic sync
         if (!navigator.onLine && !forceSync) {
           if (this.config.debugMode) {
-            console.log("Device offline, skipping sync");
+            appLogger.debug("Device offline, skipping sync");
           }
           return null;
         }
@@ -416,7 +423,7 @@ class QueueManager {
         const result = await processQueue();
 
         if (this.config.debugMode) {
-          console.log("Basic sync completed:", result);
+          appLogger.debug("Basic sync completed", { result: result as unknown as Record<string, unknown> });
         }
 
         // Notify listeners
@@ -425,7 +432,7 @@ class QueueManager {
         return result;
       }
     } catch (error) {
-      console.error("Failed to sync queue:", error);
+      appLogger.error("Failed to sync queue", { error });
       return null;
     } finally {
       this.isProcessing = false;
@@ -433,7 +440,7 @@ class QueueManager {
   }
 
   // Add stats listener
-  addStatsListener(callback: (stats: any) => void): () => void {
+  addStatsListener(callback: (stats: Awaited<ReturnType<typeof getQueueStats>>) => void): () => void {
     this.listeners.add(callback);
 
     // Send current stats immediately
@@ -454,7 +461,7 @@ class QueueManager {
     this.networkStatus = networkStatus;
 
     if (this.config.debugMode) {
-      console.log("Network status updated:", networkStatus);
+      appLogger.debug("Network status updated", { networkStatus: networkStatus as unknown as Record<string, unknown> });
     }
 
     // Trigger sync if conditions are favorable
@@ -467,7 +474,7 @@ class QueueManager {
 
       if (recommendations.shouldSync) {
         this.syncNow().catch((error) => {
-          console.error("Auto-sync after network update failed:", error);
+          appLogger.error("Auto-sync after network update failed", { error });
         });
       }
     }
@@ -536,7 +543,7 @@ class QueueManager {
           if (recommendations.shouldSync) {
             await this.syncNow();
           } else if (this.config.debugMode) {
-            console.log("Auto-sync skipped:", recommendations.reason);
+            appLogger.debug("Auto-sync skipped", { reason: recommendations.reason });
           }
         } else if (navigator.onLine) {
           // Fall back to basic sync when online
@@ -546,9 +553,7 @@ class QueueManager {
     }, this.config.syncInterval);
 
     if (this.config.debugMode) {
-      console.log(
-        `Auto-sync started with interval: ${this.config.syncInterval}ms`
-      );
+      appLogger.debug("Auto-sync started", { interval: this.config.syncInterval });
     }
   }
 
@@ -560,12 +565,10 @@ class QueueManager {
         try {
           const removedCount = await removeCompletedActions();
           if (removedCount > 0 && this.config.debugMode) {
-            console.log(
-              `Background cleanup removed ${removedCount} completed actions`
-            );
+            appLogger.debug("Background cleanup removed completed actions", { removedCount });
           }
         } catch (error) {
-          console.error("Background cleanup failed:", error);
+          appLogger.error("Background cleanup failed", { error });
         }
       }
     }, 5 * 60 * 1000); // Every 5 minutes
@@ -575,7 +578,7 @@ class QueueManager {
   private setupNetworkListeners(): void {
     const handleOnline = async () => {
       if (this.config.debugMode) {
-        console.log("Network connectivity restored");
+        appLogger.debug("Network connectivity restored");
       }
 
       // Note: Intelligent sync handling is done via useConnectivityRestoration hook
@@ -590,7 +593,7 @@ class QueueManager {
 
     const handleOffline = () => {
       if (this.config.debugMode) {
-        console.log("Network connectivity lost, switching to offline mode");
+        appLogger.debug("Network connectivity lost, switching to offline mode");
       }
     };
 
@@ -611,11 +614,11 @@ class QueueManager {
           try {
             callback(stats);
           } catch (error) {
-            console.error("Error in stats listener:", error);
+            appLogger.error("Error in stats listener", { error });
           }
         });
       } catch (error) {
-        console.error("Failed to notify listeners:", error);
+        appLogger.error("Failed to notify listeners", { error });
       }
     }
   }
@@ -651,7 +654,7 @@ class QueueManager {
     this.isInitialized = false;
 
     if (this.config.debugMode) {
-      console.log("QueueManager destroyed");
+      appLogger.debug("QueueManager destroyed");
     }
   }
 }

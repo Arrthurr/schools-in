@@ -45,7 +45,7 @@ const navigationItems: NavItem[] = [
     description: "View past sessions",
   },
   {
-    href: "/provider/feedback",
+    href: "/provider/notes",
     label: "Notes",
     icon: FileText,
     description: "Session notes for admins",

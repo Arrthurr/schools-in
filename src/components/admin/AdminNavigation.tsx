@@ -79,7 +79,7 @@ const navigationItems: NavItem[] = [
     description: "School-provider assignments",
   },
   {
-    href: "/admin/feedback",
+    href: "/admin/notes",
     label: "Notes",
     icon: FileText,
     description: "Provider session notes",

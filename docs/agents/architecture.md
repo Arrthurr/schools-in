@@ -75,6 +75,7 @@ Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions
 | `healthCheck` | Callable | Test Firestore/Auth/Storage connectivity |
 | `trackCachePerformance` | Callable | Store client cache metrics |
 | `trackUserActivity` | Callable | Record user activity events |
+| `updateSessionNote` | Callable | Add/update session note, notify admins in-app |
 | `notifyOnFeedback` | Firestore trigger | Email admins on new feedback |
 | `getVapidPublicKey` | Callable | Return VAPID key for push setup |
 
@@ -92,7 +93,6 @@ Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions
 | `locationNormalizer.ts` | Normalizes location data formats (GeoPoint, lat/lng variations) |
 | `locationValidationService.ts` | GPS coordinate validation |
 | `bulkSchoolOperations.ts` | Bulk activate/deactivate/delete/update/assign |
-| `feedbackService.ts` | Feedback submission and management |
 | `userService.ts` | User data operations and role management |
 | `userPreferences.ts` | User preference management (e.g. auto geofence toggle) |
 | `scheduleService.ts` | Provider schedule management |
@@ -124,6 +124,7 @@ Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions
 | `useProviderMetrics` | Provider dashboard metrics and weekly stats |
 | `useLazyLoading` | Intersection Observer-based loading |
 | `useTheme` | Theme management (dark/light mode) |
+| `useNotifications` | Admin in-app notifications (real-time onSnapshot) |
 | `useStartupLogging` | Startup diagnostics and environment logging |
 
 ## Key Utilities
@@ -188,7 +189,8 @@ actionQueue.ts          queueManager.ts         syncManager.ts
 | `users/{userId}` | User accounts (role, displayName, email, autoGeofenceCheckEnabled) |
 | `users/{userId}/pushSubscriptions/{id}` | Push notification subscriptions (`sessionAlerts`, `adminAlerts`) |
 | `locations/{locationId}` | School/location data (geo, radiusMeters, assignedProviders) |
-| `sessions/{sessionId}` | Check-in/out sessions (status, dayKey, durationMinutes) |
+| `sessions/{sessionId}` | Check-in/out sessions (status, dayKey, durationMinutes, hasNotes) |
+| `users/{userId}/notifications/{id}` | In-app notifications for admins (session notes) |
 | `feedback/{feedbackId}` | User feedback (category, severity, status) |
 | `services/{serviceId}` | Service definitions (name, code, isActive) |
 | `schedules/{scheduleId}` | Provider schedules (dayOfWeek, startTime, endTime) |
@@ -205,9 +207,27 @@ All defined in `src/lib/firebase/types.ts`:
 - **Location**: `geo: GeoPoint`, `radiusMeters` (default 300), `assignedProviders: string[]` (authoritative for RBAC)
 - **Session**: `status: "active" | "paused" | "completed" | "cancelled" | "error"`, `checkInMethod: "geo" | "manual" | "offline-sync"`, `dayKey` (YYYY-MM-DD in America/Chicago)
 - **Feedback**: `category`, `severity`, `status`
+- **AppNotification**: `type: "session_note"`, `sessionId`, `providerName`, `locationName`, `notePreview`, `read`
 - **Service**, **Schedule**, **ReportSchedule**
 
 `Location.assignedProviders` is the single source of truth for provider-location assignments.
+
+### Agent API Surface
+
+**Callable Cloud Functions** (write path):
+| Function | Input | Output |
+|----------|-------|--------|
+| `startSession` | `{ locationId, startTime, dayKey, checkInMethod, checkInLocation?, notes? }` | `{ success, sessionId, session }` |
+| `endSession` | `{ sessionId, endTime, notes?, checkOutLocation? }` | `{ success, sessionId }` |
+| `updateSessionNote` | `{ sessionId, notes }` | `{ success, sessionId, notes, notesUpdatedAt }` |
+
+**Stable Firestore paths** (read path — direct queries):
+| Path | Access | Use |
+|------|--------|-----|
+| `sessions` where `hasNotes == true` orderBy `updatedAt desc` | Admin | List all session notes |
+| `sessions` where `userId == {uid}` orderBy `startTime desc` | Provider | List own sessions |
+| `users/{uid}/notifications` orderBy `createdAt desc` | Admin | List notifications |
+| `users/{uid}/notifications/{id}` update `{ read: true }` | Admin | Mark notification read |
 
 ## App Routes
 
@@ -219,12 +239,12 @@ All defined in `src/lib/firebase/types.ts`:
 /dashboard/schools        Provider schools list
 /admin                    Admin dashboard
 /admin/assignments        Provider-location assignments
-/admin/feedback           Feedback management
+/admin/notes              Session notes management
 /admin/reports            Reports
 /admin/schedules          Provider schedule management
 /admin/schools            School management
 /admin/services           Service management
 /admin/users              User management
 /profile                  User profile
-/provider/feedback        Provider feedback form
+/provider/notes           Provider session notes
 ```

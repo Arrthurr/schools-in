@@ -303,3 +303,56 @@ export function isThisWeek(date: Date): boolean {
     timestamp.toMillis() <= end.toMillis()
   );
 }
+
+/**
+ * A flexible timestamp type covering Firestore Timestamp, Date, and string
+ */
+export type FirestoreTimestamp = Timestamp | { toDate(): Date } | Date | string;
+
+/**
+ * Converts a FirestoreTimestamp to a Date
+ */
+export function toDate(timestamp: FirestoreTimestamp): Date {
+  if (typeof timestamp === "string") return new Date(timestamp);
+  if (timestamp instanceof Date) return timestamp;
+  return (timestamp as { toDate(): Date }).toDate();
+}
+
+/**
+ * Formats a timestamp as a short date: "Jan 5, 2025"
+ */
+export function formatShortDate(timestamp: FirestoreTimestamp | undefined): string {
+  if (!timestamp) return "—";
+  return toDate(timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
+ * Formats a timestamp as a short time: "9:30 AM"
+ */
+export function formatShortTime(timestamp: FirestoreTimestamp | undefined): string {
+  if (!timestamp) return "";
+  return toDate(timestamp).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * Formats a timestamp as a relative time string: "just now", "5m ago", "3h ago", "2d ago"
+ */
+export function formatRelativeTime(timestamp: FirestoreTimestamp | undefined): string {
+  if (!timestamp) return "";
+  const date = toDate(timestamp);
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay}d ago`;
+}

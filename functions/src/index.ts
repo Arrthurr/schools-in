@@ -1507,95 +1507,99 @@ View in Admin Console: ${feedbackUrl}
  * Callable function to add or update a note on a session.
  * Validates ownership, enforces 500-char limit, and notifies admins.
  */
-exports.updateSessionNote = onCall(
-  {
-    secrets: ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL"],
-  },
-  async (request: any) => {
+exports.updateSessionNote = onCall(async (request: any) => {
     try {
       const { data, auth } = request;
 
       if (!auth) {
-        throw new Error("Authentication required");
+        throw new HttpsError("unauthenticated", "Authentication required");
       }
 
       const input = data as UpdateSessionNoteInput;
       if (!input.sessionId || typeof input.notes !== "string") {
-        throw new Error("Missing required fields: sessionId, notes");
+        throw new HttpsError(
+          "invalid-argument",
+          "Missing required fields: sessionId, notes"
+        );
       }
 
       const db = admin.firestore();
       const userId = auth.uid;
-      const noteText = input.notes.trim().slice(0, 500);
+      const noteText = input.notes.replace(/<[^>]*>/g, "").trim().slice(0, 500);
 
       // Validate user is a provider
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
-        throw new Error("User not found");
+        throw new HttpsError("not-found", "User not found");
       }
       const userData = userDoc.data();
       if (userData?.role !== "provider") {
-        throw new Error("Only providers can add session notes");
+        throw new HttpsError(
+          "permission-denied",
+          "Only providers can add session notes"
+        );
       }
 
       // Validate session exists and user owns it
       const sessionRef = db.collection("sessions").doc(input.sessionId);
       const sessionDoc = await sessionRef.get();
       if (!sessionDoc.exists) {
-        throw new Error("Session not found");
+        throw new HttpsError("not-found", "Session not found");
       }
       const sessionData = sessionDoc.data();
       if (sessionData?.userId !== userId) {
-        throw new Error("You are not authorized to update this session");
+        throw new HttpsError(
+          "permission-denied",
+          "You are not authorized to update this session"
+        );
+      }
+
+      // Rate limit: reject if notesUpdatedAt is within the last 10 seconds
+      const lastUpdate = sessionData?.notesUpdatedAt;
+      if (lastUpdate) {
+        const lastUpdateMs = lastUpdate.toMillis ? lastUpdate.toMillis() : 0;
+        const nowMs = Date.now();
+        if (nowMs - lastUpdateMs < 10_000) {
+          throw new HttpsError(
+            "resource-exhausted",
+            "Please wait before updating the note again"
+          );
+        }
       }
 
       // Update the session note
       const now = admin.firestore.Timestamp.now();
+      const hasNotes = noteText.length > 0;
       await sessionRef.update({
         notes: noteText,
+        hasNotes,
         notesUpdatedAt: now,
         updatedAt: now,
       });
 
-      // Look up location name for notification
+      // Parallelize independent reads: location name + admin users
+      const [locationResult, adminsSnapshot] = await Promise.all([
+        sessionData?.locationId
+          ? db.collection("locations").doc(sessionData.locationId).get()
+          : Promise.resolve(null),
+        db.collection("users").where("role", "==", "admin").get(),
+      ]);
+
       let locationName = "Unknown location";
-      if (sessionData?.locationId) {
-        const locationDoc = await db
-          .collection("locations")
-          .doc(sessionData.locationId)
-          .get();
-        if (locationDoc.exists) {
-          locationName = locationDoc.data()?.name || locationName;
-        }
+      if (locationResult?.exists) {
+        locationName = locationResult.data()?.name || locationName;
       }
 
       const providerName = userData?.displayName || userData?.email || "Provider";
       const notePreview =
         noteText.length > 100 ? noteText.slice(0, 100) + "..." : noteText;
 
-      // Find all admin users and create notifications + send push
-      const adminsSnapshot = await db
-        .collection("users")
-        .where("role", "==", "admin")
-        .get();
-
-      let pushEnabled = false;
-      try {
-        pushEnabled = initializeWebPush();
-      } catch {
-        logger.warn("Failed to initialize web push for session note notification");
-      }
-
       const batch = db.batch();
-      const pushPromises: Promise<boolean>[] = [];
 
       for (const adminDoc of adminsSnapshot.docs) {
-        const adminId = adminDoc.id;
-
-        // Create in-app notification
         const notifRef = db
           .collection("users")
-          .doc(adminId)
+          .doc(adminDoc.id)
           .collection("notifications")
           .doc();
 
@@ -1610,35 +1614,9 @@ exports.updateSessionNote = onCall(
           read: false,
           createdAt: now,
         });
-
-        // Send web push if enabled
-        if (pushEnabled) {
-          const pushSubDoc = await db
-            .collection("users")
-            .doc(adminId)
-            .collection("pushSubscriptions")
-            .doc("adminAlerts")
-            .get();
-
-          if (pushSubDoc.exists) {
-            const subscription = pushSubDoc.data() as PushSubscription;
-            pushPromises.push(
-              sendPushNotification(subscription, {
-                title: "New Session Note",
-                body: `${providerName} added a note at ${locationName}: "${notePreview}"`,
-                data: {
-                  type: "session_note",
-                  sessionId: input.sessionId,
-                  url: `/admin/feedback`,
-                },
-              })
-            );
-          }
-        }
       }
 
       await batch.commit();
-      await Promise.allSettled(pushPromises);
 
       logger.info("Session note updated", {
         sessionId: input.sessionId,
@@ -1655,9 +1633,10 @@ exports.updateSessionNote = onCall(
       };
     } catch (error) {
       logger.error("Error updating session note:", error);
-      throw error instanceof Error
-        ? error
-        : new Error("Failed to update session note");
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to update session note");
     }
   }
 );

@@ -6,6 +6,7 @@ import { httpsCallable } from "firebase/functions";
 import { Timestamp } from "firebase/firestore";
 import { getDayKey } from "@/lib/utils/time";
 import { functions } from "../../../firebase.config";
+import { appLogger } from "@/lib/logging/appLogger";
 
 type ActionQueueLockRecord = {
   id: string;
@@ -141,7 +142,7 @@ export type QueueStatus = (typeof QUEUE_STATUS)[keyof typeof QUEUE_STATUS];
 export interface QueuedAction {
   id: string;
   type: QueueActionType;
-  payload: any;
+  payload: Record<string, unknown>;
   timestamp: number;
   status: QueueStatus;
   retryCount: number;
@@ -182,9 +183,9 @@ export const QUEUE_CONFIG = {
 export async function initActionQueue(): Promise<void> {
   try {
     await initCacheDB();
-    console.log("Action queue initialized successfully");
+    appLogger.info("Action queue initialized successfully");
   } catch (error) {
-    console.error("Failed to initialize action queue:", error);
+    appLogger.error("Failed to initialize action queue", { error });
     throw error;
   }
 }
@@ -192,7 +193,7 @@ export async function initActionQueue(): Promise<void> {
 // Add an action to the offline queue
 export async function queueAction(
   type: QueueActionType,
-  payload: any,
+  payload: Record<string, unknown>,
   userId: string,
   metadata?: Partial<QueuedAction>
 ): Promise<string> {
@@ -230,7 +231,7 @@ export async function queueAction(
 
     await db.add(CACHE_STORES.PENDING_ACTIONS, queuedAction);
 
-    console.log(`Action queued: ${type} for user ${userId}`, queuedAction);
+    appLogger.info("Action queued", { type, userId, actionId: queuedAction.id });
 
     // Trigger immediate sync if online
     if (navigator.onLine) {
@@ -239,7 +240,7 @@ export async function queueAction(
 
     return actionId;
   } catch (error) {
-    console.error("Failed to queue action:", error);
+    appLogger.error("Failed to queue action", { error });
     throw error;
   }
 }
@@ -280,7 +281,7 @@ export async function queueCheckOut(
   location: { latitude: number; longitude: number; accuracy?: number },
   notes?: string
 ): Promise<string> {
-  const payload: Record<string, any> = {
+  const payload: Record<string, unknown> = {
     sessionId,
     userId,
     location: {
@@ -361,7 +362,7 @@ export async function getPendingActions(
 
     return actions;
   } catch (error) {
-    console.error("Failed to get pending actions:", error);
+    appLogger.error("Failed to get pending actions", { error });
     return [];
   }
 }
@@ -392,7 +393,7 @@ export async function updateActionStatus(
       await db.put(CACHE_STORES.PENDING_ACTIONS, action);
     }
   } catch (error) {
-    console.error("Failed to update action status:", error);
+    appLogger.error("Failed to update action status", { error, actionId });
   }
 }
 
@@ -420,12 +421,12 @@ export async function removeCompletedActions(): Promise<number> {
     }
 
     if (removedCount > 0) {
-      console.log(`Removed ${removedCount} completed actions from queue`);
+      appLogger.info("Removed completed actions from queue", { removedCount });
     }
 
     return removedCount;
   } catch (error) {
-    console.error("Failed to remove completed actions:", error);
+    appLogger.error("Failed to remove completed actions", { error });
     return 0;
   }
 }
@@ -455,7 +456,7 @@ export async function processQueue(): Promise<{
       return { processed: 0, synced: 0, failed: 0 };
     }
 
-    console.log(`Processing ${pendingActions.length} pending actions`);
+    appLogger.info("Processing pending actions", { count: pendingActions.length });
 
     let synced = 0;
     let failed = 0;
@@ -475,10 +476,7 @@ export async function processQueue(): Promise<{
           synced++;
         } else {
           failed++;
-          console.error(
-            `Failed to process action ${batch[index].id}:`,
-            result.status === "rejected" ? result.reason : "Unknown error"
-          );
+          appLogger.error("Failed to process action", { actionId: batch[index].id, reason: result.status === "rejected" ? String(result.reason) : "Unknown error" });
         }
       });
 
@@ -491,9 +489,7 @@ export async function processQueue(): Promise<{
     // Clean up completed actions
     await removeCompletedActions();
 
-    console.log(
-      `Queue processing complete: ${synced} synced, ${failed} failed`
-    );
+    appLogger.info("Queue processing complete", { synced, failed });
 
     return { processed, synced, failed };
     } finally {
@@ -501,7 +497,7 @@ export async function processQueue(): Promise<{
       await releaseActionQueueLock(lock.ownerId);
     }
   } catch (error) {
-    console.error("Failed to process queue:", error);
+    appLogger.error("Failed to process queue", { error });
     return { processed: 0, synced: 0, failed: 0 };
   }
 }
@@ -527,7 +523,7 @@ export async function processQueuedAction(action: QueuedAction): Promise<boolean
 
     return success;
   } catch (error) {
-    console.error(`Error processing action ${action.id}:`, error);
+    appLogger.error("Error processing action", { actionId: action.id, error });
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     await updateActionStatus(action.id, QUEUE_STATUS.FAILED, errorMessage);
@@ -544,7 +540,7 @@ async function syncActionByType(action: QueuedAction): Promise<boolean> {
     case QUEUE_ACTIONS.UPDATE_NOTE:
       return syncUpdateNote(action);
     default:
-      console.warn(`Unknown action type: ${action.type}`);
+      appLogger.warn("Unknown action type", { type: action.type });
       return false;
   }
 }
@@ -552,7 +548,8 @@ async function syncActionByType(action: QueuedAction): Promise<boolean> {
 // Sync check-in action using Cloud Function
 async function syncCheckIn(action: QueuedAction): Promise<boolean> {
   const payload = action.payload;
-  const startMs = payload.location?.timestamp ?? action.timestamp;
+  const location = payload.location as { latitude: number; longitude: number; accuracy?: number; timestamp?: number } | undefined;
+  const startMs = location?.timestamp ?? action.timestamp;
   const startDate = new Date(startMs);
   const startTimestamp = Timestamp.fromMillis(startMs);
   const dayKey = getDayKey(startTimestamp);
@@ -561,96 +558,97 @@ async function syncCheckIn(action: QueuedAction): Promise<boolean> {
 
   try {
     const response = await startSessionFn({
-      locationId: payload.schoolId || action.schoolId || payload.locationId,
+      locationId: (payload.schoolId as string) || action.schoolId || (payload.locationId as string),
       startTime: startDate.toISOString(),
       checkInMethod: "offline-sync",
       distanceFromCenterAtCheckIn:
-        payload.distanceFromCenterAtCheckIn ??
-        payload.location?.accuracy ??
+        (payload.distanceFromCenterAtCheckIn as number | undefined) ??
+        location?.accuracy ??
         0,
       dayKey,
-      checkInLocation: payload.location
+      checkInLocation: location
         ? {
-            latitude: payload.location.latitude,
-            longitude: payload.location.longitude,
-            accuracy: payload.location.accuracy,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
           }
         : undefined,
     });
 
-    const data = (response as any)?.data;
+    const data = response.data as { success: boolean; sessionId?: string };
     if (!data?.success) {
       throw new Error("startSession callable returned failure");
     }
 
-    console.log("Check-in synced successfully:", {
-      sessionId: data.sessionId,
-      actionId: action.id,
-    });
+    appLogger.info("Check-in synced successfully", { sessionId: data.sessionId, actionId: action.id });
     return true;
   } catch (error) {
-    console.error("Failed to sync check-in:", error);
+    appLogger.error("Failed to sync check-in", { error });
     return false;
   }
 }
 
 // Sync check-out action using Cloud Function
 async function syncCheckOut(action: QueuedAction): Promise<boolean> {
-  const sessionId = action.sessionId || action.payload.sessionId;
+  const sessionId = action.sessionId || (action.payload.sessionId as string);
   if (!sessionId) {
-    console.error("Session ID is required for check-out");
+    appLogger.error("Session ID is required for check-out");
     return false;
   }
 
-  const checkoutMs = action.payload.location?.timestamp ?? action.timestamp;
+  const location = action.payload.location as { latitude: number; longitude: number; accuracy?: number; timestamp?: number } | undefined;
+  const checkoutMs = location?.timestamp ?? action.timestamp;
   const checkoutDate = new Date(checkoutMs);
 
   const endSessionFn = httpsCallable(functions, "endSession");
 
   try {
-    const endPayload: Record<string, any> = {
+    const endPayload: {
+      sessionId: string;
+      checkOutTime: string;
+      checkOutLocation?: { latitude: number; longitude: number; accuracy?: number };
+      distanceFromCenterAtCheckOut?: number;
+      notes?: string;
+    } = {
       sessionId,
       checkOutTime: checkoutDate.toISOString(),
-      checkOutLocation: action.payload.location
+      checkOutLocation: location
         ? {
-            latitude: action.payload.location.latitude,
-            longitude: action.payload.location.longitude,
-            accuracy: action.payload.location.accuracy,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
           }
         : undefined,
       distanceFromCenterAtCheckOut:
-        action.payload.location?.accuracy ??
-        action.payload.distanceFromCenterAtCheckOut ??
+        location?.accuracy ??
+        (action.payload.distanceFromCenterAtCheckOut as number | undefined) ??
         undefined,
     };
 
     if (action.payload.notes) {
-      endPayload.notes = action.payload.notes;
+      endPayload.notes = action.payload.notes as string;
     }
 
     const response = await endSessionFn(endPayload);
 
-    const data = (response as any)?.data;
+    const data = response.data as { success: boolean; sessionId?: string };
     if (!data?.success) {
       throw new Error("endSession callable returned failure");
     }
 
-    console.log("Check-out synced successfully:", {
-      sessionId,
-      actionId: action.id,
-    });
+    appLogger.info("Check-out synced successfully", { sessionId, actionId: action.id });
     return true;
   } catch (error) {
-    console.error("Failed to sync check-out:", error);
+    appLogger.error("Failed to sync check-out", { error });
     return false;
   }
 }
 
 // Sync update-note action using Cloud Function
 async function syncUpdateNote(action: QueuedAction): Promise<boolean> {
-  const sessionId = action.sessionId || action.payload.sessionId;
+  const sessionId = action.sessionId || (action.payload.sessionId as string);
   if (!sessionId) {
-    console.error("Session ID is required for update-note");
+    appLogger.error("Session ID is required for update-note");
     return false;
   }
 
@@ -659,21 +657,18 @@ async function syncUpdateNote(action: QueuedAction): Promise<boolean> {
   try {
     const response = await updateSessionNoteFn({
       sessionId,
-      notes: action.payload.notes || "",
+      notes: (action.payload.notes as string) || "",
     });
 
-    const data = (response as any)?.data;
+    const data = response.data as { success: boolean; sessionId?: string };
     if (!data?.success) {
       throw new Error("updateSessionNote callable returned failure");
     }
 
-    console.log("Session note synced successfully:", {
-      sessionId,
-      actionId: action.id,
-    });
+    appLogger.info("Session note synced successfully", { sessionId, actionId: action.id });
     return true;
   } catch (error) {
-    console.error("Failed to sync session note:", error);
+    appLogger.error("Failed to sync session note", { error });
     return false;
   }
 }
@@ -734,7 +729,7 @@ export async function getQueueStats(): Promise<{
 
     return stats;
   } catch (error) {
-    console.error("Failed to get queue stats:", error);
+    appLogger.error("Failed to get queue stats", { error });
     return {
       total: 0,
       pending: 0,
@@ -750,10 +745,10 @@ export async function getQueueStats(): Promise<{
 export async function cancelAction(actionId: string): Promise<boolean> {
   try {
     await updateActionStatus(actionId, QUEUE_STATUS.CANCELLED);
-    console.log(`Action ${actionId} cancelled`);
+    appLogger.info("Action cancelled", { actionId });
     return true;
   } catch (error) {
-    console.error("Failed to cancel action:", error);
+    appLogger.error("Failed to cancel action", { error });
     return false;
   }
 }
@@ -775,14 +770,14 @@ export async function retryAction(actionId: string): Promise<boolean> {
 
         return true;
       } else {
-        console.warn(`Action ${actionId} has exceeded max retries`);
+        appLogger.warn("Action has exceeded max retries", { actionId });
         return false;
       }
     }
 
     return false;
   } catch (error) {
-    console.error("Failed to retry action:", error);
+    appLogger.error("Failed to retry action", { error });
     return false;
   }
 }
