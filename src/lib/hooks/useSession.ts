@@ -13,6 +13,7 @@ import { Coordinates } from "../utils/location";
 import { useAuth } from "./useAuth";
 import { db, functions } from "../../../firebase.config";
 import { queueManager } from "../offline/queueManager";
+import { appLogger } from "@/lib/logging/appLogger";
 
 interface UseSessionReturn {
   currentSession: SessionData | null;
@@ -88,7 +89,7 @@ export const useSession = (): UseSessionReturn => {
         };
 
         const result = await startSessionFn(payload);
-        const data = result.data as any;
+        const data = result.data as { success: boolean; sessionId: string };
 
         if (!data?.success) {
           throw new Error("Failed to start session");
@@ -110,7 +111,7 @@ export const useSession = (): UseSessionReturn => {
         setCurrentSession(newSession);
         setSessions((prev) => [newSession, ...prev]);
       } catch (err) {
-        console.error("Check-in error:", err);
+        appLogger.error("Check-in error", { error: err });
 
         try {
           const queued = await queueManager.checkIn(schoolId, user.uid, {
@@ -125,7 +126,7 @@ export const useSession = (): UseSessionReturn => {
             setError("Failed to check in");
           }
         } catch (queueError) {
-          console.error("Failed to queue offline check-in:", queueError);
+          appLogger.error("Failed to queue offline check-in", { error: queueError });
           setError(
             queueError instanceof Error
               ? queueError.message
@@ -148,7 +149,13 @@ export const useSession = (): UseSessionReturn => {
         const checkOutDate = new Date();
 
         const endSessionFn = httpsCallable(functions, "endSession");
-        const endPayload: Record<string, any> = {
+        const endPayload: {
+          sessionId: string;
+          checkOutTime: string;
+          checkOutLocation: { latitude: number; longitude: number; accuracy?: number };
+          distanceFromCenterAtCheckOut?: number;
+          notes?: string;
+        } = {
           sessionId,
           checkOutTime: checkOutDate.toISOString(),
           checkOutLocation: {
@@ -165,7 +172,7 @@ export const useSession = (): UseSessionReturn => {
 
         const response = await endSessionFn(endPayload);
 
-        const data = response.data as any;
+        const data = response.data as { success: boolean };
         if (!data?.success) {
           throw new Error("Failed to complete session");
         }
@@ -229,7 +236,7 @@ export const useSession = (): UseSessionReturn => {
 
         return result.success;
       } catch (err) {
-        console.error("Failed to update session note:", err);
+        appLogger.error("Failed to update session note", { error: err });
         setError(
           err instanceof Error ? err.message : "Failed to update note"
         );
@@ -352,7 +359,7 @@ export const useSession = (): UseSessionReturn => {
         return;
       }
       const d = snap.docs[0];
-      const data = d.data() as any;
+      const data = d.data();
       const session: SessionData = {
         id: d.id,
         ...(data as SessionData),

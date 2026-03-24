@@ -2,7 +2,9 @@
 
 Complete documentation for the provider feedback system.
 
-## Status: ✅ Deployed and Operational
+## Status: ⚠️ Partially Superseded
+
+> **Note**: The `/admin/feedback` and `/provider/feedback` routes have been renamed to `/admin/notes` and `/provider/notes` respectively. The admin notes page now uses `AdminSessionNotes` (session note viewer) instead of the original feedback management UI. The `feedbackService.ts` has been removed. The `notifyOnFeedback` Cloud Function still exists for email notifications on new feedback documents.
 
 ---
 

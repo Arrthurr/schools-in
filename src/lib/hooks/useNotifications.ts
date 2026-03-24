@@ -12,9 +12,11 @@ import {
   updateDoc,
   writeBatch,
   getDocs,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { useCachedAuth } from "./useCachedAuth";
+import { appLogger } from "@/lib/logging/appLogger";
 
 export interface NotificationItem {
   id: string;
@@ -25,7 +27,7 @@ export interface NotificationItem {
   locationName: string;
   notePreview: string;
   read: boolean;
-  createdAt: any;
+  createdAt: Timestamp;
 }
 
 interface UseNotificationsReturn {
@@ -65,7 +67,7 @@ export function useNotifications(maxItems = 20): UseNotificationsReturn {
         setLoading(false);
       },
       (error) => {
-        console.error("Notifications listener error:", error);
+        appLogger.error("Notifications listener error", { error });
         setLoading(false);
       }
     );
@@ -102,11 +104,14 @@ export function useNotifications(maxItems = 20): UseNotificationsReturn {
     const snapshot = await getDocs(unreadQuery);
     if (snapshot.empty) return;
 
-    const batch = writeBatch(db);
-    snapshot.docs.forEach((d) => {
-      batch.update(d.ref, { read: true });
-    });
-    await batch.commit();
+    const BATCH_LIMIT = 500;
+    for (let i = 0; i < snapshot.docs.length; i += BATCH_LIMIT) {
+      const batch = writeBatch(db);
+      snapshot.docs.slice(i, i + BATCH_LIMIT).forEach((d) => {
+        batch.update(d.ref, { read: true });
+      });
+      await batch.commit();
+    }
   }, [user?.uid]);
 
   return {

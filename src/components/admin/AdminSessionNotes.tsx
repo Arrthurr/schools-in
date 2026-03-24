@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   collection,
   query,
@@ -10,8 +10,6 @@ import {
   getDocs,
   startAfter,
   DocumentSnapshot,
-  doc,
-  getDoc,
 } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
@@ -33,18 +31,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2, FileText, ChevronDown, RefreshCw } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatShortDate, formatRelativeTime, type FirestoreTimestamp } from "@/lib/utils/time";
 
 interface SessionNote {
   id: string;
   userId: string;
   locationId: string;
-  startTime: any;
-  endTime?: any;
+  startTime: FirestoreTimestamp;
+  endTime?: FirestoreTimestamp;
   status: string;
   notes: string;
-  notesUpdatedAt?: any;
-  updatedAt?: any;
+  hasNotes?: boolean;
+  notesUpdatedAt?: FirestoreTimestamp;
+  updatedAt?: FirestoreTimestamp;
 }
 
 const PAGE_SIZE = 25;
@@ -62,41 +61,50 @@ export function AdminSessionNotes() {
   const [selectedNote, setSelectedNote] = useState<SessionNote | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const loadUserName = useCallback(
-    async (userId: string) => {
-      if (userNames[userId]) return;
-      try {
-        const userDoc = await getDoc(doc(db, "users", userId));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUserNames((prev) => ({
-            ...prev,
-            [userId]: data.displayName || data.email || "Unknown",
-          }));
-        }
-      } catch {
-        // ignore
-      }
-    },
-    [userNames]
-  );
+  const userNamesRef = useRef<Record<string, string>>({});
+  const locationNamesRef = useRef<Record<string, string>>({});
 
-  const loadLocationName = useCallback(
-    async (locationId: string) => {
-      if (locationNames[locationId]) return;
-      try {
-        const locDoc = await getDoc(doc(db, COLLECTIONS.LOCATIONS, locationId));
-        if (locDoc.exists()) {
-          setLocationNames((prev) => ({
-            ...prev,
-            [locationId]: locDoc.data().name || "Unknown",
-          }));
-        }
-      } catch {
-        // ignore
+  const loadNames = useCallback(
+    async (sessions: SessionNote[]) => {
+      const newUserIds = [
+        ...new Set(sessions.map((s) => s.userId).filter((id) => id && !userNamesRef.current[id])),
+      ];
+      const newLocationIds = [
+        ...new Set(sessions.map((s) => s.locationId).filter((id) => id && !locationNamesRef.current[id])),
+      ];
+
+      const promises: Promise<void>[] = [];
+
+      // Batch fetch users (Firestore `in` supports up to 30)
+      for (let i = 0; i < newUserIds.length; i += 30) {
+        const batch = newUserIds.slice(i, i + 30);
+        promises.push(
+          getDocs(query(collection(db, "users"), where("__name__", "in", batch))).then((snap) => {
+            snap.docs.forEach((d) => {
+              const data = d.data();
+              userNamesRef.current[d.id] = data.displayName || data.email || "Unknown";
+            });
+          })
+        );
       }
+
+      // Batch fetch locations
+      for (let i = 0; i < newLocationIds.length; i += 30) {
+        const batch = newLocationIds.slice(i, i + 30);
+        promises.push(
+          getDocs(query(collection(db, COLLECTIONS.LOCATIONS), where("__name__", "in", batch))).then((snap) => {
+            snap.docs.forEach((d) => {
+              locationNamesRef.current[d.id] = d.data().name || "Unknown";
+            });
+          })
+        );
+      }
+
+      await Promise.all(promises);
+      setUserNames({ ...userNamesRef.current });
+      setLocationNames({ ...locationNamesRef.current });
     },
-    [locationNames]
+    []
   );
 
   const loadSessions = useCallback(
@@ -111,8 +119,7 @@ export function AdminSessionNotes() {
       try {
         let q = query(
           collection(db, COLLECTIONS.SESSIONS),
-          where("notes", "!=", ""),
-          orderBy("notes"),
+          where("hasNotes", "==", true),
           orderBy("updatedAt", "desc"),
           limit(PAGE_SIZE + 1)
         );
@@ -120,8 +127,7 @@ export function AdminSessionNotes() {
         if (afterDoc) {
           q = query(
             collection(db, COLLECTIONS.SESSIONS),
-            where("notes", "!=", ""),
-            orderBy("notes"),
+            where("hasNotes", "==", true),
             orderBy("updatedAt", "desc"),
             startAfter(afterDoc),
             limit(PAGE_SIZE + 1)
@@ -138,18 +144,7 @@ export function AdminSessionNotes() {
           ...d.data(),
         })) as SessionNote[];
 
-        // Load names for new entries
-        const newUserIds = [
-          ...new Set(newSessions.map((s) => s.userId).filter(Boolean)),
-        ];
-        const newLocationIds = [
-          ...new Set(newSessions.map((s) => s.locationId).filter(Boolean)),
-        ];
-
-        await Promise.all([
-          ...newUserIds.map(loadUserName),
-          ...newLocationIds.map(loadLocationName),
-        ]);
+        await loadNames(newSessions);
 
         if (isLoadMore) {
           setSessions((prev) => [...prev, ...newSessions]);
@@ -164,28 +159,12 @@ export function AdminSessionNotes() {
         setLoadingMore(false);
       }
     },
-    [loadUserName, loadLocationName]
+    [loadNames]
   );
 
   useEffect(() => {
     loadSessions();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return "—";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const formatTimeAgo = (timestamp: any) => {
-    if (!timestamp) return "";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return formatDistanceToNow(date, { addSuffix: true });
-  };
 
   if (loading) {
     return (
@@ -255,7 +234,7 @@ export function AdminSessionNotes() {
                       {locationNames[session.locationId] || "Loading..."}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {formatDate(session.startTime)}
+                      {formatShortDate(session.startTime)}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -274,7 +253,7 @@ export function AdminSessionNotes() {
                       {session.notes}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatTimeAgo(
+                      {formatRelativeTime(
                         session.notesUpdatedAt || session.updatedAt
                       )}
                     </TableCell>
@@ -327,7 +306,7 @@ export function AdminSessionNotes() {
                 <div>
                   <span className="text-muted-foreground">Session Date</span>
                   <p className="font-medium">
-                    {formatDate(selectedNote.startTime)}
+                    {formatShortDate(selectedNote.startTime)}
                   </p>
                 </div>
                 <div>
@@ -345,7 +324,7 @@ export function AdminSessionNotes() {
               </div>
               {selectedNote.notesUpdatedAt && (
                 <p className="text-xs text-muted-foreground">
-                  Note updated {formatTimeAgo(selectedNote.notesUpdatedAt)}
+                  Note updated {formatRelativeTime(selectedNote.notesUpdatedAt)}
                 </p>
               )}
             </div>
