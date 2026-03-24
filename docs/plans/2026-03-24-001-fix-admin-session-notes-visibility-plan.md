@@ -1,7 +1,7 @@
 ---
 title: "fix: Admin session notes not showing provider-written notes"
 type: fix
-status: active
+status: completed
 date: 2026-03-24
 ---
 
