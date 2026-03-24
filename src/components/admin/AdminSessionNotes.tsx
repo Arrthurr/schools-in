@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, FileText, ChevronDown, RefreshCw } from "lucide-react";
 import { formatShortDate, formatRelativeTime, type FirestoreTimestamp } from "@/lib/utils/time";
+import { appLogger } from "@/lib/logging/appLogger";
 
 interface SessionNote {
   id: string;
@@ -60,6 +61,7 @@ export function AdminSessionNotes() {
   );
   const [selectedNote, setSelectedNote] = useState<SessionNote | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const userNamesRef = useRef<Record<string, string>>({});
   const locationNamesRef = useRef<Record<string, string>>({});
@@ -114,6 +116,7 @@ export function AdminSessionNotes() {
         setLoadingMore(true);
       } else {
         setLoading(true);
+        setError(null);
       }
 
       try {
@@ -144,8 +147,6 @@ export function AdminSessionNotes() {
           ...d.data(),
         })) as SessionNote[];
 
-        await loadNames(newSessions);
-
         if (isLoadMore) {
           setSessions((prev) => [...prev, ...newSessions]);
         } else {
@@ -154,6 +155,14 @@ export function AdminSessionNotes() {
 
         setLastDoc(pageDocs[pageDocs.length - 1] || null);
         setHasMore(hasMoreResults);
+
+        // Load display names after sessions are shown — failure here is non-fatal
+        loadNames(newSessions).catch((err) => {
+          appLogger.warn("AdminSessionNotes: failed to hydrate display names", { err });
+        });
+      } catch (err) {
+        appLogger.error("AdminSessionNotes: failed to load sessions", { err });
+        setError("Failed to load session notes");
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -178,16 +187,23 @@ export function AdminSessionNotes() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Session Notes</h1>
-        <Button
-          onClick={() => loadSessions()}
-          variant="outline"
-          size="sm"
-        >
+        <Button onClick={() => loadSessions()} variant="outline" size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
+          {error ? "Retry" : "Refresh"}
         </Button>
       </div>
 
+      {error ? (
+        <Card>
+          <CardContent className="py-8 text-center text-destructive">
+            <p className="font-medium">Failed to load session notes</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Check the browser console or Firebase logs for details.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+      <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -331,6 +347,8 @@ export function AdminSessionNotes() {
           )}
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </div>
   );
 }
