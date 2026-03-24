@@ -219,12 +219,12 @@ All defined in `src/lib/firebase/types.ts`:
 |----------|-------|--------|
 | `startSession` | `{ locationId, startTime, dayKey, checkInMethod, checkInLocation?, notes? }` | `{ success, sessionId, session }` |
 | `endSession` | `{ sessionId, endTime, notes?, checkOutLocation? }` | `{ success, sessionId }` |
-| `updateSessionNote` | `{ sessionId, notes }` | `{ success, sessionId, notes, notesUpdatedAt }` |
+| `updateSessionNote` | `{ sessionId, notes }` | `{ success, sessionId, notes, notesUpdatedAt }` — note text is silently truncated to 500 chars server-side; rate-limited to one update per 10 s per session |
 
 **Stable Firestore paths** (read path — direct queries):
 | Path | Access | Use |
 |------|--------|-----|
-| `sessions` where `hasNotes == true` orderBy `updatedAt desc` | Admin | List all session notes |
+| `sessions` where `hasNotes == true` orderBy `updatedAt desc` limit 25 | Admin | List session notes (page 1); iterate with `startAfter(lastDoc)` until result count < 25 for subsequent pages. Requires composite index `hasNotes ASC + updatedAt DESC`. Resolve display names via `users/{userId}.displayName` and `locations/{locationId}.name`. |
 | `sessions` where `userId == {uid}` orderBy `startTime desc` | Provider | List own sessions |
 | `users/{uid}/notifications` orderBy `createdAt desc` | Admin | List notifications |
 | `users/{uid}/notifications/{id}` update `{ read: true }` | Admin | Mark notification read |

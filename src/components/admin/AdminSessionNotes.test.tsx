@@ -29,6 +29,10 @@ jest.mock("firebase/firestore", () => ({
   startAfter: jest.fn(),
 }));
 
+jest.mock("@/lib/logging/appLogger", () => ({
+  appLogger: { warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
+}));
+
 jest.mock("@/lib/utils/time", () => ({
   formatShortDate: jest.fn(() => "Mar 24"),
   formatRelativeTime: jest.fn((ts: any) =>
@@ -237,9 +241,29 @@ describe("AdminSessionNotes", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Failed to load session notes")).toBeInTheDocument();
-      expect(screen.getByText("Missing index: please create a composite index")).toBeInTheDocument();
+      expect(screen.getByText("Check the browser console or Firebase logs for details.")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
     });
+  });
+
+  it("retry button re-issues the query and clears error on success", async () => {
+    mockGetDocs
+      .mockRejectedValueOnce(new Error("Missing index"))
+      .mockImplementation(() => Promise.resolve(makeSnapshot([])));
+
+    render(<AdminSessionNotes />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Failed to load session notes")).not.toBeInTheDocument()
+    );
+
+    expect(mockGetDocs).toHaveBeenCalledTimes(2);
   });
 
   it("shows load more button when hasMore is true", async () => {
