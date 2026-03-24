@@ -60,6 +60,7 @@ export function AdminSessionNotes() {
   );
   const [selectedNote, setSelectedNote] = useState<SessionNote | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const userNamesRef = useRef<Record<string, string>>({});
   const locationNamesRef = useRef<Record<string, string>>({});
@@ -114,6 +115,7 @@ export function AdminSessionNotes() {
         setLoadingMore(true);
       } else {
         setLoading(true);
+        setError(null);
       }
 
       try {
@@ -144,8 +146,6 @@ export function AdminSessionNotes() {
           ...d.data(),
         })) as SessionNote[];
 
-        await loadNames(newSessions);
-
         if (isLoadMore) {
           setSessions((prev) => [...prev, ...newSessions]);
         } else {
@@ -154,6 +154,12 @@ export function AdminSessionNotes() {
 
         setLastDoc(pageDocs[pageDocs.length - 1] || null);
         setHasMore(hasMoreResults);
+
+        // Load display names after sessions are shown — failure here is non-fatal
+        loadNames(newSessions).catch(() => {});
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load session notes";
+        setError(message);
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -170,6 +176,26 @@ export function AdminSessionNotes() {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold tracking-tight">Session Notes</h1>
+          <Button onClick={() => loadSessions()} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="py-8 text-center text-destructive">
+            <p className="font-medium">Failed to load session notes</p>
+            <p className="text-sm text-muted-foreground mt-1">{error}</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

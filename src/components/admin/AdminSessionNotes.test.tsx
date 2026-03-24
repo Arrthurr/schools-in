@@ -231,6 +231,17 @@ describe("AdminSessionNotes", () => {
     });
   });
 
+  it("shows error state when Firestore query fails", async () => {
+    mockGetDocs.mockRejectedValue(new Error("Missing index: please create a composite index"));
+    render(<AdminSessionNotes />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load session notes")).toBeInTheDocument();
+      expect(screen.getByText("Missing index: please create a composite index")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    });
+  });
+
   it("shows load more button when hasMore is true", async () => {
     // Return PAGE_SIZE + 1 docs to trigger hasMore
     const docs = Array.from({ length: 26 }, (_, i) =>
