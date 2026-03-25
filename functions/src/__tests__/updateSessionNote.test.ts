@@ -74,10 +74,9 @@ const mockCollection = jest.fn((name: string) => {
       }
       // support subcollection on user docs (notifications)
       ref.collection = jest.fn(() => ({
-        doc: jest.fn(() => {
-          const notifId = `notif-${Math.random().toString(36).slice(2)}`;
-          return { id: notifId };
-        }),
+        doc: jest.fn((id?: string) => ({
+          id: id ?? `notif-${Math.random().toString(36).slice(2)}`,
+        })),
       }));
       return ref;
     }),
@@ -337,6 +336,21 @@ describe("updateSessionNote", () => {
 
     const payload = mockBatchSet.mock.calls[0][1];
     expect(payload.locationName).toBe("Unknown location");
+  });
+
+  it("uses deterministic doc id session_note_{sessionId} for notifications", async () => {
+    await updateSessionNote(makeRequest());
+
+    const notifRef = mockBatchSet.mock.calls[0][0];
+    expect(notifRef.id).toBe("session_note_sess-1");
+  });
+
+  it("does not create notifications when note is empty after trim", async () => {
+    const req = makeRequest({ data: { sessionId: "sess-1", notes: "   " } });
+    await updateSessionNote(req);
+
+    expect(mockBatchSet).not.toHaveBeenCalled();
+    expect(mockBatchCommit).not.toHaveBeenCalled();
   });
 
   // ---------- Return value --------------------------------------------------

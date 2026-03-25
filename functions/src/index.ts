@@ -592,6 +592,8 @@ exports.endSession = onCall(async (request: any) => {
     const db = admin.firestore();
     const userId = auth.uid;
 
+    let sessionLocationId: string | undefined;
+
     const result = await db.runTransaction(async (transaction: any) => {
       const sessionRef = db.collection("sessions").doc(data.sessionId);
       const sessionDoc = await transaction.get(sessionRef);
@@ -629,7 +631,9 @@ exports.endSession = onCall(async (request: any) => {
 
       if (typeof data.notes === "string" && data.notes.trim()) {
         updateData.notes = data.notes.trim().slice(0, 500);
+        updateData.hasNotes = true;
         updateData.notesUpdatedAt = admin.firestore.Timestamp.now();
+        sessionLocationId = sessionData.locationId;
       }
 
       if (data.checkOutLocation) {
@@ -680,6 +684,65 @@ exports.endSession = onCall(async (request: any) => {
 
       return updateData;
     });
+
+    // Fan-out admin notification if notes were submitted at check-out
+    const checkOutNote =
+      typeof data.notes === "string" ? data.notes.trim().slice(0, 500) : "";
+    if (checkOutNote.length > 0) {
+      try {
+        const [locationResult, adminsSnapshot, providerDoc] = await Promise.all([
+          sessionLocationId
+            ? db.collection("locations").doc(sessionLocationId).get()
+            : Promise.resolve(null),
+          db.collection("users").where("role", "==", "admin").get(),
+          db.collection("users").doc(userId).get(),
+        ]);
+
+        const locationName = locationResult?.exists
+          ? locationResult.data()?.name || "Unknown location"
+          : "Unknown location";
+        const providerData = providerDoc.exists ? providerDoc.data() : null;
+        const providerName =
+          providerData?.displayName || providerData?.email || "Provider";
+        const notePreview =
+          checkOutNote.length > 100
+            ? checkOutNote.slice(0, 100) + "..."
+            : checkOutNote;
+        const now = admin.firestore.Timestamp.now();
+
+        const batch = db.batch();
+        for (const adminDoc of adminsSnapshot.docs) {
+          const notifRef = db
+            .collection("users")
+            .doc(adminDoc.id)
+            .collection("notifications")
+            .doc(`session_note_${data.sessionId}`);
+          batch.set(notifRef, {
+            id: notifRef.id,
+            type: "session_note",
+            sessionId: data.sessionId,
+            providerId: userId,
+            providerName,
+            locationName,
+            notePreview,
+            read: false,
+            createdAt: now,
+          });
+        }
+        await batch.commit();
+
+        logger.info("Admin notifications sent for check-out note", {
+          sessionId: data.sessionId,
+          adminsNotified: adminsSnapshot.size,
+        });
+      } catch (notifError) {
+        logger.error(
+          "Failed to send admin notifications for check-out note:",
+          notifError
+        );
+        // Don't throw — session close is the critical operation
+      }
+    }
 
     logger.info(
       `Session ended successfully for user ${userId}: ${data.sessionId}`
@@ -1577,52 +1640,54 @@ exports.updateSessionNote = onCall(async (request: any) => {
         updatedAt: now,
       });
 
-      // Parallelize independent reads: location name + admin users
-      const [locationResult, adminsSnapshot] = await Promise.all([
-        sessionData?.locationId
-          ? db.collection("locations").doc(sessionData.locationId).get()
-          : Promise.resolve(null),
-        db.collection("users").where("role", "==", "admin").get(),
-      ]);
+      if (hasNotes) {
+        // Parallelize independent reads: location name + admin users
+        const [locationResult, adminsSnapshot] = await Promise.all([
+          sessionData?.locationId
+            ? db.collection("locations").doc(sessionData.locationId).get()
+            : Promise.resolve(null),
+          db.collection("users").where("role", "==", "admin").get(),
+        ]);
 
-      let locationName = "Unknown location";
-      if (locationResult?.exists) {
-        locationName = locationResult.data()?.name || locationName;
+        let locationName = "Unknown location";
+        if (locationResult?.exists) {
+          locationName = locationResult.data()?.name || locationName;
+        }
+
+        const providerName = userData?.displayName || userData?.email || "Provider";
+        const notePreview =
+          noteText.length > 100 ? noteText.slice(0, 100) + "..." : noteText;
+
+        const batch = db.batch();
+
+        for (const adminDoc of adminsSnapshot.docs) {
+          const notifRef = db
+            .collection("users")
+            .doc(adminDoc.id)
+            .collection("notifications")
+            .doc(`session_note_${input.sessionId}`);
+
+          batch.set(notifRef, {
+            id: notifRef.id,
+            type: "session_note",
+            sessionId: input.sessionId,
+            providerId: userId,
+            providerName,
+            locationName,
+            notePreview,
+            read: false,
+            createdAt: now,
+          });
+        }
+
+        await batch.commit();
       }
-
-      const providerName = userData?.displayName || userData?.email || "Provider";
-      const notePreview =
-        noteText.length > 100 ? noteText.slice(0, 100) + "..." : noteText;
-
-      const batch = db.batch();
-
-      for (const adminDoc of adminsSnapshot.docs) {
-        const notifRef = db
-          .collection("users")
-          .doc(adminDoc.id)
-          .collection("notifications")
-          .doc();
-
-        batch.set(notifRef, {
-          id: notifRef.id,
-          type: "session_note",
-          sessionId: input.sessionId,
-          providerId: userId,
-          providerName,
-          locationName,
-          notePreview,
-          read: false,
-          createdAt: now,
-        });
-      }
-
-      await batch.commit();
 
       logger.info("Session note updated", {
         sessionId: input.sessionId,
         userId,
         noteLength: noteText.length,
-        adminsNotified: adminsSnapshot.size,
+        notified: hasNotes,
       });
 
       return {
