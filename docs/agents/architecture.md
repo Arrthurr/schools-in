@@ -69,6 +69,7 @@ Haversine formula in both client (`src/lib/utils/geo.ts`) and server (`functions
 | `startSession` | Callable | Create session with geofence validation |
 | `endSession` | Callable | End session, calculate duration |
 | `cleanupStaleSessions` | Scheduled (30 min) | Warn at 8h 30m, auto-close at 9h |
+| `checkLateProviders` | Scheduled (30 min) | Alert admins when scheduled providers haven't checked in (max 44 min latency: 15 min grace + up to 29 min cron window) |
 | `generateDailyStats` | Scheduled (02:00 daily) | Aggregate daily session statistics |
 | `syncUserFromM365` | Callable | Sync roles and assignments from M365 groups |
 | `requestM365Resync` | Callable | Request M365 group resync |
@@ -194,6 +195,7 @@ actionQueue.ts          queueManager.ts         syncManager.ts
 | `feedback/{feedbackId}` | User feedback (category, severity, status) |
 | `services/{serviceId}` | Service definitions (name, code, isActive) |
 | `schedules/{scheduleId}` | Provider schedules (dayOfWeek, startTime, endTime) |
+| `latenessAlerts/{id}` | Dedup records for late-provider alerts (TTL: 7 days via `expireAt`); ID format: `{scheduleId}-{HHMM}-{YYYY-MM-DD}` |
 | `reportSchedules/{id}` | Automated report schedules |
 | `system/{document}` | System metadata and analytics (admin only) |
 | `cache_stats/{document}` | Cache performance monitoring |
