@@ -876,7 +876,7 @@ exports.cleanupStaleSessions = onSchedule(
                 ? Math.floor((now.toMillis() - sessionStart) / 60000)
                 : 90;
 
-            const success = await sendPushNotification(subscription, {
+            const pushResult = await sendPushNotification(subscription, {
               title: "Still at the school?",
               body: `Your session has been active for ${elapsedMin}+ minutes. Open the app to update your status before it times out.`,
               data: {
@@ -885,7 +885,7 @@ exports.cleanupStaleSessions = onSchedule(
               },
             });
 
-            if (success) {
+            if (pushResult === "sent") {
               warnSent++;
               // Mark session so we don't send duplicate warnings
               try {
@@ -1095,7 +1095,7 @@ exports.cleanupStaleSessions = onSchedule(
             }
 
             const subscription = subscriptionDoc.data() as PushSubscription;
-            const success = await sendPushNotification(subscription, {
+            const pushResult = await sendPushNotification(subscription, {
               title: "Session auto-closed (timeout)",
               body: `${staleSessionIds.length} session(s) were auto-closed and need review.`,
               data: {
@@ -1104,11 +1104,14 @@ exports.cleanupStaleSessions = onSchedule(
               },
             });
 
-            if (success) {
+            if (pushResult === "sent") {
               sent++;
             } else {
               failed++;
-              await subscriptionDoc.ref.delete();
+              // Only delete expired subscriptions — preserve them on transient errors
+              if (pushResult === "expired") {
+                await subscriptionDoc.ref.delete();
+              }
             }
           }
 
@@ -1174,10 +1177,14 @@ exports.checkLateProviders = onSchedule(
         return;
       }
 
-      // Filter to schedules past the grace window
+      // Filter to schedules past the grace window (skip docs with malformed startTime)
       const lateSchedules = schedulesSnapshot.docs.filter((doc) => {
-        const data = doc.data();
-        return isScheduleLate(data.startTime as string, nowMinutes, LATE_PROVIDER_GRACE_MINUTES);
+        const st = doc.data().startTime;
+        if (typeof st !== "string") {
+          logger.warn(`checkLateProviders: skipping schedule ${doc.id} — missing or non-string startTime`);
+          return false;
+        }
+        return isScheduleLate(st, nowMinutes, LATE_PROVIDER_GRACE_MINUTES);
       });
 
       if (lateSchedules.length === 0) {
@@ -1185,16 +1192,30 @@ exports.checkLateProviders = onSchedule(
         return;
       }
 
+      // Fetch admins BEFORE writing dedup docs — if there are no admins there is
+      // nothing to do, and we must not consume the dedup slot for a run that sends nothing.
+      const adminsSnapshot = await db
+        .collection("users")
+        .where("role", "==", "admin")
+        .get();
+
+      if (adminsSnapshot.empty) {
+        logger.warn("checkLateProviders: no admin users found, skipping run (no dedup written)");
+        return;
+      }
+
       // Parallel eligibility checks for each schedule past the grace window
       const eligibilityResults = await Promise.all(
         lateSchedules.map(async (scheduleDoc) => {
-          const schedule = scheduleDoc.data();
+          const scheduleData = scheduleDoc.data();
           const scheduleId = scheduleDoc.id;
-          const { providerId, locationId, startTime } = schedule as {
-            providerId: string;
-            locationId: string;
-            startTime: string;
-          };
+
+          // Runtime validation — treat malformed docs as non-eligible
+          const { providerId, locationId, startTime } = scheduleData;
+          if (typeof providerId !== "string" || typeof locationId !== "string" || typeof startTime !== "string") {
+            logger.warn(`checkLateProviders: skipping malformed schedule doc ${scheduleId}`, { scheduleData });
+            return null;
+          }
 
           // 1. Dedup check — already alerted for this slot today?
           const dedupId = buildDedupId(scheduleId, startTime, todayDateKey);
@@ -1251,8 +1272,8 @@ exports.checkLateProviders = onSchedule(
             providerId,
             locationId,
             startTime,
-            providerName: provider.displayName as string || providerId,
-            locationName: location.name as string || locationId,
+            providerName: (provider.displayName as string | undefined) ?? providerId,
+            locationName: (location.name as string | undefined) ?? locationId,
           };
         })
       );
@@ -1270,7 +1291,8 @@ exports.checkLateProviders = onSchedule(
         providers: lateProviders.map((p) => ({ providerId: p.providerId, scheduleId: p.scheduleId })),
       });
 
-      // Write dedup docs BEFORE sending push (idempotent on retry)
+      // Write dedup docs BEFORE sending push (idempotent on retry).
+      // Admins were confirmed to exist above, so the slot will be consumed by a real send.
       const now = admin.firestore.Timestamp.now();
       const expireAt = admin.firestore.Timestamp.fromMillis(
         now.toMillis() + 7 * 24 * 60 * 60 * 1000 // 7 days
@@ -1293,17 +1315,6 @@ exports.checkLateProviders = onSchedule(
           });
         }
         await dedupBatch.commit();
-      }
-
-      // Fetch all admins
-      const adminsSnapshot = await db
-        .collection("users")
-        .where("role", "==", "admin")
-        .get();
-
-      if (adminsSnapshot.empty) {
-        logger.warn("checkLateProviders: no admin users found, skipping push");
-        return;
       }
 
       // Build batched notification payload
@@ -1335,7 +1346,7 @@ exports.checkLateProviders = onSchedule(
           }
 
           const subscription = subscriptionDoc.data() as PushSubscription;
-          const success = await sendPushNotification(subscription, {
+          const pushResult = await sendPushNotification(subscription, {
             title: "Provider not checked in",
             body: notificationBody,
             data: {
@@ -1344,15 +1355,17 @@ exports.checkLateProviders = onSchedule(
             },
           });
 
-          if (success) {
+          if (pushResult === "sent") {
             sent++;
           } else {
             failed++;
-            // Delete stale subscription (410/404 pattern from cleanupStaleSessions)
-            try {
-              await subscriptionDoc.ref.delete();
-            } catch (deleteErr) {
-              logger.warn("checkLateProviders: failed to delete stale subscription", { deleteErr });
+            // Only delete subscriptions confirmed expired (410/404) — preserve on transient errors
+            if (pushResult === "expired") {
+              try {
+                await subscriptionDoc.ref.delete();
+              } catch (deleteErr) {
+                logger.warn("checkLateProviders: failed to delete expired subscription", { deleteErr });
+              }
             }
           }
         })

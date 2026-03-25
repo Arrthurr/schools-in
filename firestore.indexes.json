@@ -204,6 +204,16 @@
         { "fieldPath": "dayOfWeek", "order": "ASCENDING" },
         { "fieldPath": "isActive", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "locationId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "dayKey", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

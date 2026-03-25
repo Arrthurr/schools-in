@@ -29,7 +29,12 @@ export function getChicagoTimeContext(now: Date = new Date()): ChicagoTimeContex
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
   };
 
-  const dayOfWeek = weekdayMap[partVal("weekday")] ?? now.getDay();
+  const rawWeekday = partVal("weekday");
+  const dayOfWeek = weekdayMap[rawWeekday];
+  if (dayOfWeek === undefined) {
+    // Guard against unexpected Intl output — would indicate a runtime locale/V8 change
+    throw new Error(`checkLateProviders: unexpected weekday string from Intl: "${rawWeekday}"`);
+  }
   const hour = Number(partVal("hour").replace(/^24$/, "0"));
   const minute = Number(partVal("minute"));
   const nowMinutes = hour * 60 + minute;
@@ -44,10 +49,19 @@ export function getChicagoTimeContext(now: Date = new Date()): ChicagoTimeContex
 
 /**
  * Parse a startTime string ("HH:MM") into minutes since midnight.
+ * Throws on malformed input so callers with validated data surface bugs immediately.
  */
 export function parseStartTimeMinutes(startTime: string): number {
-  const [h, m] = startTime.split(":").map(Number);
-  return (h || 0) * 60 + (m || 0);
+  const parts = startTime.split(":");
+  if (parts.length !== 2) {
+    throw new Error(`parseStartTimeMinutes: expected "HH:MM", got "${startTime}"`);
+  }
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) {
+    throw new Error(`parseStartTimeMinutes: non-numeric value in "${startTime}"`);
+  }
+  return h * 60 + m;
 }
 
 /**

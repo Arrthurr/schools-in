@@ -81,6 +81,16 @@ describe("getChicagoTimeContext", () => {
     // March 9 2025 is Sunday
     expect(ctx.dayOfWeek).toBe(0);
   });
+
+  test("DST fall-back: 2025-11-02 after clocks fell back — 07:30 UTC = 01:30 CST", () => {
+    // CDT ended at 02:00 CDT on Nov 2 2025 → clocks fell back to 01:00 CST (UTC-6)
+    // 07:30 UTC = 01:30 CST — unambiguous because we're past the fall-back point
+    const ctx = getChicagoTimeContext(new Date("2025-11-02T07:30:00Z"));
+    expect(ctx.nowMinutes).toBe(1 * 60 + 30); // 90
+    expect(ctx.todayDateKey).toBe("2025-11-02");
+    // November 2 2025 is Sunday
+    expect(ctx.dayOfWeek).toBe(0);
+  });
 });
 
 // ============================================================================
@@ -92,6 +102,19 @@ describe("parseStartTimeMinutes", () => {
   test("parses 13:30 as 810", () => expect(parseStartTimeMinutes("13:30")).toBe(810));
   test("parses 00:00 as 0", () => expect(parseStartTimeMinutes("00:00")).toBe(0));
   test("parses 23:59 as 1439", () => expect(parseStartTimeMinutes("23:59")).toBe(1439));
+
+  test("throws on empty string", () => {
+    expect(() => parseStartTimeMinutes("")).toThrow();
+  });
+  test("throws on missing colon", () => {
+    expect(() => parseStartTimeMinutes("0900")).toThrow();
+  });
+  test("throws on non-numeric content", () => {
+    expect(() => parseStartTimeMinutes("ab:cd")).toThrow();
+  });
+  test("throws on ISO-extended format", () => {
+    expect(() => parseStartTimeMinutes("09:00:00")).toThrow();
+  });
 });
 
 // ============================================================================

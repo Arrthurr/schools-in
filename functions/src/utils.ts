@@ -234,12 +234,20 @@ export function initializeWebPush(): boolean {
 }
 
 /**
+ * Result of a push notification send attempt.
+ * - "sent": delivery confirmed
+ * - "expired": subscription is gone (410/404) — safe to delete
+ * - "failed": transient error — do NOT delete the subscription
+ */
+export type PushResult = "sent" | "expired" | "failed";
+
+/**
  * Send a push notification to a specific subscription
  */
 export async function sendPushNotification(
   subscription: PushSubscription,
   payload: { title: string; body: string; data?: Record<string, any> }
-): Promise<boolean> {
+): Promise<PushResult> {
   try {
     const pushSubscription = {
       endpoint: subscription.endpoint,
@@ -262,16 +270,16 @@ export async function sendPushNotification(
       })
     );
 
-    return true;
+    return "sent";
   } catch (error: any) {
     if (error.statusCode === 410 || error.statusCode === 404) {
       logger.info("Push subscription expired or invalid", {
         endpoint: subscription.endpoint,
       });
-      return false;
+      return "expired";
     }
     logger.error("Failed to send push notification", { error });
-    return false;
+    return "failed";
   }
 }
 

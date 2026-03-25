@@ -215,6 +215,13 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Lateness alert dedup records — written exclusively by Cloud Functions (Admin SDK).
+    // No client read or write access: contains provider PII and the dedup IDs are
+    // predictable, so client writes could suppress legitimate alerts.
+    match /latenessAlerts/{alertId} {
+      allow read, write: if false;
+    }
+
     // System metadata collection for analytics (admin only)
     match /system/{document} {
       allow read, write: if isAdmin();
