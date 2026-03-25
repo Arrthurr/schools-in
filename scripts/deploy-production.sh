@@ -47,7 +47,7 @@ check_firebase_cli() {
 
 # Check if user is logged in to Firebase
 check_firebase_auth() {
-    if ! firebase list --token "$FIREBASE_TOKEN" &> /dev/null && ! firebase list &> /dev/null; then
+    if ! firebase projects:list &> /dev/null; then
         log_error "Not authenticated with Firebase. Please run 'firebase login'"
         exit 1
     fi
@@ -163,7 +163,13 @@ deploy_firebase() {
         log_error "Hosting deployment failed"
         exit 1
     fi
-    
+
+    # Deploy Cloud Functions
+    if ! firebase deploy --only functions; then
+        log_error "Functions deployment failed"
+        exit 1
+    fi
+
     log_success "Firebase deployment completed"
 }
 
