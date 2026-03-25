@@ -1,4 +1,15 @@
+import type { Timestamp } from "firebase-admin/firestore";
+
 export const LATE_PROVIDER_GRACE_MINUTES = 15;
+
+export interface LatenessAlert {
+  scheduleId: string;
+  providerId: string;
+  locationId: string;
+  startTime: string; // "HH:MM"
+  alertedAt: Timestamp;
+  expireAt: Timestamp; // TTL field — Firestore auto-deletes after this date
+}
 
 export interface ChicagoTimeContext {
   dayOfWeek: number; // 0=Sun … 6=Sat
@@ -66,15 +77,11 @@ export function parseStartTimeMinutes(startTime: string): number {
 
 /**
  * Returns true when the schedule's grace window has elapsed:
- * nowMinutes > startTimeMinutes + graceMinutes
+ * nowMinutes > startTimeMinutes + LATE_PROVIDER_GRACE_MINUTES
  */
-export function isScheduleLate(
-  startTime: string,
-  nowMinutes: number,
-  graceMinutes: number = LATE_PROVIDER_GRACE_MINUTES
-): boolean {
+export function isScheduleLate(startTime: string, nowMinutes: number): boolean {
   const startMinutes = parseStartTimeMinutes(startTime);
-  return nowMinutes > startMinutes + graceMinutes;
+  return nowMinutes > startMinutes + LATE_PROVIDER_GRACE_MINUTES;
 }
 
 /**
@@ -102,25 +109,28 @@ export interface LateProviderInfo {
  * Single: "Alex Smith has not checked in at Lincoln Elementary (scheduled 9:00 AM)"
  * Multiple: "2 providers have not checked in: Alex Smith (Lincoln, 9:00 AM), ..."
  */
+const timeFmt = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+
+function formatStartTime(startTime: string): string {
+  const [h, m] = startTime.split(":").map(Number);
+  return timeFmt.format(new Date(2000, 0, 1, h, m));
+}
+
 export function buildLatenessNotificationBody(lateProviders: LateProviderInfo[]): string {
   if (lateProviders.length === 0) return "";
 
-  const formatTime = (t: string) => {
-    const [h, m] = t.split(":").map(Number);
-    const period = h < 12 ? "AM" : "PM";
-    const displayH = h % 12 === 0 ? 12 : h % 12;
-    const displayM = String(m).padStart(2, "0");
-    return `${displayH}:${displayM} ${period}`;
-  };
-
   if (lateProviders.length === 1) {
     const { providerName, locationName, startTime } = lateProviders[0];
-    return `${providerName} has not checked in at ${locationName} (scheduled ${formatTime(startTime)})`;
+    return `${providerName} has not checked in at ${locationName} (scheduled ${formatStartTime(startTime)})`;
   }
 
   const list = lateProviders
     .map(({ providerName, locationName, startTime }) =>
-      `${providerName} (${locationName}, ${formatTime(startTime)})`
+      `${providerName} (${locationName}, ${formatStartTime(startTime)})`
     )
     .join(", ");
   return `${lateProviders.length} providers have not checked in: ${list}`;

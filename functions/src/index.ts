@@ -27,6 +27,7 @@ import {
   isScheduleLate,
   buildDedupId,
   buildLatenessNotificationBody,
+  type LatenessAlert,
 } from "./lateProviderLogic";
 
 import {
@@ -1184,7 +1185,7 @@ exports.checkLateProviders = onSchedule(
           logger.warn(`checkLateProviders: skipping schedule ${doc.id} — missing or non-string startTime`);
           return false;
         }
-        return isScheduleLate(st, nowMinutes, LATE_PROVIDER_GRACE_MINUTES);
+        return isScheduleLate(st, nowMinutes);
       });
 
       if (lateSchedules.length === 0) {
@@ -1304,15 +1305,15 @@ exports.checkLateProviders = onSchedule(
         const chunk = lateProviders.slice(i, i + chunkSize);
         const dedupBatch = db.batch();
         for (const lp of chunk) {
-          dedupBatch.set(db.collection("latenessAlerts").doc(lp.dedupId), {
+          const alertDoc: LatenessAlert = {
             scheduleId: lp.scheduleId,
             providerId: lp.providerId,
             locationId: lp.locationId,
             startTime: lp.startTime,
             alertedAt: now,
-            adminCount: 0,
             expireAt,
-          });
+          };
+          dedupBatch.set(db.collection("latenessAlerts").doc(lp.dedupId), alertDoc);
         }
         await dedupBatch.commit();
       }
@@ -1378,19 +1379,6 @@ exports.checkLateProviders = onSchedule(
         lateProviderCount: lateProviders.length,
       });
 
-      // Update dedup docs with final adminCount
-      if (sent > 0) {
-        for (let i = 0; i < lateProviders.length; i += chunkSize) {
-          const chunk = lateProviders.slice(i, i + chunkSize);
-          const updateBatch = db.batch();
-          for (const lp of chunk) {
-            updateBatch.update(db.collection("latenessAlerts").doc(lp.dedupId), {
-              adminCount: sent,
-            });
-          }
-          await updateBatch.commit();
-        }
-      }
     } catch (error) {
       logger.error("checkLateProviders: error", error);
       throw error;

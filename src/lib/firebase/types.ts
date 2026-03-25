@@ -200,3 +200,12 @@ export interface ReportSchedule {
   createdAt: Timestamp;
   createdBy: string;
 }
+
+export interface LatenessAlert {
+  scheduleId: string;
+  providerId: string;
+  locationId: string;
+  startTime: string; // "HH:MM"
+  alertedAt: Timestamp;
+  expireAt: Timestamp; // TTL field — Firestore auto-deletes after this date
+}
