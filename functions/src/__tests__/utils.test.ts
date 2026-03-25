@@ -550,13 +550,13 @@ describe("sendPushNotification", () => {
     userAgent: "Chrome",
   };
 
-  test("returns true on successful send", async () => {
+  test("returns 'sent' on successful send", async () => {
     (webpush.sendNotification as jest.Mock).mockResolvedValue({});
     const result = await sendPushNotification(mockSubscription, {
       title: "Test",
       body: "Test body",
     });
-    expect(result).toBe(true);
+    expect(result).toBe("sent");
   });
 
   test("sends correct payload structure", async () => {
@@ -585,7 +585,7 @@ describe("sendPushNotification", () => {
     expect(payload.requireInteraction).toBe(true);
   });
 
-  test("returns false for expired subscription (410)", async () => {
+  test("returns 'expired' for expired subscription (410)", async () => {
     (webpush.sendNotification as jest.Mock).mockRejectedValue({
       statusCode: 410,
     });
@@ -593,10 +593,10 @@ describe("sendPushNotification", () => {
       title: "Test",
       body: "Test",
     });
-    expect(result).toBe(false);
+    expect(result).toBe("expired");
   });
 
-  test("returns false for not-found subscription (404)", async () => {
+  test("returns 'expired' for not-found subscription (404)", async () => {
     (webpush.sendNotification as jest.Mock).mockRejectedValue({
       statusCode: 404,
     });
@@ -604,10 +604,10 @@ describe("sendPushNotification", () => {
       title: "Test",
       body: "Test",
     });
-    expect(result).toBe(false);
+    expect(result).toBe("expired");
   });
 
-  test("returns false for other errors", async () => {
+  test("returns 'failed' for transient errors (does not delete subscription)", async () => {
     (webpush.sendNotification as jest.Mock).mockRejectedValue(
       new Error("Network error")
     );
@@ -615,7 +615,7 @@ describe("sendPushNotification", () => {
       title: "Test",
       body: "Test",
     });
-    expect(result).toBe(false);
+    expect(result).toBe("failed");
   });
 
   test("defaults data to empty object when not provided", async () => {
