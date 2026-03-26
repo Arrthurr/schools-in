@@ -1827,6 +1827,62 @@ exports.updateSessionNote = onCall(async (request: any) => {
 // Push notification helpers imported from ./utils
 
 /**
+ * Callable to save or remove an admin's push subscription for late-provider alerts.
+ * Used by both the UI and agents — the only way to manage the adminAlerts subscription.
+ *
+ * data.action: "save" | "remove"
+ * data.subscription: { endpoint, keys: { auth, p256dh } }  (required for "save")
+ */
+exports.manageAdminAlertSubscription = onCall(async (request: any) => {
+  const { uid: userId } = requireAuth(request);
+  const db = admin.firestore();
+
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists) {
+    throw new HttpsError("not-found", "User not found");
+  }
+  if (userDoc.data()?.role !== "admin") {
+    throw new HttpsError("permission-denied", "Only admins can manage alert subscriptions");
+  }
+
+  const { action, subscription } = request.data ?? {};
+  const subRef = db
+    .collection("users")
+    .doc(userId)
+    .collection("pushSubscriptions")
+    .doc("adminAlerts");
+
+  if (action === "save") {
+    if (
+      typeof subscription?.endpoint !== "string" ||
+      typeof subscription?.keys?.auth !== "string" ||
+      typeof subscription?.keys?.p256dh !== "string"
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "subscription must include endpoint (string) and keys.auth and keys.p256dh (strings)"
+      );
+    }
+    await subRef.set({
+      endpoint: subscription.endpoint,
+      expirationTime: subscription.expirationTime ?? null,
+      keys: { auth: subscription.keys.auth, p256dh: subscription.keys.p256dh },
+      updatedAt: admin.firestore.Timestamp.now(),
+    });
+    logger.info(`manageAdminAlertSubscription: saved for ${userId}`);
+    return { success: true };
+  }
+
+  if (action === "remove") {
+    await subRef.delete();
+    logger.info(`manageAdminAlertSubscription: removed for ${userId}`);
+    return { success: true };
+  }
+
+  throw new HttpsError("invalid-argument", "action must be 'save' or 'remove'");
+});
+
+/**
  * Callable function to register VAPID public key (for client to fetch)
  */
 exports.getVapidPublicKey = onCall(
