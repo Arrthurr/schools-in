@@ -8,7 +8,6 @@ import {
   buildDedupId,
   buildLatenessNotificationBody,
   parseStartTimeMinutes,
-  LATE_PROVIDER_GRACE_MINUTES,
   type LateProviderInfo,
 } from "../lateProviderLogic";
 
@@ -122,38 +121,37 @@ describe("parseStartTimeMinutes", () => {
 // ============================================================================
 
 describe("isScheduleLate", () => {
-  const grace = LATE_PROVIDER_GRACE_MINUTES; // 15
-
   test("exactly at startTime + grace is NOT late (boundary: strict >)", () => {
     // 9:00 + 15 = 9:15, nowMinutes = 555. Not late.
-    expect(isScheduleLate("09:00", 9 * 60 + 15, grace)).toBe(false);
+    expect(isScheduleLate("09:00", 9 * 60 + 15)).toBe(false);
   });
 
   test("one minute past grace IS late", () => {
     // nowMinutes = 556 = 9:16
-    expect(isScheduleLate("09:00", 9 * 60 + 16, grace)).toBe(true);
+    expect(isScheduleLate("09:00", 9 * 60 + 16)).toBe(true);
   });
 
   test("one minute before grace is NOT late", () => {
     // nowMinutes = 554 = 9:14
-    expect(isScheduleLate("09:00", 9 * 60 + 14, grace)).toBe(false);
+    expect(isScheduleLate("09:00", 9 * 60 + 14)).toBe(false);
   });
 
   test("exactly at startTime is NOT late", () => {
-    expect(isScheduleLate("09:00", 9 * 60, grace)).toBe(false);
+    expect(isScheduleLate("09:00", 9 * 60)).toBe(false);
   });
 
   test("well before startTime is NOT late", () => {
-    expect(isScheduleLate("09:00", 8 * 60, grace)).toBe(false);
+    expect(isScheduleLate("09:00", 8 * 60)).toBe(false);
   });
 
   test("well after startTime is late", () => {
-    expect(isScheduleLate("09:00", 11 * 60, grace)).toBe(true);
+    expect(isScheduleLate("09:00", 11 * 60)).toBe(true);
   });
 
-  test("uses custom graceMinutes", () => {
-    expect(isScheduleLate("09:00", 9 * 60 + 30, 30)).toBe(false);
-    expect(isScheduleLate("09:00", 9 * 60 + 31, 30)).toBe(true);
+  test("custom graceMinutes overrides the default", () => {
+    // Default grace is 15 min; with grace=5, 9:06 should be late but not 9:04
+    expect(isScheduleLate("09:00", 9 * 60 + 6, 5)).toBe(true);
+    expect(isScheduleLate("09:00", 9 * 60 + 4, 5)).toBe(false);
   });
 });
 

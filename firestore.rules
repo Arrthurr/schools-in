@@ -222,6 +222,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // App-wide configuration (e.g. grace periods, feature flags)
+    // Readable by any authenticated user; writable by admins only
+    match /appConfig/{document} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // System metadata collection for analytics (admin only)
     match /system/{document} {
       allow read, write: if isAdmin();

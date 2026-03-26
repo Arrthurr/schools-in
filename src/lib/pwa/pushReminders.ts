@@ -229,24 +229,6 @@ export async function removePushSubscriptionFromFirebase(
   appLogger.info("Push subscription removed from Firebase", { userId });
 }
 
-/**
- * Save admin alert push subscription (separate doc id for alert-specific subscriptions)
- */
-export async function saveAdminAlertSubscriptionToFirebase(
-  userId: string,
-  subscription: PushSubscriptionData
-): Promise<void> {
-  await savePushSubscriptionToFirebase(userId, subscription, "adminAlerts");
-}
-
-/**
- * Remove admin alert push subscription
- */
-export async function removeAdminAlertSubscriptionFromFirebase(
-  userId: string
-): Promise<void> {
-  await removePushSubscriptionFromFirebase(userId, "adminAlerts");
-}
 
 // ============================================
 // Helper Functions

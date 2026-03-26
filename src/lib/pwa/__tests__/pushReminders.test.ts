@@ -5,8 +5,6 @@ import {
   unsubscribeFromPush,
   savePushSubscriptionToFirebase,
   removePushSubscriptionFromFirebase,
-  saveAdminAlertSubscriptionToFirebase,
-  removeAdminAlertSubscriptionFromFirebase,
 } from "../pushReminders";
 import { COLLECTIONS } from "@/lib/firebase/firestore";
 import type { PushSubscriptionData } from "../pushReminders";
@@ -145,26 +143,5 @@ describe("pushReminders helpers", () => {
     expect(deleteDoc).toHaveBeenCalledTimes(1);
   });
 
-  it("uses adminAlerts subscriptionId for admin alert helpers", async () => {
-    await saveAdminAlertSubscriptionToFirebase("user-1", baseSubscription);
-    expect(doc).toHaveBeenCalledWith(
-      expect.anything(),
-      COLLECTIONS.USERS,
-      "user-1",
-      "pushSubscriptions",
-      "adminAlerts"
-    );
-
-    jest.clearAllMocks();
-
-    await removeAdminAlertSubscriptionFromFirebase("user-1");
-    expect(doc).toHaveBeenCalledWith(
-      expect.anything(),
-      COLLECTIONS.USERS,
-      "user-1",
-      "pushSubscriptions",
-      "adminAlerts"
-    );
-  });
 });
 

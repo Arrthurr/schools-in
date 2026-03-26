@@ -36,8 +36,6 @@ import {
   requestPushPermission,
   subscribeToPush,
   unsubscribeFromPush,
-  saveAdminAlertSubscriptionToFirebase,
-  removeAdminAlertSubscriptionFromFirebase,
 } from "@/lib/pwa/pushReminders";
 import { usePWAInstallState } from "@/lib/hooks/usePWAInstallState";
 import { db, functions } from "../../../firebase.config";
@@ -220,7 +218,10 @@ export function AdminDashboard() {
         return;
       }
 
-      await saveAdminAlertSubscriptionToFirebase(user.uid, subscription);
+      await httpsCallable(functions, "manageAdminAlertSubscription")({
+        action: "save",
+        subscription,
+      });
 
       setAlertStatus("enabled");
       setAlertMessage(
@@ -238,7 +239,7 @@ export function AdminDashboard() {
     setAlertStatus("enabling");
     setAlertMessage(null);
     try {
-      await removeAdminAlertSubscriptionFromFirebase(user.uid);
+      await httpsCallable(functions, "manageAdminAlertSubscription")({ action: "remove" });
       await unsubscribeFromPush();
       setAlertStatus("idle");
       setAlertMessage("Admin alerts disabled.");
