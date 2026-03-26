@@ -1,22 +1,17 @@
 /**
- * Unit tests for checkLateProviders Cloud Function.
+ * Integration tests for the checkLateProviders Cloud Function wiring.
  *
- * Focuses on the race condition fix: concurrent invocations that both pass
- * the dedup read must not both send push notifications. The atomic create()
- * call is the single point of contention — only the invocation that succeeds
- * there proceeds to push.
+ * Tests the early-return gates (VAPID, no schedules, no admins, empty eligibility)
+ * and verifies that the orchestration module is called with the right arguments.
+ * Detailed eligibility and push-dispatch logic is tested in lateProviderOrchestration.test.ts.
  */
 
 // ---------------------------------------------------------------------------
-// Module mocks — must be declared before imports
+// Module mocks
 // ---------------------------------------------------------------------------
 
 jest.mock("firebase-functions", () => ({
-  logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  },
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
 jest.mock("firebase-functions/v2/scheduler", () => ({
@@ -26,10 +21,7 @@ jest.mock("firebase-functions/v2/scheduler", () => ({
 jest.mock("firebase-functions/v2/https", () => ({
   HttpsError: class HttpsError extends Error {
     code: string;
-    constructor(code: string, message: string) {
-      super(message);
-      this.code = code;
-    }
+    constructor(code: string, message: string) { super(message); this.code = code; }
   },
   onCall: jest.fn((fn: any) => fn),
 }));
@@ -38,133 +30,53 @@ jest.mock("firebase-functions/v2/firestore", () => ({
   onDocumentCreated: jest.fn(),
 }));
 
-// Fix Chicago time at 9:30 AM Monday — 30 min past the 9:00 AM schedule's
-// 15-minute grace window, so isScheduleLate() returns true.
+// Fix Chicago time so any schedule with startTime "09:00" on Monday is late
 jest.mock("../lateProviderLogic", () => ({
   ...jest.requireActual("../lateProviderLogic"),
   getChicagoTimeContext: jest.fn(() => ({
-    dayOfWeek: 1, // Monday
-    nowMinutes: 9 * 60 + 30, // 09:30
+    dayOfWeek: 1,
+    nowMinutes: 9 * 60 + 30,
     todayDateKey: "2026-03-23",
   })),
 }));
 
+const mockBuildEligibleLateProviders = jest.fn();
+const mockDispatchAdminPushAlerts = jest.fn();
+
+jest.mock("../lateProviderOrchestration", () => ({
+  buildEligibleLateProviders: mockBuildEligibleLateProviders,
+  dispatchAdminPushAlerts: mockDispatchAdminPushAlerts,
+}));
+
 // ---------------------------------------------------------------------------
-// Firestore mock plumbing
+// Firestore mock
 // ---------------------------------------------------------------------------
 
 const mockTimestampNow = { toMillis: () => 1_742_000_000_000 };
-const mockTimestampFromMillis = jest.fn((ms: number) => ({ toMillis: () => ms }));
-
-// Granular spies so tests can override per-document behaviour
-const mockDedupGet = jest.fn().mockResolvedValue({ exists: false });
-const mockDedupCreate = jest.fn().mockResolvedValue(undefined);
-const mockSendPushNotification = jest.fn().mockResolvedValue("sent");
 const mockInitializeWebPush = jest.fn().mockReturnValue(true);
 
-// Fixed test data
-const SCHEDULE_ID = "sched-1";
-const PROVIDER_ID = "provider-1";
-const LOCATION_ID = "location-1";
-const ADMIN_ID = "admin-1";
-const DEDUP_ID = `${SCHEDULE_ID}-0900-2026-03-23`;
-
-type FakeDoc = { exists: boolean; id: string; data: () => Record<string, unknown> };
-
-const SCHEDULE_DOC: FakeDoc = {
-  exists: true,
-  id: SCHEDULE_ID,
+const SCHEDULE_DOC = {
+  id: "sched-1",
   data: () => ({
-    dayOfWeek: 1,
-    isActive: true,
-    startTime: "09:00",
-    providerId: PROVIDER_ID,
-    locationId: LOCATION_ID,
+    dayOfWeek: 1, isActive: true, startTime: "09:00",
+    providerId: "provider-1", locationId: "location-1",
   }),
 };
+const ADMIN_DOC = { id: "admin-1", data: () => ({ role: "admin" }) };
 
-const LOCATION_DOC: FakeDoc = {
-  exists: true,
-  id: LOCATION_ID,
-  data: () => ({
-    active: true,
-    assignedProviders: [PROVIDER_ID],
-    name: "Lincoln Elementary",
-  }),
+const mockSchedulesQuery = {
+  where: jest.fn().mockReturnThis(),
+  get: jest.fn(),
 };
-
-const PROVIDER_DOC: FakeDoc = {
-  exists: true,
-  id: PROVIDER_ID,
-  data: () => ({ isActive: true, displayName: "Alex Smith" }),
-};
-
-const ADMIN_DOC: FakeDoc = {
-  exists: true,
-  id: ADMIN_ID,
-  data: () => ({ role: "admin" }),
-};
-
-const PUSH_SUB_DOC: FakeDoc = {
-  exists: true,
-  id: "adminAlerts",
-  data: () => ({
-    endpoint: "https://push.example.com/sub-1",
-    keys: { auth: "auth-key", p256dh: "p256dh-key" },
-  }),
+const mockUsersQuery = {
+  where: jest.fn().mockReturnThis(),
+  get: jest.fn(),
 };
 
 const mockCollection = jest.fn((name: string) => {
-  if (name === "latenessAlerts") {
-    return {
-      doc: jest.fn((_id: string) => ({
-        get: mockDedupGet,
-        create: mockDedupCreate,
-      })),
-    };
-  }
-
-  if (name === "schedules") {
-    // .where(...).where(...).get()
-    return {
-      where: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({ empty: false, docs: [SCHEDULE_DOC] }),
-    };
-  }
-
-  if (name === "sessions") {
-    // .where(...).where(...).where(...).where(...).limit(1).get()
-    return {
-      where: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({ empty: true }),
-    };
-  }
-
-  if (name === "locations") {
-    return {
-      doc: jest.fn(() => ({
-        get: jest.fn().mockResolvedValue(LOCATION_DOC),
-      })),
-    };
-  }
-
-  if (name === "users") {
-    return {
-      doc: jest.fn((id: string) => ({
-        get: jest.fn().mockResolvedValue(id === PROVIDER_ID ? PROVIDER_DOC : ADMIN_DOC),
-        collection: jest.fn(() => ({
-          doc: jest.fn(() => ({
-            get: jest.fn().mockResolvedValue(PUSH_SUB_DOC),
-          })),
-        })),
-      })),
-      where: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({ empty: false, docs: [ADMIN_DOC] }),
-    };
-  }
-
-  return { doc: jest.fn(), where: jest.fn().mockReturnThis(), get: jest.fn() };
+  if (name === "schedules") return mockSchedulesQuery;
+  if (name === "users") return mockUsersQuery;
+  return { where: jest.fn().mockReturnThis(), get: jest.fn() };
 });
 
 jest.mock("firebase-admin", () => ({
@@ -174,7 +86,7 @@ jest.mock("firebase-admin", () => ({
     {
       Timestamp: {
         now: jest.fn(() => mockTimestampNow),
-        fromMillis: mockTimestampFromMillis,
+        fromMillis: jest.fn((ms: number) => ({ toMillis: () => ms })),
       },
     }
   ),
@@ -185,71 +97,93 @@ jest.mock("nodemailer", () => ({ createTransport: jest.fn(() => ({ sendMail: jes
 jest.mock("../utils", () => ({
   ...jest.requireActual("../utils"),
   initializeWebPush: mockInitializeWebPush,
-  sendPushNotification: mockSendPushNotification,
+  sendPushNotification: jest.fn(),
   requireAuth: jest.fn(),
   PRODUCTION_CONFIG: { maxBatchSize: 500 },
   SESSION_LIMIT_MS: 32400000,
 }));
 
 // ---------------------------------------------------------------------------
-// Import the function under test (after mocks are in place)
+// Import function under test
 // ---------------------------------------------------------------------------
 
 let checkLateProviders: () => Promise<void>;
 
 beforeAll(() => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const funcs = require("../index");
-  checkLateProviders = funcs.checkLateProviders;
+  checkLateProviders = require("../index").checkLateProviders;
 });
 
 beforeEach(() => {
   jest.clearAllMocks();
-  // Restore defaults so each test starts clean
-  mockDedupGet.mockResolvedValue({ exists: false });
-  mockDedupCreate.mockResolvedValue(undefined);
-  mockSendPushNotification.mockResolvedValue("sent");
   mockInitializeWebPush.mockReturnValue(true);
+  mockSchedulesQuery.get.mockResolvedValue({ empty: false, docs: [SCHEDULE_DOC] });
+  mockUsersQuery.get.mockResolvedValue({ empty: false, docs: [ADMIN_DOC] });
+  mockBuildEligibleLateProviders.mockResolvedValue([
+    {
+      scheduleId: "sched-1", dedupId: "sched-1-0900-2026-03-23",
+      providerId: "provider-1", locationId: "location-1",
+      startTime: "09:00", providerName: "Alex Smith", locationName: "Lincoln",
+    },
+  ]);
+  mockDispatchAdminPushAlerts.mockResolvedValue({ sent: 1, failed: 0, missing: 0 });
 });
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("checkLateProviders — race condition fix", () => {
-  test("sends push when dedup create() succeeds (happy path)", async () => {
+describe("checkLateProviders — wiring", () => {
+  test("calls buildEligibleLateProviders and dispatchAdminPushAlerts on happy path", async () => {
     await checkLateProviders();
 
-    expect(mockDedupCreate).toHaveBeenCalledTimes(1);
-    expect(mockSendPushNotification).toHaveBeenCalledTimes(1);
+    expect(mockBuildEligibleLateProviders).toHaveBeenCalledTimes(1);
+    expect(mockDispatchAdminPushAlerts).toHaveBeenCalledTimes(1);
   });
 
-  test("does not send push when dedup create() throws already-exists (concurrent invocation lost the race)", async () => {
-    const alreadyExistsError = Object.assign(new Error("Document already exists"), {
-      code: "already-exists",
-    });
-    mockDedupCreate.mockRejectedValueOnce(alreadyExistsError);
-
-    await checkLateProviders();
-
-    expect(mockSendPushNotification).not.toHaveBeenCalled();
-  });
-
-  test("does not send push when dedup read shows doc already exists (normal dedup hit)", async () => {
-    mockDedupGet.mockResolvedValue({ exists: true });
-
-    await checkLateProviders();
-
-    expect(mockDedupCreate).not.toHaveBeenCalled();
-    expect(mockSendPushNotification).not.toHaveBeenCalled();
-  });
-
-  test("does not send push and does not write dedup when VAPID is not configured", async () => {
+  test("returns early without calling orchestration when VAPID is not configured", async () => {
     mockInitializeWebPush.mockReturnValue(false);
 
     await checkLateProviders();
 
-    expect(mockDedupCreate).not.toHaveBeenCalled();
-    expect(mockSendPushNotification).not.toHaveBeenCalled();
+    expect(mockBuildEligibleLateProviders).not.toHaveBeenCalled();
+    expect(mockDispatchAdminPushAlerts).not.toHaveBeenCalled();
+  });
+
+  test("returns early when there are no active schedules today", async () => {
+    mockSchedulesQuery.get.mockResolvedValue({ empty: true, docs: [] });
+
+    await checkLateProviders();
+
+    expect(mockBuildEligibleLateProviders).not.toHaveBeenCalled();
+  });
+
+  test("returns early when no schedules are past the grace window", async () => {
+    // The schedule's startTime is in the future relative to the mocked time
+    mockSchedulesQuery.get.mockResolvedValue({
+      empty: false,
+      docs: [{ id: "sched-future", data: () => ({ startTime: "23:00", providerId: "p", locationId: "l" }) }],
+    });
+
+    await checkLateProviders();
+
+    expect(mockBuildEligibleLateProviders).not.toHaveBeenCalled();
+  });
+
+  test("returns early without calling orchestration when there are no admin users", async () => {
+    mockUsersQuery.get.mockResolvedValue({ empty: true, docs: [] });
+
+    await checkLateProviders();
+
+    expect(mockBuildEligibleLateProviders).not.toHaveBeenCalled();
+    expect(mockDispatchAdminPushAlerts).not.toHaveBeenCalled();
+  });
+
+  test("returns early without dispatching push when buildEligibleLateProviders returns empty", async () => {
+    mockBuildEligibleLateProviders.mockResolvedValue([]);
+
+    await checkLateProviders();
+
+    expect(mockDispatchAdminPushAlerts).not.toHaveBeenCalled();
   });
 });

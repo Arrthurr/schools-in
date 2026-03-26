@@ -25,10 +25,13 @@ import {
   LATE_PROVIDER_GRACE_MINUTES,
   getChicagoTimeContext,
   isScheduleLate,
-  buildDedupId,
   buildLatenessNotificationBody,
-  type LatenessAlert,
 } from "./lateProviderLogic";
+
+import {
+  buildEligibleLateProviders,
+  dispatchAdminPushAlerts,
+} from "./lateProviderOrchestration";
 
 import {
   validateStartSessionInput,
@@ -1151,19 +1154,14 @@ exports.checkLateProviders = onSchedule(
       } catch (error) {
         logger.warn("checkLateProviders: failed to initialize web push", { error });
       }
-
       if (!pushEnabled) {
         logger.warn("checkLateProviders: VAPID not configured — skipping run (no dedup written)");
         return;
       }
 
       const { dayOfWeek, nowMinutes, todayDateKey } = getChicagoTimeContext();
-
       logger.info("checkLateProviders: running", {
-        dayOfWeek,
-        nowMinutes,
-        todayDateKey,
-        graceMinutes: LATE_PROVIDER_GRACE_MINUTES,
+        dayOfWeek, nowMinutes, todayDateKey, graceMinutes: LATE_PROVIDER_GRACE_MINUTES,
       });
 
       // Query all active schedules for today (Chicago day-of-week)
@@ -1172,7 +1170,6 @@ exports.checkLateProviders = onSchedule(
         .where("dayOfWeek", "==", dayOfWeek)
         .where("isActive", "==", true)
         .get();
-
       if (schedulesSnapshot.empty) {
         logger.info("checkLateProviders: no active schedules for today");
         return;
@@ -1187,19 +1184,17 @@ exports.checkLateProviders = onSchedule(
         }
         return isScheduleLate(st, nowMinutes);
       });
-
       if (lateSchedules.length === 0) {
         logger.info("checkLateProviders: no schedules past grace window yet");
         return;
       }
 
-      // Fetch admins BEFORE writing dedup docs — if there are no admins there is
-      // nothing to do, and we must not consume the dedup slot for a run that sends nothing.
+      // Fetch admins BEFORE dedup writes — no admins means nothing to do,
+      // and we must not consume a dedup slot for a run that sends nothing.
       const adminsSnapshot = await db
         .collection("users")
         .where("role", "==", "admin")
         .get();
-
       if (adminsSnapshot.empty) {
         logger.warn("checkLateProviders: no admin users found, skipping run (no dedup written)");
         return;
@@ -1211,118 +1206,17 @@ exports.checkLateProviders = onSchedule(
         now.toMillis() + 7 * 24 * 60 * 60 * 1000 // 7 days
       );
 
-      // Parallel eligibility checks for each schedule past the grace window.
-      // The dedup slot is atomically claimed via create() at the end of each check —
-      // concurrent invocations that both pass the dedup read will race on create(),
-      // and only the winner proceeds to send a push.
-      const eligibilityResults = await Promise.all(
-        lateSchedules.map(async (scheduleDoc) => {
-          const scheduleData = scheduleDoc.data();
-          const scheduleId = scheduleDoc.id;
-
-          // Runtime validation — treat malformed docs as non-eligible
-          const { providerId, locationId, startTime } = scheduleData;
-          if (typeof providerId !== "string" || typeof locationId !== "string" || typeof startTime !== "string") {
-            logger.warn(`checkLateProviders: skipping malformed schedule doc ${scheduleId}`, { scheduleData });
-            return null;
-          }
-
-          const dedupId = buildDedupId(scheduleId, startTime, todayDateKey);
-
-          // 1. Dedup read — fast path: already alerted for this slot today?
-          const dedupDoc = await db.collection("latenessAlerts").doc(dedupId).get();
-          if (dedupDoc.exists) {
-            logger.info(`checkLateProviders: dedup hit, skipping ${dedupId}`);
-            return null;
-          }
-
-          // 2. Location must be active
-          const locationDoc = await db.collection("locations").doc(locationId).get();
-          if (!locationDoc.exists) return null;
-          const location = locationDoc.data()!;
-          if (location.active === false) {
-            logger.info(`checkLateProviders: location inactive, skipping schedule ${scheduleId}`);
-            return null;
-          }
-
-          // 3. Provider must be assigned to the location (RBAC single source of truth)
-          const assignedProviders: string[] = location.assignedProviders || [];
-          if (!assignedProviders.includes(providerId)) {
-            logger.info(`checkLateProviders: provider ${providerId} not assigned to location ${locationId}, skipping`);
-            return null;
-          }
-
-          // 4. Provider user must be active
-          const providerDoc = await db.collection("users").doc(providerId).get();
-          if (!providerDoc.exists) return null;
-          const provider = providerDoc.data()!;
-          if (provider.isActive === false || provider.disabled === true) {
-            logger.info(`checkLateProviders: provider ${providerId} is inactive/disabled, skipping`);
-            return null;
-          }
-
-          // 5. Check for an active or paused session for this provider+location today
-          const sessionsSnapshot = await db
-            .collection("sessions")
-            .where("userId", "==", providerId)
-            .where("locationId", "==", locationId)
-            .where("status", "in", ["active", "paused"])
-            .where("dayKey", "==", todayDateKey)
-            .limit(1)
-            .get();
-
-          if (!sessionsSnapshot.empty) {
-            logger.info(`checkLateProviders: provider ${providerId} has active/paused session, skipping`);
-            return null;
-          }
-
-          // 6. Atomically claim the dedup slot.
-          //    create() fails with "already-exists" if a concurrent invocation already claimed it.
-          const alertDoc: LatenessAlert = {
-            scheduleId,
-            providerId,
-            locationId,
-            startTime,
-            alertedAt: now,
-            expireAt,
-          };
-          try {
-            await db.collection("latenessAlerts").doc(dedupId).create(alertDoc);
-          } catch (error: unknown) {
-            if ((error as { code?: string }).code === "already-exists") {
-              logger.info(`checkLateProviders: dedup race, concurrent invocation claimed ${dedupId}`);
-              return null;
-            }
-            logger.error(`checkLateProviders: failed to write dedup doc ${dedupId}`, { error });
-            return null;
-          }
-
-          return {
-            scheduleId,
-            dedupId,
-            providerId,
-            locationId,
-            startTime,
-            providerName: (provider.displayName as string | undefined) ?? providerId,
-            locationName: (location.name as string | undefined) ?? locationId,
-          };
-        })
+      const lateProviders = await buildEligibleLateProviders(
+        db, lateSchedules, todayDateKey, now, expireAt
       );
-
-      const lateProviders = eligibilityResults.filter(
-        (r): r is NonNullable<typeof r> => r !== null
-      );
-
       if (lateProviders.length === 0) {
         logger.info("checkLateProviders: no genuinely late providers found");
         return;
       }
-
       logger.info(`checkLateProviders: ${lateProviders.length} late provider(s) found`, {
         providers: lateProviders.map((p) => ({ providerId: p.providerId, scheduleId: p.scheduleId })),
       });
 
-      // Build batched notification payload
       const notificationBody = buildLatenessNotificationBody(
         lateProviders.map((lp) => ({
           providerName: lp.providerName,
@@ -1331,56 +1225,11 @@ exports.checkLateProviders = onSchedule(
         }))
       );
 
-      let sent = 0;
-      let failed = 0;
-      let missing = 0;
-
-      // Fan-out push to all admins in parallel
-      await Promise.all(
-        adminsSnapshot.docs.map(async (adminDoc) => {
-          const subscriptionDoc = await db
-            .collection("users")
-            .doc(adminDoc.id)
-            .collection("pushSubscriptions")
-            .doc("adminAlerts")
-            .get();
-
-          if (!subscriptionDoc.exists) {
-            missing++;
-            return;
-          }
-
-          const subscription = subscriptionDoc.data() as PushSubscription;
-          const pushResult = await sendPushNotification(subscription, {
-            title: "Provider not checked in",
-            body: notificationBody,
-            data: {
-              type: "provider-late",
-              url: "/admin",
-            },
-          });
-
-          if (pushResult === "sent") {
-            sent++;
-          } else {
-            failed++;
-            // Only delete subscriptions confirmed expired (410/404) — preserve on transient errors
-            if (pushResult === "expired") {
-              try {
-                await subscriptionDoc.ref.delete();
-              } catch (deleteErr) {
-                logger.warn("checkLateProviders: failed to delete expired subscription", { deleteErr });
-              }
-            }
-          }
-        })
+      const { sent, failed, missing } = await dispatchAdminPushAlerts(
+        db, adminsSnapshot, notificationBody
       );
-
       logger.info("checkLateProviders: admin push alerts dispatched", {
-        sent,
-        failed,
-        missing,
-        lateProviderCount: lateProviders.length,
+        sent, failed, missing, lateProviderCount: lateProviders.length,
       });
 
     } catch (error) {
