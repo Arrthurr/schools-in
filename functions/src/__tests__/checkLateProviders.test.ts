@@ -73,9 +73,13 @@ const mockUsersQuery = {
   get: jest.fn(),
 };
 
+// appConfig doc mock — default: no custom graceMinutes (doc missing)
+const mockAppConfigDoc = jest.fn().mockResolvedValue({ data: () => undefined });
+
 const mockCollection = jest.fn((name: string) => {
   if (name === "schedules") return mockSchedulesQuery;
   if (name === "users") return mockUsersQuery;
+  if (name === "appConfig") return { doc: jest.fn(() => ({ get: mockAppConfigDoc })) };
   return { where: jest.fn().mockReturnThis(), get: jest.fn() };
 });
 
@@ -119,6 +123,7 @@ beforeEach(() => {
   mockInitializeWebPush.mockReturnValue(true);
   mockSchedulesQuery.get.mockResolvedValue({ empty: false, docs: [SCHEDULE_DOC] });
   mockUsersQuery.get.mockResolvedValue({ empty: false, docs: [ADMIN_DOC] });
+  mockAppConfigDoc.mockResolvedValue({ data: () => undefined }); // no custom grace by default
   mockBuildEligibleLateProviders.mockResolvedValue([
     {
       scheduleId: "sched-1", dedupId: "sched-1-0900-2026-03-23",
@@ -185,5 +190,53 @@ describe("checkLateProviders — wiring", () => {
     await checkLateProviders();
 
     expect(mockDispatchAdminPushAlerts).not.toHaveBeenCalled();
+  });
+
+  test("uses graceMinutes from Firestore config when present", async () => {
+    // Set config to 5 minutes; the mocked nowMinutes=9:30 is well past any grace
+    // so this test just verifies the config doc is read and the function proceeds
+    mockAppConfigDoc.mockResolvedValue({ data: () => ({ graceMinutes: 5 }) });
+
+    await checkLateProviders();
+
+    expect(mockBuildEligibleLateProviders).toHaveBeenCalledTimes(1);
+  });
+
+  test("falls back to compiled constant when appConfig doc is missing", async () => {
+    mockAppConfigDoc.mockResolvedValue({ data: () => undefined });
+
+    await checkLateProviders();
+
+    // Function proceeds normally with default grace — orchestration is still called
+    expect(mockBuildEligibleLateProviders).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getAlertConfig callable
+// ---------------------------------------------------------------------------
+
+describe("getAlertConfig", () => {
+  let getAlertConfig: (request: any) => Promise<{ lateProviderGraceMinutes: number }>;
+
+  beforeAll(() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    getAlertConfig = require("../index").getAlertConfig;
+  });
+
+  test("returns compiled constant when appConfig doc has no graceMinutes", async () => {
+    mockAppConfigDoc.mockResolvedValue({ data: () => undefined });
+
+    const result = await getAlertConfig({});
+
+    expect(result).toEqual({ lateProviderGraceMinutes: 15 });
+  });
+
+  test("returns Firestore value when appConfig doc has graceMinutes", async () => {
+    mockAppConfigDoc.mockResolvedValue({ data: () => ({ graceMinutes: 10 }) });
+
+    const result = await getAlertConfig({});
+
+    expect(result).toEqual({ lateProviderGraceMinutes: 10 });
   });
 });

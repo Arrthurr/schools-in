@@ -147,6 +147,12 @@ describe("isScheduleLate", () => {
   test("well after startTime is late", () => {
     expect(isScheduleLate("09:00", 11 * 60)).toBe(true);
   });
+
+  test("custom graceMinutes overrides the default", () => {
+    // Default grace is 15 min; with grace=5, 9:06 should be late but not 9:04
+    expect(isScheduleLate("09:00", 9 * 60 + 6, 5)).toBe(true);
+    expect(isScheduleLate("09:00", 9 * 60 + 4, 5)).toBe(false);
+  });
 });
 
 // ============================================================================

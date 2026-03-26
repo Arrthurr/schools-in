@@ -1159,9 +1159,15 @@ exports.checkLateProviders = onSchedule(
         return;
       }
 
+      // Read grace period from Firestore config; fall back to the compiled constant
+      // if the document doesn't exist (so the function works before any admin configures it).
+      const configDoc = await db.collection("appConfig").doc("lateProviderAlerts").get();
+      const graceMinutes =
+        (configDoc.data()?.graceMinutes as number | undefined) ?? LATE_PROVIDER_GRACE_MINUTES;
+
       const { dayOfWeek, nowMinutes, todayDateKey } = getChicagoTimeContext();
       logger.info("checkLateProviders: running", {
-        dayOfWeek, nowMinutes, todayDateKey, graceMinutes: LATE_PROVIDER_GRACE_MINUTES,
+        dayOfWeek, nowMinutes, todayDateKey, graceMinutes,
       });
 
       // Query all active schedules for today (Chicago day-of-week)
@@ -1182,7 +1188,7 @@ exports.checkLateProviders = onSchedule(
           logger.warn(`checkLateProviders: skipping schedule ${doc.id} — missing or non-string startTime`);
           return false;
         }
-        return isScheduleLate(st, nowMinutes);
+        return isScheduleLate(st, nowMinutes, graceMinutes);
       });
       if (lateSchedules.length === 0) {
         logger.info("checkLateProviders: no schedules past grace window yet");
@@ -1880,6 +1886,19 @@ exports.manageAdminAlertSubscription = onCall(async (request: any) => {
   }
 
   throw new HttpsError("invalid-argument", "action must be 'save' or 'remove'");
+});
+
+/**
+ * Callable to read the current late-provider alert configuration.
+ * Returns the effective grace period so agents and admin UIs can surface it
+ * without reading source code.
+ */
+exports.getAlertConfig = onCall(async (_request: any) => {
+  const db = admin.firestore();
+  const configDoc = await db.collection("appConfig").doc("lateProviderAlerts").get();
+  const lateProviderGraceMinutes =
+    (configDoc.data()?.graceMinutes as number | undefined) ?? LATE_PROVIDER_GRACE_MINUTES;
+  return { lateProviderGraceMinutes };
 });
 
 /**

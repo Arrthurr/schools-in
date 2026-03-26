@@ -25,6 +25,7 @@ export const COLLECTIONS = {
   ASSIGNMENTS: "assignments",
   SERVICES: "services",
   SCHEDULES: "schedules",
+  APP_CONFIG: "appConfig",
 } as const;
 
 // Generic CRUD operations

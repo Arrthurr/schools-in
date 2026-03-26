@@ -77,11 +77,15 @@ export function parseStartTimeMinutes(startTime: string): number {
 
 /**
  * Returns true when the schedule's grace window has elapsed:
- * nowMinutes > startTimeMinutes + LATE_PROVIDER_GRACE_MINUTES
+ * nowMinutes > startTimeMinutes + graceMinutes
  */
-export function isScheduleLate(startTime: string, nowMinutes: number): boolean {
+export function isScheduleLate(
+  startTime: string,
+  nowMinutes: number,
+  graceMinutes: number = LATE_PROVIDER_GRACE_MINUTES
+): boolean {
   const startMinutes = parseStartTimeMinutes(startTime);
-  return nowMinutes > startMinutes + LATE_PROVIDER_GRACE_MINUTES;
+  return nowMinutes > startMinutes + graceMinutes;
 }
 
 /**
