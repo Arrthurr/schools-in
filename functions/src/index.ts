@@ -1205,7 +1205,16 @@ exports.checkLateProviders = onSchedule(
         return;
       }
 
-      // Parallel eligibility checks for each schedule past the grace window
+      // Timestamps computed once for all dedup writes in this invocation
+      const now = admin.firestore.Timestamp.now();
+      const expireAt = admin.firestore.Timestamp.fromMillis(
+        now.toMillis() + 7 * 24 * 60 * 60 * 1000 // 7 days
+      );
+
+      // Parallel eligibility checks for each schedule past the grace window.
+      // The dedup slot is atomically claimed via create() at the end of each check —
+      // concurrent invocations that both pass the dedup read will race on create(),
+      // and only the winner proceeds to send a push.
       const eligibilityResults = await Promise.all(
         lateSchedules.map(async (scheduleDoc) => {
           const scheduleData = scheduleDoc.data();
@@ -1218,8 +1227,9 @@ exports.checkLateProviders = onSchedule(
             return null;
           }
 
-          // 1. Dedup check — already alerted for this slot today?
           const dedupId = buildDedupId(scheduleId, startTime, todayDateKey);
+
+          // 1. Dedup read — fast path: already alerted for this slot today?
           const dedupDoc = await db.collection("latenessAlerts").doc(dedupId).get();
           if (dedupDoc.exists) {
             logger.info(`checkLateProviders: dedup hit, skipping ${dedupId}`);
@@ -1266,7 +1276,27 @@ exports.checkLateProviders = onSchedule(
             return null;
           }
 
-          // This provider is genuinely late — include in alert
+          // 6. Atomically claim the dedup slot.
+          //    create() fails with "already-exists" if a concurrent invocation already claimed it.
+          const alertDoc: LatenessAlert = {
+            scheduleId,
+            providerId,
+            locationId,
+            startTime,
+            alertedAt: now,
+            expireAt,
+          };
+          try {
+            await db.collection("latenessAlerts").doc(dedupId).create(alertDoc);
+          } catch (error: unknown) {
+            if ((error as { code?: string }).code === "already-exists") {
+              logger.info(`checkLateProviders: dedup race, concurrent invocation claimed ${dedupId}`);
+              return null;
+            }
+            logger.error(`checkLateProviders: failed to write dedup doc ${dedupId}`, { error });
+            return null;
+          }
+
           return {
             scheduleId,
             dedupId,
@@ -1291,32 +1321,6 @@ exports.checkLateProviders = onSchedule(
       logger.info(`checkLateProviders: ${lateProviders.length} late provider(s) found`, {
         providers: lateProviders.map((p) => ({ providerId: p.providerId, scheduleId: p.scheduleId })),
       });
-
-      // Write dedup docs BEFORE sending push (idempotent on retry).
-      // Admins were confirmed to exist above, so the slot will be consumed by a real send.
-      const now = admin.firestore.Timestamp.now();
-      const expireAt = admin.firestore.Timestamp.fromMillis(
-        now.toMillis() + 7 * 24 * 60 * 60 * 1000 // 7 days
-      );
-
-      // Chunk into batches of ≤500
-      const chunkSize = PRODUCTION_CONFIG.maxBatchSize;
-      for (let i = 0; i < lateProviders.length; i += chunkSize) {
-        const chunk = lateProviders.slice(i, i + chunkSize);
-        const dedupBatch = db.batch();
-        for (const lp of chunk) {
-          const alertDoc: LatenessAlert = {
-            scheduleId: lp.scheduleId,
-            providerId: lp.providerId,
-            locationId: lp.locationId,
-            startTime: lp.startTime,
-            alertedAt: now,
-            expireAt,
-          };
-          dedupBatch.set(db.collection("latenessAlerts").doc(lp.dedupId), alertDoc);
-        }
-        await dedupBatch.commit();
-      }
 
       // Build batched notification payload
       const notificationBody = buildLatenessNotificationBody(
