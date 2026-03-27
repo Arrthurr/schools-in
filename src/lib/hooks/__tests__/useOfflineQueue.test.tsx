@@ -305,42 +305,218 @@ describe("useOfflineQueue", () => {
   });
 
   describe("Auto-refresh Functionality", () => {
-    it.skip("should refresh queue data periodically", async () => {
-      /* Skipped: requires refactor for deterministic timers */
+    it("should refresh queue data periodically", async () => {
+      const actionQueueModule = require("@/lib/offline/actionQueue");
+      actionQueueModule.getPendingActions.mockResolvedValue([]);
+      actionQueueModule.getQueueStats.mockResolvedValue({
+        total: 1,
+        pending: 1,
+        syncing: 0,
+        synced: 0,
+        failed: 0,
+        cancelled: 0,
+      });
+
+      const originalSyncInterval = actionQueueModule.QUEUE_CONFIG.SYNC_INTERVAL;
+      actionQueueModule.QUEUE_CONFIG.SYNC_INTERVAL = 50;
+
+      const { result } = renderHook(() => useOfflineQueue("user123", true));
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(result.current.isInitialized).toBe(true);
+
+      actionQueueModule.getPendingActions.mockClear();
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      });
+
+      expect(actionQueueModule.getPendingActions).toHaveBeenCalled();
+
+      actionQueueModule.QUEUE_CONFIG.SYNC_INTERVAL = originalSyncInterval;
     });
 
-    it.skip("should clean up refresh interval on unmount", async () => {
-      /* Skipped: requires refactor for deterministic timers */
+    it("should clean up refresh interval on unmount", async () => {
+      const { unmount } = renderHook(() => useOfflineQueue("user123", true));
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(() => unmount()).not.toThrow();
     });
   });
 
   describe("Network Status Integration", () => {
-    it.skip("should handle offline state", async () => {
-      /* Skipped: network integration requires refactor */
+    it("should handle offline state", async () => {
+      const { result } = renderHook(() => useOfflineQueue("user123", true));
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(result.current.isOnline).toBe(true);
+
+      await act(async () => {
+        window.dispatchEvent(new Event("offline"));
+      });
+
+      expect(result.current.isOnline).toBe(false);
     });
 
-    it.skip("should handle network reconnection", async () => {
-      /* Skipped: network integration requires refactor */
+    it("should handle network reconnection", async () => {
+      const actionQueueModule = require("@/lib/offline/actionQueue");
+      actionQueueModule.processQueue.mockResolvedValue({
+        processed: 1,
+        synced: 1,
+        failed: 0,
+      });
+
+      const { result } = renderHook(() => useOfflineQueue("user123", true));
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      await act(async () => {
+        window.dispatchEvent(new Event("offline"));
+      });
+
+      expect(result.current.isOnline).toBe(false);
+
+      await act(async () => {
+        window.dispatchEvent(new Event("online"));
+        await new Promise((resolve) => setTimeout(resolve, 1100));
+      });
+
+      expect(result.current.isOnline).toBe(true);
     });
   });
 
   describe("Error Handling", () => {
-    it.skip("should handle queue operation errors", async () => {
-      /* Skipped: queue error handling requires refactor */
+    it("should handle queue operation errors", async () => {
+      const actionQueueModule = require("@/lib/offline/actionQueue");
+      const mockError = new Error("Queue operation failed");
+      actionQueueModule.queueCheckIn.mockRejectedValue(mockError);
+      actionQueueModule.getPendingActions.mockResolvedValue([]);
+      actionQueueModule.getQueueStats.mockResolvedValue({
+        total: 0,
+        pending: 0,
+        syncing: 0,
+        synced: 0,
+        failed: 0,
+        cancelled: 0,
+      });
+
+      const { result } = renderHook(() => useOfflineQueue("user123"));
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      await act(async () => {
+        await result.current.addCheckIn("school123", "user123", mockLocationData);
+      });
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(result.current.error).toBeDefined();
     });
 
-    it.skip("should handle data loading errors gracefully", async () => {
-      /* Skipped: queue error handling requires refactor */
+    it("should handle data loading errors gracefully", async () => {
+      const actionQueueModule = require("@/lib/offline/actionQueue");
+      const mockError = new Error("Failed to load");
+
+      actionQueueModule.getPendingActions.mockRejectedValue(mockError);
+      actionQueueModule.getQueueStats.mockRejectedValue(mockError);
+
+      const { result } = renderHook(() => useOfflineQueue("user123"));
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(result.current.isInitialized).toBe(true);
     });
   });
 
   describe("Loading States", () => {
-    it.skip("should manage initialization state correctly", async () => {
-      /* Skipped: initialization behavior requires refactor */
+    it("should manage initialization state correctly", async () => {
+      const actionQueueModule = require("@/lib/offline/actionQueue");
+      actionQueueModule.initActionQueue.mockResolvedValue(undefined);
+      actionQueueModule.getPendingActions.mockResolvedValue([]);
+      actionQueueModule.getQueueStats.mockResolvedValue({
+        total: 0,
+        pending: 0,
+        syncing: 0,
+        synced: 0,
+        failed: 0,
+        cancelled: 0,
+      });
+
+      const { result } = renderHook(() => useOfflineQueue());
+
+      expect(result.current.isInitialized).toBe(false);
+      expect(result.current.pendingActions).toEqual([]);
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(result.current.isInitialized).toBe(true);
     });
 
-    it.skip("should show processing during operations", async () => {
-      /* Skipped: requires deterministic timing */
+    it("should show processing during operations", async () => {
+      const actionQueueModule = require("@/lib/offline/actionQueue");
+      actionQueueModule.getPendingActions.mockResolvedValue([]);
+      actionQueueModule.getQueueStats.mockResolvedValue({
+        total: 0,
+        pending: 0,
+        syncing: 0,
+        synced: 0,
+        failed: 0,
+        cancelled: 0,
+      });
+
+      let processResolve: (value: unknown) => void;
+      actionQueueModule.processQueue.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            processResolve = resolve;
+          })
+      );
+
+      const { result } = renderHook(() => useOfflineQueue("user123", false));
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(result.current.isProcessing).toBe(false);
+
+      const syncPromise = result.current.syncQueue();
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      expect(result.current.isProcessing).toBe(true);
+
+      await act(async () => {
+        processResolve!({ processed: 1, synced: 1, failed: 0 });
+        await syncPromise;
+      });
+
+      expect(result.current.isProcessing).toBe(false);
     });
   });
 });
