@@ -23,6 +23,7 @@ import {
 
 import {
   LATE_PROVIDER_GRACE_MINUTES,
+  calculateMinutesLate,
   getChicagoTimeContext,
   isScheduleLate,
   buildLatenessNotificationBody,
@@ -30,7 +31,9 @@ import {
 
 import {
   buildEligibleLateProviders,
+  claimLateProviderDedupSlots,
   dispatchAdminPushAlerts,
+  dispatchAdminDashboardAlerts,
 } from "./lateProviderOrchestration";
 
 import {
@@ -1146,8 +1149,7 @@ exports.checkLateProviders = onSchedule(
     try {
       const db = admin.firestore();
 
-      // Must have VAPID configured — return early without writing dedup docs so
-      // the alert can still fire on the next run once VAPID is restored.
+      // Dashboard alerts are the durable source of truth; push is an optional fan-out.
       let pushEnabled = false;
       try {
         pushEnabled = initializeWebPush();
@@ -1155,8 +1157,7 @@ exports.checkLateProviders = onSchedule(
         logger.warn("checkLateProviders: failed to initialize web push", { error });
       }
       if (!pushEnabled) {
-        logger.warn("checkLateProviders: VAPID not configured — skipping run (no dedup written)");
-        return;
+        logger.warn("checkLateProviders: VAPID not configured — continuing with dashboard alerts only");
       }
 
       // Read grace period from Firestore config; fall back to the compiled constant
@@ -1213,7 +1214,7 @@ exports.checkLateProviders = onSchedule(
       );
 
       const lateProviders = await buildEligibleLateProviders(
-        db, lateSchedules, todayDateKey, now, expireAt
+        db, lateSchedules, todayDateKey
       );
       if (lateProviders.length === 0) {
         logger.info("checkLateProviders: no genuinely late providers found");
@@ -1223,8 +1224,37 @@ exports.checkLateProviders = onSchedule(
         providers: lateProviders.map((p) => ({ providerId: p.providerId, scheduleId: p.scheduleId })),
       });
 
+      const lateProviderInfos = lateProviders.map((lp) => ({
+        scheduleId: lp.scheduleId,
+        providerId: lp.providerId,
+        providerName: lp.providerName,
+        locationName: lp.locationName,
+        scheduledTime: lp.startTime,
+        minutesLate: calculateMinutesLate(lp.startTime, nowMinutes),
+        sessionId: null,
+      }));
+      await dispatchAdminDashboardAlerts(db, adminsSnapshot, lateProviderInfos, todayDateKey);
+
+      const claimedLateProviders = await claimLateProviderDedupSlots(
+        db,
+        lateProviders,
+        now,
+        expireAt
+      );
+      if (claimedLateProviders.length === 0) {
+        logger.info("checkLateProviders: dashboard alerts created, but another invocation already claimed push dedup slots");
+        return;
+      }
+
+      if (!pushEnabled) {
+        logger.info("checkLateProviders: dashboard alerts created; skipping push fan-out because web push is unavailable", {
+          lateProviderCount: claimedLateProviders.length,
+        });
+        return;
+      }
+
       const notificationBody = buildLatenessNotificationBody(
-        lateProviders.map((lp) => ({
+        claimedLateProviders.map((lp) => ({
           providerName: lp.providerName,
           locationName: lp.locationName,
           startTime: lp.startTime,
@@ -1235,7 +1265,7 @@ exports.checkLateProviders = onSchedule(
         db, adminsSnapshot, notificationBody
       );
       logger.info("checkLateProviders: admin push alerts dispatched", {
-        sent, failed, missing, lateProviderCount: lateProviders.length,
+        sent, failed, missing, lateProviderCount: claimedLateProviders.length,
       });
 
     } catch (error) {

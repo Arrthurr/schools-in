@@ -89,6 +89,17 @@ export function isScheduleLate(
 }
 
 /**
+ * Returns the provider's actual lateness in minutes relative to the scheduled start.
+ */
+export function calculateMinutesLate(
+  startTime: string,
+  nowMinutes: number
+): number {
+  const startMinutes = parseStartTimeMinutes(startTime);
+  return Math.max(0, nowMinutes - startMinutes);
+}
+
+/**
  * Build the dedup document ID for a given (scheduleId, startTime, dateKey).
  * Format: "{scheduleId}-{HHMM}-{YYYY-MM-DD}"
  */

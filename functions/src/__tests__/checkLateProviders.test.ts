@@ -41,10 +41,14 @@ jest.mock("../lateProviderLogic", () => ({
 }));
 
 const mockBuildEligibleLateProviders = jest.fn();
+const mockClaimLateProviderDedupSlots = jest.fn();
+const mockDispatchAdminDashboardAlerts = jest.fn();
 const mockDispatchAdminPushAlerts = jest.fn();
 
 jest.mock("../lateProviderOrchestration", () => ({
   buildEligibleLateProviders: mockBuildEligibleLateProviders,
+  claimLateProviderDedupSlots: mockClaimLateProviderDedupSlots,
+  dispatchAdminDashboardAlerts: mockDispatchAdminDashboardAlerts,
   dispatchAdminPushAlerts: mockDispatchAdminPushAlerts,
 }));
 
@@ -131,6 +135,14 @@ beforeEach(() => {
       startTime: "09:00", providerName: "Alex Smith", locationName: "Lincoln",
     },
   ]);
+  mockClaimLateProviderDedupSlots.mockResolvedValue([
+    {
+      scheduleId: "sched-1", dedupId: "sched-1-0900-2026-03-23",
+      providerId: "provider-1", locationId: "location-1",
+      startTime: "09:00", providerName: "Alex Smith", locationName: "Lincoln",
+    },
+  ]);
+  mockDispatchAdminDashboardAlerts.mockResolvedValue(undefined);
   mockDispatchAdminPushAlerts.mockResolvedValue({ sent: 1, failed: 0, missing: 0 });
 });
 
@@ -139,19 +151,23 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("checkLateProviders — wiring", () => {
-  test("calls buildEligibleLateProviders and dispatchAdminPushAlerts on happy path", async () => {
+  test("creates dashboard alerts, claims dedup, and dispatches push on happy path", async () => {
     await checkLateProviders();
 
     expect(mockBuildEligibleLateProviders).toHaveBeenCalledTimes(1);
+    expect(mockDispatchAdminDashboardAlerts).toHaveBeenCalledTimes(1);
+    expect(mockClaimLateProviderDedupSlots).toHaveBeenCalledTimes(1);
     expect(mockDispatchAdminPushAlerts).toHaveBeenCalledTimes(1);
   });
 
-  test("returns early without calling orchestration when VAPID is not configured", async () => {
+  test("continues with dashboard alerts when VAPID is not configured", async () => {
     mockInitializeWebPush.mockReturnValue(false);
 
     await checkLateProviders();
 
-    expect(mockBuildEligibleLateProviders).not.toHaveBeenCalled();
+    expect(mockBuildEligibleLateProviders).toHaveBeenCalledTimes(1);
+    expect(mockDispatchAdminDashboardAlerts).toHaveBeenCalledTimes(1);
+    expect(mockClaimLateProviderDedupSlots).toHaveBeenCalledTimes(1);
     expect(mockDispatchAdminPushAlerts).not.toHaveBeenCalled();
   });
 
@@ -181,14 +197,35 @@ describe("checkLateProviders — wiring", () => {
     await checkLateProviders();
 
     expect(mockBuildEligibleLateProviders).not.toHaveBeenCalled();
+    expect(mockDispatchAdminDashboardAlerts).not.toHaveBeenCalled();
     expect(mockDispatchAdminPushAlerts).not.toHaveBeenCalled();
   });
 
-  test("returns early without dispatching push when buildEligibleLateProviders returns empty", async () => {
+  test("returns early without dispatching alerts when buildEligibleLateProviders returns empty", async () => {
     mockBuildEligibleLateProviders.mockResolvedValue([]);
 
     await checkLateProviders();
 
+    expect(mockDispatchAdminDashboardAlerts).not.toHaveBeenCalled();
+    expect(mockClaimLateProviderDedupSlots).not.toHaveBeenCalled();
+    expect(mockDispatchAdminPushAlerts).not.toHaveBeenCalled();
+  });
+
+  test("surfaces dashboard write failures so the run can retry later", async () => {
+    mockDispatchAdminDashboardAlerts.mockRejectedValue(new Error("dashboard write failed"));
+
+    await expect(checkLateProviders()).rejects.toThrow("dashboard write failed");
+
+    expect(mockClaimLateProviderDedupSlots).not.toHaveBeenCalled();
+    expect(mockDispatchAdminPushAlerts).not.toHaveBeenCalled();
+  });
+
+  test("skips push when another invocation already claimed the dedup slots", async () => {
+    mockClaimLateProviderDedupSlots.mockResolvedValue([]);
+
+    await checkLateProviders();
+
+    expect(mockDispatchAdminDashboardAlerts).toHaveBeenCalledTimes(1);
     expect(mockDispatchAdminPushAlerts).not.toHaveBeenCalled();
   });
 

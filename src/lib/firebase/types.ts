@@ -63,16 +63,31 @@ export interface Session {
   duration?: number; // legacy total minutes
 }
 
-export interface AppNotification {
+export type AppNotification = SessionNoteNotification | LateProviderNotification;
+
+interface BaseNotification {
   id: string;
+  read: boolean;
+  createdAt: Timestamp;
+}
+
+export interface SessionNoteNotification extends BaseNotification {
   type: "session_note";
   sessionId: string;
   providerId: string;
   providerName: string;
   locationName: string;
   notePreview: string;
-  read: boolean;
-  createdAt: Timestamp;
+}
+
+export interface LateProviderNotification extends BaseNotification {
+  type: "late_provider";
+  sessionId: string | null;
+  providerId: string;
+  providerName: string;
+  locationName: string;
+  scheduledTime: string;
+  minutesLate: number;
 }
 
 export interface Service {

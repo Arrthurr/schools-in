@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   collection,
   query,
+  type QueryConstraint,
   where,
   orderBy,
   limit,
@@ -12,23 +13,15 @@ import {
   updateDoc,
   writeBatch,
   getDocs,
-  Timestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase.config";
 import { useCachedAuth } from "./useCachedAuth";
 import { appLogger } from "@/lib/logging/appLogger";
+import { AppNotification } from "@/lib/firebase/types";
 
-export interface NotificationItem {
-  id: string;
-  type: "session_note";
-  sessionId: string;
-  providerId: string;
-  providerName: string;
-  locationName: string;
-  notePreview: string;
-  read: boolean;
-  createdAt: Timestamp;
-}
+export type NotificationItem = AppNotification;
+
+const DEFAULT_NOTIFICATION_LIMIT = 20;
 
 interface UseNotificationsReturn {
   notifications: NotificationItem[];
@@ -38,7 +31,7 @@ interface UseNotificationsReturn {
   markAllAsRead: () => Promise<void>;
 }
 
-export function useNotifications(maxItems = 20): UseNotificationsReturn {
+export function useNotifications(maxItems?: number): UseNotificationsReturn {
   const { user } = useCachedAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,10 +43,16 @@ export function useNotifications(maxItems = 20): UseNotificationsReturn {
       return;
     }
 
+    const queryConstraints: QueryConstraint[] = [orderBy("createdAt", "desc")];
+    const effectiveMaxItems = maxItems ?? null;
+
+    if (effectiveMaxItems !== null) {
+      queryConstraints.push(limit(effectiveMaxItems));
+    }
+
     const q = query(
       collection(db, "users", user.uid, "notifications"),
-      orderBy("createdAt", "desc"),
-      limit(maxItems)
+      ...queryConstraints
     );
 
     const unsub = onSnapshot(
@@ -122,3 +121,5 @@ export function useNotifications(maxItems = 20): UseNotificationsReturn {
     markAllAsRead,
   };
 }
+
+export { DEFAULT_NOTIFICATION_LIMIT };

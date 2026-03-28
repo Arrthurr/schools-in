@@ -4,6 +4,7 @@ import type {
   QuerySnapshot,
   Timestamp,
 } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { sendPushNotification, type PushSubscription } from "./utils";
 import { buildDedupId, type LatenessAlert } from "./lateProviderLogic";
@@ -28,6 +29,8 @@ export interface PushDispatchResult {
   missing: number;
 }
 
+const DASHBOARD_WRITE_CHUNK_SIZE = 100;
+
 // ---------------------------------------------------------------------------
 // Eligibility
 // ---------------------------------------------------------------------------
@@ -39,16 +42,13 @@ export interface PushDispatchResult {
  *   3. Provider assigned (RBAC)
  *   4. Provider user active
  *   5. No active/paused session today
- *   6. Atomic dedup claim via create() — race-safe
  *
- * Returns null if any gate fails or the race is lost to a concurrent invocation.
+ * Returns null if any gate fails.
  */
 export async function checkScheduleEligibility(
   db: Firestore,
   scheduleDoc: QueryDocumentSnapshot,
-  todayDateKey: string,
-  now: Timestamp,
-  expireAt: Timestamp
+  todayDateKey: string
 ): Promise<LateProviderCandidate | null> {
   const scheduleData = scheduleDoc.data();
   const scheduleId = scheduleDoc.id;
@@ -123,32 +123,6 @@ export async function checkScheduleEligibility(
     return null;
   }
 
-  // 6. Atomically claim the dedup slot.
-  //    create() fails with "already-exists" if a concurrent invocation already claimed it.
-  const alertDoc: LatenessAlert = {
-    scheduleId,
-    providerId,
-    locationId,
-    startTime,
-    alertedAt: now,
-    expireAt,
-  };
-  try {
-    await db.collection("latenessAlerts").doc(dedupId).create(alertDoc);
-  } catch (error: unknown) {
-    if ((error as { code?: string }).code === "already-exists") {
-      logger.info(
-        `checkLateProviders: dedup race, concurrent invocation claimed ${dedupId}`
-      );
-      return null;
-    }
-    logger.error(
-      `checkLateProviders: failed to write dedup doc ${dedupId}`,
-      { error }
-    );
-    return null;
-  }
-
   return {
     scheduleId,
     dedupId,
@@ -162,21 +136,65 @@ export async function checkScheduleEligibility(
 
 /**
  * Run eligibility checks in parallel across all late schedules.
- * Returns the subset that passed all gates and claimed their dedup slot.
+ * Returns the subset that passed all gates and are not already deduped.
  */
 export async function buildEligibleLateProviders(
   db: Firestore,
   lateSchedules: QueryDocumentSnapshot[],
-  todayDateKey: string,
-  now: Timestamp,
-  expireAt: Timestamp
+  todayDateKey: string
 ): Promise<LateProviderCandidate[]> {
   const results = await Promise.all(
     lateSchedules.map((doc) =>
-      checkScheduleEligibility(db, doc, todayDateKey, now, expireAt)
+      checkScheduleEligibility(db, doc, todayDateKey)
     )
   );
   return results.filter((r): r is LateProviderCandidate => r !== null);
+}
+
+/**
+ * Claim lateness dedup records after dashboard notifications are written.
+ * Only the invocation that wins create() should send the push alert.
+ */
+export async function claimLateProviderDedupSlots(
+  db: Firestore,
+  lateProviders: LateProviderCandidate[],
+  now: Timestamp,
+  expireAt: Timestamp
+): Promise<LateProviderCandidate[]> {
+  const claimedProviders = await Promise.all(
+    lateProviders.map(async (provider) => {
+      const alertDoc: LatenessAlert = {
+        scheduleId: provider.scheduleId,
+        providerId: provider.providerId,
+        locationId: provider.locationId,
+        startTime: provider.startTime,
+        alertedAt: now,
+        expireAt,
+      };
+
+      try {
+        await db.collection("latenessAlerts").doc(provider.dedupId).create(alertDoc);
+        return provider;
+      } catch (error: unknown) {
+        if ((error as { code?: string }).code === "already-exists") {
+          logger.info(
+            `checkLateProviders: dedup race, concurrent invocation claimed ${provider.dedupId}`
+          );
+          return null;
+        }
+
+        logger.error(
+          `checkLateProviders: failed to write dedup doc ${provider.dedupId}`,
+          { error }
+        );
+        return null;
+      }
+    })
+  );
+
+  return claimedProviders.filter(
+    (provider): provider is LateProviderCandidate => provider !== null
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -214,7 +232,7 @@ export async function dispatchAdminPushAlerts(
       const pushResult = await sendPushNotification(subscription, {
         title: "Provider not checked in",
         body: notificationBody,
-        data: { type: "provider-late", url: "/admin" },
+        data: { type: "provider-late", url: "/admin/notifications" },
       });
 
       if (pushResult === "sent") {
@@ -237,4 +255,91 @@ export async function dispatchAdminPushAlerts(
   );
 
   return { sent, failed, missing };
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard notification fan-out
+// ---------------------------------------------------------------------------
+
+export interface LateProviderInfo {
+  scheduleId: string;
+  providerId: string;
+  providerName: string;
+  locationName: string;
+  scheduledTime: string;
+  minutesLate: number;
+  sessionId?: string | null;
+}
+
+/**
+ * Create dashboard notification documents for all admins.
+ * Uses deterministic IDs with create() so retries do not reopen read alerts.
+ */
+export async function dispatchAdminDashboardAlerts(
+  db: Firestore,
+  adminsSnapshot: QuerySnapshot,
+  lateProviders: LateProviderInfo[],
+  todayDateKey: string
+): Promise<void> {
+  const writes: Array<() => Promise<void>> = [];
+  let createdCount = 0;
+  let existingCount = 0;
+
+  for (const adminDoc of adminsSnapshot.docs) {
+    for (const provider of lateProviders) {
+      const notifRef = db
+        .collection("users")
+        .doc(adminDoc.id)
+        .collection("notifications")
+        .doc(`late_provider_${provider.scheduleId}_${todayDateKey}`);
+
+      writes.push(async () => {
+        try {
+          await notifRef.create({
+            id: notifRef.id,
+            type: "late_provider",
+            sessionId: provider.sessionId || null,
+            providerId: provider.providerId,
+            providerName: provider.providerName,
+            locationName: provider.locationName,
+            scheduledTime: provider.scheduledTime,
+            minutesLate: provider.minutesLate,
+            read: false,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+          createdCount++;
+        } catch (error: unknown) {
+          if ((error as { code?: string }).code === "already-exists") {
+            existingCount++;
+            return;
+          }
+
+          logger.error("checkLateProviders: failed to create dashboard alert", {
+            adminId: adminDoc.id,
+            scheduleId: provider.scheduleId,
+            error,
+          });
+          throw error;
+        }
+      });
+    }
+  }
+
+  for (let i = 0; i < writes.length; i += DASHBOARD_WRITE_CHUNK_SIZE) {
+    const chunk = writes.slice(i, i + DASHBOARD_WRITE_CHUNK_SIZE);
+    const results = await Promise.allSettled(chunk.map((write) => write()));
+    const failure = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected"
+    );
+    if (failure) {
+      throw failure.reason;
+    }
+  }
+
+  logger.info("checkLateProviders: admin dashboard alerts dispatched", {
+    adminCount: adminsSnapshot.docs.length,
+    lateProviderCount: lateProviders.length,
+    createdCount,
+    existingCount,
+  });
 }

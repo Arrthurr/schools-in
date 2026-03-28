@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,16 +10,21 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  DEFAULT_NOTIFICATION_LIMIT,
   useNotifications,
   type NotificationItem,
 } from "@/lib/hooks/useNotifications";
+import {
+  getNotificationCenterHref,
+  getNotificationPreview,
+} from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/time";
 import Link from "next/link";
 
 export function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
-    useNotifications();
+    useNotifications(DEFAULT_NOTIFICATION_LIMIT);
 
   const handleNotificationClick = async (item: NotificationItem) => {
     if (!item.read) {
@@ -66,7 +72,7 @@ export function NotificationBell() {
             notifications.map((item) => (
               <Link
                 key={item.id}
-                href="/admin/notes"
+                href={getNotificationCenterHref(item.id) as Route}
                 onClick={() => handleNotificationClick(item)}
                 className={cn(
                   "flex flex-col px-4 py-3 hover:bg-muted/50 transition-colors border-b last:border-b-0",
@@ -87,7 +93,7 @@ export function NotificationBell() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                  {item.notePreview}
+                  {getNotificationPreview(item)}
                 </p>
                 {!item.read && (
                   <Badge
@@ -105,10 +111,10 @@ export function NotificationBell() {
         {notifications.length > 0 && (
           <div className="px-4 py-2 border-t">
             <Link
-              href="/admin/notes"
+              href={getNotificationCenterHref() as Route}
               className="text-xs text-primary hover:underline"
             >
-              View all session notes
+              View all notifications
             </Link>
           </div>
         )}
