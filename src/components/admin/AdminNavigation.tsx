@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   LayoutDashboard,
+  Bell,
   School,
   FileText,
   Users,
@@ -83,6 +84,12 @@ const navigationItems: NavItem[] = [
     label: "Notes",
     icon: FileText,
     description: "Provider session notes",
+  },
+  {
+    href: "/admin/notifications",
+    label: "Notifications",
+    icon: Bell,
+    description: "Late providers and session notes",
   },
 ];
 
