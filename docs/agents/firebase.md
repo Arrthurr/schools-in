@@ -109,7 +109,7 @@ Or use the predeploy hook (configured in `firebase.json`) which runs the build a
 | `users/{userId}` | `role`, `displayName`, `email`, `autoGeofenceCheckEnabled` | Own data + admin |
 | `users/{uid}/pushSubscriptions/{id}` | `endpoint`, `keys` | Own data |
 | `locations/{locationId}` | `geo`, `radiusMeters`, `assignedProviders[]`, `active` | Assigned providers + admin |
-| `sessions/{sessionId}` | `userId`, `locationId`, `status`, `dayKey`, `checkInMethod` | Own sessions + admin |
+| `sessions/{sessionId}` | `userId`, `locationId`, `status`, `dayKey`, `checkInMethod`, `startTime` | Own sessions + admin |
 | `feedback/{feedbackId}` | `providerId`, `category`, `severity`, `status` | Create: any auth; Read/update: admin |
 | `services/{serviceId}` | `name`, `code`, `isActive` | Read: any auth; Write: admin |
 | `schedules/{scheduleId}` | `providerId`, `locationId`, `dayOfWeek`, `startTime` | Own schedules + admin |
@@ -117,6 +117,11 @@ Or use the predeploy hook (configured in `firebase.json`) which runs the build a
 | `system/{document}` | Varies (analytics, daily stats) | Admin only |
 | `cache_stats/{document}` | Cache performance metrics | Admin only |
 | `rate_limits/{userId}` | Rate limiting counters | System |
+
+### Admin Session Reports indexes
+
+- **Session Reports** (`/admin/reports`, component `SessionReports`) queries `sessions` with a **`startTime` range**, optional **`userId` / `status`**, and optional **`locationId` or `schoolId`**, plus **`orderBy("startTime", "desc")`**.
+- Composite definitions live in [`firestore.indexes.json`](../../firestore.indexes.json). After changing indexes, deploy with `firebase deploy --only firestore:indexes` (or your usual rules/index deploy) and **wait until indexes finish building** in the Firebase console before relying on new filter combinations in production.
 
 ### Security Rules Highlights
 

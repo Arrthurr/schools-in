@@ -8,8 +8,13 @@ export interface SessionData {
   userId: string;
   schoolId: string;
   locationId?: string; // newer sessions use locationId as the primary key
+  /** Canonical session start (Firestore / Cloud Functions). Prefer for queries. */
+  startTime?: Timestamp;
+  /** Canonical session end when completed */
+  endTime?: Timestamp | null;
+  /** Check-in time; mirror of startTime on new sessions */
   checkInTime: Timestamp;
-  checkOutTime?: Timestamp;
+  checkOutTime?: Timestamp | null;
   checkInLocation: Coordinates;
   checkOutLocation?: Coordinates;
   status: "active" | "completed" | "error" | "paused" | "cancelled";
@@ -34,14 +39,14 @@ export interface SessionData {
 // timestamp arithmetic only when `durationMinutes` is not provided.
 export const calculateSessionDuration = (
   checkInTime: Timestamp,
-  checkOutTime?: Timestamp,
+  checkOutTime?: Timestamp | null,
   durationMinutes?: number
 ): number => {
   if (typeof durationMinutes === "number" && durationMinutes >= 0) {
     return durationMinutes;
   }
 
-  if (!checkOutTime) return 0;
+  if (checkOutTime == null) return 0;
 
   const checkInMs = checkInTime.toMillis();
   const checkOutMs = checkOutTime.toMillis();
@@ -185,6 +190,20 @@ export const getSessionStatusConfig = (
   }
 };
 
+/** Effective check-in timestamp for display and sorting (Firestore may have either field). */
+export const getSessionCheckInTimestamp = (session: {
+  checkInTime?: Timestamp;
+  startTime?: Timestamp;
+}): Timestamp | undefined => session.checkInTime ?? session.startTime;
+
+/** Effective check-out timestamp for display and duration (legacy + canonical). */
+export const getSessionCheckOutTimestamp = (
+  session: Pick<SessionData, "checkOutTime" | "endTime">
+): Timestamp | null | undefined =>
+  session.checkOutTime !== undefined && session.checkOutTime !== null
+    ? session.checkOutTime
+    : session.endTime ?? undefined;
+
 // Validate session data
 export const validateSessionData = (
   sessionData: Partial<SessionData>
@@ -203,8 +222,8 @@ export const validateSessionData = (
     errors.push("Check-in location is required");
   }
 
-  if (!sessionData.checkInTime) {
-    errors.push("Check-in time is required");
+  if (!sessionData.checkInTime && !sessionData.startTime) {
+    errors.push("Check-in time or start time is required");
   }
 
   return errors;

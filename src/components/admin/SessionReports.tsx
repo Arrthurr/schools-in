@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { FirebaseError } from "firebase/app";
 import {
   collection,
   getDocs,
@@ -43,9 +44,32 @@ import {
   formatDuration,
   getSessionStatusConfig,
   calculateSessionDuration,
+  getSessionCheckInTimestamp,
+  getSessionCheckOutTimestamp,
 } from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
 import { getCollection, COLLECTIONS } from "@/lib/firebase/firestore";
+
+function mapSessionLoadError(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    console.error("SessionReports Firestore error:", {
+      code: err.code,
+      message: err.message,
+    });
+    if (err.code === "failed-precondition") {
+      return (
+        "This filter combination requires a Firestore composite index. " +
+        "Deploy indexes with firebase deploy --only firestore:indexes and wait until they finish building."
+      );
+    }
+    return `Failed to load session data (${err.code}).`;
+  }
+  console.error("Error loading sessions:", err);
+  if (err instanceof Error) {
+    return `Failed to load session data: ${err.message}`;
+  }
+  return "Failed to load session data";
+}
 
 interface School {
   id: string;
@@ -198,9 +222,10 @@ export function SessionReports() {
       const end = Timestamp.fromDate(dateRange.endDate);
 
       const MAX_RESULTS = 2000;
+      // Use canonical startTime (matches firestore.indexes.json and Cloud Functions writes).
       const baseConstraints = [
-        where("checkInTime", ">=", start),
-        where("checkInTime", "<=", end),
+        where("startTime", ">=", start),
+        where("startTime", "<=", end),
       ];
 
       if (filters.providerId) {
@@ -218,7 +243,7 @@ export function SessionReports() {
           sessionsRef,
           ...baseConstraints,
           ...extra,
-          orderBy("checkInTime", "desc"),
+          orderBy("startTime", "desc"),
           limitResults(MAX_RESULTS)
         );
 
@@ -251,6 +276,12 @@ export function SessionReports() {
         filteredSessions = await runQuery();
       }
 
+      filteredSessions.sort((a, b) => {
+        const aMs = getSessionCheckInTimestamp(a)?.toMillis() ?? 0;
+        const bMs = getSessionCheckInTimestamp(b)?.toMillis() ?? 0;
+        return bMs - aMs;
+      });
+
       // Calculate summary statistics
       const totalSessions = filteredSessions.length;
       const completedSessions = filteredSessions.filter(
@@ -265,10 +296,11 @@ export function SessionReports() {
         ) {
           return sum + session.durationMinutes;
         }
-        if (session.checkInTime && session.checkOutTime) {
+        const cin = getSessionCheckInTimestamp(session);
+        const cout = getSessionCheckOutTimestamp(session);
+        if (cin && cout) {
           const duration = Math.round(
-            (session.checkOutTime.toMillis() - session.checkInTime.toMillis()) /
-              (1000 * 60)
+            (cout.toMillis() - cin.toMillis()) / (1000 * 60)
           );
           return sum + duration;
         }
@@ -302,8 +334,7 @@ export function SessionReports() {
         );
       }
     } catch (err) {
-      console.error("Error loading sessions:", err);
-      setError("Failed to load session data");
+      setError(mapSessionLoadError(err));
     } finally {
       setLoading(false);
     }
@@ -362,19 +393,18 @@ export function SessionReports() {
       "Check Out Location",
     ];
 
-    const csvData = sessions.map((session) => [
+    const csvData = sessions.map((session) => {
+      const cin = getSessionCheckInTimestamp(session);
+      const cout = getSessionCheckOutTimestamp(session);
+      return [
       session.id || "N/A",
       getProviderName(session.userId),
       getSchoolName(getSessionLocationId(session)),
-      session.checkInTime
-        ? new Date(session.checkInTime.toDate()).toLocaleString()
-        : "N/A",
-      session.checkOutTime
-        ? new Date(session.checkOutTime.toDate()).toLocaleString()
-        : "N/A",
-      session.checkInTime && (session.checkOutTime || (typeof session.durationMinutes === "number" && session.durationMinutes >= 0))
+      cin ? new Date(cin.toDate()).toLocaleString() : "N/A",
+      cout ? new Date(cout.toDate()).toLocaleString() : "N/A",
+      cin && (cout || (typeof session.durationMinutes === "number" && session.durationMinutes >= 0))
         ? formatDuration(
-            calculateSessionDuration(session.checkInTime, session.checkOutTime, session.durationMinutes)
+            calculateSessionDuration(cin, cout ?? undefined, session.durationMinutes)
           )
         : "N/A",
       getSessionStatusConfig(session.status).label,
@@ -384,7 +414,8 @@ export function SessionReports() {
       session.checkOutLocation
         ? `${session.checkOutLocation.latitude}, ${session.checkOutLocation.longitude}`
         : "N/A",
-    ]);
+    ];
+    });
 
     const csvContent = [headers, ...csvData]
       .map((row) => row.map((field) => `"${field}"`).join(","))
@@ -685,13 +716,14 @@ export function SessionReports() {
                 </TableHeader>
                 <TableBody>
                   {sessions.map((session) => {
+                    const cin = getSessionCheckInTimestamp(session);
+                    const cout = getSessionCheckOutTimestamp(session);
                     const duration =
                       typeof session.durationMinutes === "number" && session.durationMinutes >= 0
                         ? session.durationMinutes
-                        : session.checkInTime && session.checkOutTime
+                        : cin && cout
                           ? Math.round(
-                              (session.checkOutTime.toMillis() -
-                                session.checkInTime.toMillis()) /
+                              (cout.toMillis() - cin.toMillis()) /
                                 (1000 * 60)
                             )
                           : 0;
@@ -710,12 +742,10 @@ export function SessionReports() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {session.checkInTime.toDate().toLocaleString()}
+                          {cin ? cin.toDate().toLocaleString() : "--"}
                         </TableCell>
                         <TableCell>
-                          {session.checkOutTime
-                            ? session.checkOutTime.toDate().toLocaleString()
-                            : "--"}
+                          {cout ? cout.toDate().toLocaleString() : "--"}
                         </TableCell>
                         <TableCell>
                           {duration > 0 ? formatDuration(duration) : "--"}

@@ -115,12 +115,12 @@ describe("getSessionsByUser", () => {
     expect(Timestamp.fromDate).toHaveBeenCalledWith(startDate);
     expect(Timestamp.fromDate).toHaveBeenCalledWith(expect.any(Date));
     expect(mockWhere).toHaveBeenCalledWith(
-      "checkInTime",
+      "startTime",
       ">=",
       expect.anything()
     );
     expect(mockWhere).toHaveBeenCalledWith(
-      "checkInTime",
+      "startTime",
       "<=",
       expect.anything()
     );
