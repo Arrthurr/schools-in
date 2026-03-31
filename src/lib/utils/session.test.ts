@@ -11,6 +11,8 @@ import {
   validateSessionData,
   isSessionStillActive,
   createSessionSummary,
+  getSessionCheckInTimestamp,
+  getSessionCheckOutTimestamp,
   SessionData,
 } from "./session";
 import { Coordinates } from "./location";
@@ -158,6 +160,37 @@ describe("Session Utilities", () => {
     });
   });
 
+  describe("getSessionCheckInTimestamp / getSessionCheckOutTimestamp", () => {
+    it("prefers checkInTime over startTime", () => {
+      const early = Timestamp.fromDate(new Date("2024-01-01T09:00:00Z"));
+      const late = Timestamp.fromDate(new Date("2024-01-01T10:00:00Z"));
+      expect(
+        getSessionCheckInTimestamp({
+          checkInTime: early,
+          startTime: late,
+        })
+      ).toBe(early);
+    });
+
+    it("falls back to startTime when checkInTime is missing", () => {
+      const st = Timestamp.fromDate(new Date("2024-01-01T10:00:00Z"));
+      expect(getSessionCheckInTimestamp({ startTime: st })).toBe(st);
+    });
+
+    it("prefers checkOutTime over endTime", () => {
+      const co = Timestamp.fromDate(new Date("2024-01-01T18:00:00Z"));
+      const en = Timestamp.fromDate(new Date("2024-01-01T17:00:00Z"));
+      expect(
+        getSessionCheckOutTimestamp({ checkOutTime: co, endTime: en })
+      ).toBe(co);
+    });
+
+    it("falls back to endTime when checkOutTime is absent", () => {
+      const en = Timestamp.fromDate(new Date("2024-01-01T17:00:00Z"));
+      expect(getSessionCheckOutTimestamp({ endTime: en })).toBe(en);
+    });
+  });
+
   describe("validateSessionData", () => {
     const validCoordinates: Coordinates = {
       latitude: 40.7128,
@@ -205,15 +238,25 @@ describe("Session Utilities", () => {
       );
     });
 
-    it("returns errors for missing checkInTime", () => {
+    it("returns errors when neither checkInTime nor startTime is set", () => {
       const invalidData: Partial<SessionData> = {
         userId: "user123",
         schoolId: "school123",
         checkInLocation: validCoordinates,
       };
       expect(validateSessionData(invalidData)).toContain(
-        "Check-in time is required"
+        "Check-in time or start time is required"
       );
+    });
+
+    it("returns no errors when only startTime is set", () => {
+      const validWithStart: Partial<SessionData> = {
+        userId: "user123",
+        schoolId: "school123",
+        checkInLocation: validCoordinates,
+        startTime: mockTimestamp,
+      };
+      expect(validateSessionData(validWithStart)).toEqual([]);
     });
 
     it("returns multiple errors when multiple fields are missing", () => {

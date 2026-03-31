@@ -1,5 +1,19 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { FirebaseError } from "firebase/app";
+import * as firestore from "firebase/firestore";
+import { getCollection } from "../../lib/firebase/firestore";
 import { SessionReports } from "./SessionReports";
+
+const mockGetCollection = getCollection as jest.MockedFunction<typeof getCollection>;
+
+beforeAll(() => {
+  // Radix Select / Floating UI use DOM APIs not fully implemented in jsdom
+  Element.prototype.hasPointerCapture = jest.fn(() => false);
+  Element.prototype.releasePointerCapture = jest.fn();
+  Element.prototype.setPointerCapture = jest.fn();
+  window.HTMLElement.prototype.scrollIntoView = jest.fn();
+});
 
 jest.mock("firebase/firestore", () => {
   const Timestamp = {
@@ -10,22 +24,16 @@ jest.mock("firebase/firestore", () => {
   };
 
   return {
-    // Query builder fns (their return values are opaque to this component)
     collection: jest.fn(() => ({})),
     query: jest.fn(() => ({})),
     where: jest.fn(() => ({})),
     orderBy: jest.fn(() => ({})),
     limit: jest.fn(() => ({})),
-
-    // Data fetch
     getDocs: jest.fn().mockResolvedValue({ docs: [] }),
-
-    // Timestamp
     Timestamp,
   };
 });
 
-// Mock the app's Firestore helper module (used for initial filter option data)
 jest.mock("../../lib/firebase/firestore", () => ({
   getCollection: jest.fn().mockResolvedValue([]),
   COLLECTIONS: {
@@ -35,7 +43,6 @@ jest.mock("../../lib/firebase/firestore", () => ({
   },
 }));
 
-// Mock session utils
 jest.mock("../../lib/utils/session", () => ({
   formatDuration: jest.fn((minutes: number) => `${minutes}m`),
   getSessionStatusConfig: jest.fn((status: string) => ({
@@ -45,16 +52,27 @@ jest.mock("../../lib/utils/session", () => ({
     description: `Status: ${status}`,
   })),
   calculateSessionDuration: jest.fn(() => 60),
+  getSessionCheckInTimestamp: jest.fn((session: { checkInTime?: unknown; startTime?: { toDate: () => Date } }) =>
+    session.checkInTime ?? session.startTime
+  ),
+  getSessionCheckOutTimestamp: jest.fn((session: { checkOutTime?: unknown; endTime?: unknown }) =>
+    session.checkOutTime ?? session.endTime
+  ),
 }));
 
 const renderReports = async () => {
   render(<SessionReports />);
   await screen.findByText("Session Data (0 sessions)");
-  // Ensure async Firestore fetch effect has completed.
   await screen.findByText(/No sessions match the selected filters/i);
 };
 
 describe("SessionReports Component", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetCollection.mockResolvedValue([]);
+    (firestore.getDocs as jest.Mock).mockResolvedValue({ docs: [] });
+  });
+
   it("renders session reports dashboard", async () => {
     await renderReports();
 
@@ -96,5 +114,68 @@ describe("SessionReports Component", () => {
     expect(
       screen.getByText(/No sessions match the selected filters/i)
     ).toBeInTheDocument();
+  });
+
+  it("queries sessions by startTime range and orders by startTime desc", async () => {
+    await renderReports();
+
+    expect(firestore.where).toHaveBeenCalledWith(
+      "startTime",
+      ">=",
+      expect.anything()
+    );
+    expect(firestore.where).toHaveBeenCalledWith(
+      "startTime",
+      "<=",
+      expect.anything()
+    );
+    expect(firestore.orderBy).toHaveBeenCalledWith("startTime", "desc");
+  });
+
+  it("adds userId constraint when a provider is selected", async () => {
+    mockGetCollection.mockImplementation((collectionName: string) => {
+      if (collectionName === "users") {
+        return Promise.resolve([
+          {
+            id: "provider-1",
+            role: "provider",
+            displayName: "Prov One",
+            email: "p1@test.com",
+          },
+        ]);
+      }
+      if (collectionName === "locations") {
+        return Promise.resolve([]);
+      }
+      return Promise.resolve([]);
+    });
+
+    const user = userEvent.setup();
+    await renderReports();
+
+    await user.click(screen.getByLabelText("Provider"));
+    await user.click(await screen.findByRole("option", { name: "Prov One" }));
+
+    await waitFor(() => {
+      expect(firestore.where).toHaveBeenCalledWith(
+        "userId",
+        "==",
+        "provider-1"
+      );
+    });
+  });
+
+  it("shows a clear message when Firestore requires a composite index", async () => {
+    (firestore.getDocs as jest.Mock).mockRejectedValueOnce(
+      new FirebaseError("failed-precondition", "query requires an index")
+    );
+
+    render(<SessionReports />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/composite index/i)
+      ).toBeInTheDocument();
+    });
   });
 });

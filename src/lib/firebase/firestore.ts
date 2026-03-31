@@ -131,7 +131,7 @@ export const getSessionsByUser = async (
   // Add date range filters if provided
   if (filters?.startDate) {
     mainConstraints.push(
-      where("checkInTime", ">=", Timestamp.fromDate(filters.startDate))
+      where("startTime", ">=", Timestamp.fromDate(filters.startDate))
     );
   }
   if (filters?.endDate) {
@@ -139,7 +139,7 @@ export const getSessionsByUser = async (
     const endOfDay = new Date(filters.endDate);
     endOfDay.setHours(23, 59, 59, 999);
     mainConstraints.push(
-      where("checkInTime", "<=", Timestamp.fromDate(endOfDay))
+      where("startTime", "<=", Timestamp.fromDate(endOfDay))
     );
   }
 
@@ -147,7 +147,7 @@ export const getSessionsByUser = async (
   const q = query(
     collection(db, COLLECTIONS.SESSIONS),
     ...mainConstraints,
-    orderBy("checkInTime", "desc"),
+    orderBy("startTime", "desc"),
     limit(pageSize + offset + 1) // Get one extra to check if there are more
   );
 
