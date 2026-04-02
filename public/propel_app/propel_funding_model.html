@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Propel — Funding Estimation Model</title>
+<style>
+  :root {
+    --navy: #0d1b2a;
+    --navy2: #1a2e45;
+    --navy3: #243a56;
+    --blue: #1e6fc4;
+    --blue-lt: #4a9de8;
+    --teal: #12a87a;
+    --teal-lt: #3dd4a0;
+    --amber: #e89c1e;
+    --amber-lt: #f5c642;
+    --coral: #d84f30;
+    --coral-lt: #f07a5a;
+    --purple: #7c5cdb;
+    --purple-lt: #a98df5;
+    --text: #e8edf5;
+    --text2: #8fa5c0;
+    --text3: #5a7a9a;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --card: rgba(255,255,255,0.04);
+    --card2: rgba(255,255,255,0.07);
+    --input-bg: rgba(255,255,255,0.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--navy); color: var(--text); min-height: 100vh; }
+
+  /* LAYOUT */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; min-width: 220px; background: var(--navy2); border-right: 1px solid var(--border); padding: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 100; transition: width .2s, min-width .2s; }
+  .sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; border-right: none; }
+  .sidebar-toggle-btn { background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); cursor: pointer; font-size: 12px; padding: 4px 8px; line-height: 1; flex-shrink: 0; }
+  .main { flex: 1; overflow-x: hidden; position: relative; }
+
+  /* SIDEBAR */
+  .sidebar-logo { padding: 20px 18px 14px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo .app-name { font-size: 18px; font-weight: 700; color: var(--blue-lt); letter-spacing: -0.3px; }
+  .sidebar-logo .sub { font-size: 11px; color: var(--text3); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
+  .nav-section { padding: 10px 0 4px; }
+  .nav-label { font-size: 10px; color: var(--text3); letter-spacing: 1.2px; text-transform: uppercase; padding: 4px 18px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 18px; font-size: 13px; color: var(--text2); cursor: pointer; border-left: 2px solid transparent; transition: all .15s; }
+  .nav-item:hover { background: var(--card2); color: var(--text); }
+  .nav-item.active { background: var(--card2); color: var(--blue-lt); border-left-color: var(--blue-lt); }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* TOPBAR */
+  .topbar { background: var(--navy2); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 150; width: 100%; }
+  .page-title { font-size: 17px; font-weight: 600; }
+  .version-tabs { display: flex; gap: 0; background: var(--card); border: 1px solid var(--border2); border-radius: 8px; overflow: hidden; }
+  .vtab { padding: 7px 18px; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text2); border: none; background: none; transition: all .15s; }
+  .vtab.active { background: var(--blue); color: #fff; }
+  .vtab:hover:not(.active) { color: var(--text); }
+  .total-badge { display: flex; flex-direction: column; align-items: flex-end; }
+  .total-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; }
+  .total-val { font-size: 22px; font-weight: 700; color: var(--teal-lt); }
+
+  /* CONTENT */
+  .content { padding: 28px 28px 60px; }
+  .section { margin-bottom: 32px; }
+  .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .section-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .section-title { font-size: 15px; font-weight: 600; }
+  .section-sub { font-size: 12px; color: var(--text3); margin-left: auto; }
+  .section-total { font-size: 14px; font-weight: 600; color: var(--teal-lt); margin-left: auto; }
+
+  /* CURRICULUM CONFIG */
+  .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .config-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .config-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
+  .config-value { font-size: 20px; font-weight: 700; color: var(--text); }
+  .config-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* TABLE */
+  .role-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .role-table th { text-align: left; padding: 8px 10px; font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .7px; border-bottom: 1px solid var(--border); font-weight: 500; }
+  .role-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .role-table tr:last-child td { border-bottom: none; }
+  .role-table tr:hover td { background: var(--card); }
+  .role-table .subtotal-row td { background: var(--card2); font-weight: 600; font-size: 12px; color: var(--text2); }
+  .role-name { font-weight: 500; color: var(--text); }
+  .role-desc { font-size: 11px; color: var(--text3); margin-top: 2px; line-height: 1.4; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
+  .badge-blue { background: rgba(30,111,196,.2); color: var(--blue-lt); }
+  .badge-teal { background: rgba(18,168,122,.2); color: var(--teal-lt); }
+  .badge-amber { background: rgba(232,156,30,.2); color: var(--amber-lt); }
+  .badge-coral { background: rgba(216,79,48,.2); color: var(--coral-lt); }
+  .badge-purple { background: rgba(124,92,219,.2); color: var(--purple-lt); }
+  
+  .num-input { background: var(--input-bg); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); font-size: 13px; padding: 4px 8px; width: 68px; text-align: right; }
+  .num-input:focus { outline: none; border-color: var(--blue-lt); }
+  
+  /* Expand select lists for start mo by 10% */
+  select.num-input { width: 68px !important; }
+
+  .salary-cell { font-weight: 500; }
+  .annual-cell { font-weight: 600; color: var(--teal-lt); font-size: 13px; }
+  .note-pill { font-size: 10px; color: var(--text3); background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; display: inline-block; margin-top: 3px; }
+
+  /* SUMMARY CARDS */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .summary-card .sc-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
+  .summary-card .sc-val { font-size: 22px; font-weight: 700; }
+  .summary-card .sc-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* ASSUMPTIONS BOX */
+  .assumptions { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-top: 10px; }
+  .assumptions h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: var(--text3); margin-bottom: 10px; }
+  .assumption-item { display: flex; gap: 10px; font-size: 12px; color: var(--text2); margin-bottom: 7px; line-height: 1.5; }
+  .assumption-item::before { content: '→'; color: var(--blue-lt); flex-shrink: 0; margin-top: 1px; }
+
+  /* CONTINGENCY */
+  .contingency-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--border); margin-top: 14px; }
+  .contingency-row label { font-size: 13px; color: var(--text2); }
+  .contingency-row input[type=range] { flex: 1; accent-color: var(--blue-lt); }
+  .contingency-row .pct { font-weight: 600; color: var(--amber-lt); min-width: 36px; text-align: right; }
+  .grand-total { display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, rgba(30,111,196,.15), rgba(18,168,122,.1)); border: 1px solid rgba(74,157,232,.25); border-radius: 12px; padding: 20px 24px; margin-top: 20px; }
+  .grand-total .gt-label { font-size: 13px; color: var(--text2); }
+  .grand-total .gt-val { font-size: 32px; font-weight: 800; color: var(--teal-lt); letter-spacing: -1px; }
+
+  /* PHASE VIEW */
+  .phase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .phase-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .phase-card .ph-num { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 6px; }
+  .phase-card .ph-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .phase-card .ph-dur { font-size: 12px; color: var(--text3); margin-bottom: 10px; }
+  .phase-card .ph-cost { font-size: 18px; font-weight: 700; }
+  .phase-card .ph-items { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .phase-item { font-size: 11px; color: var(--text2); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .phase-item span { color: var(--text3); }
+
+  /* HIDDEN SECTIONS */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* EDITABLE ROLE ROWS */
+  .role-title-input { background:transparent; border:none; border-bottom:1px solid var(--border2); color:var(--text); font-size:13px; font-weight:500; width:100%; padding:2px 4px; margin-bottom:4px; font-family:inherit; }
+  .role-title-input:focus { outline:none; border-bottom-color:var(--blue-lt); }
+  .role-note-textarea { background:var(--input-bg); border:1px solid transparent; border-radius:4px; color:var(--text3); font-size:11px; line-height:1.4; width:100%; resize:vertical; overflow-y:auto; min-height:44px; padding:4px 6px; font-family:inherit; box-sizing:border-box; }
+  .role-note-textarea:focus { outline:none; border-color:var(--border2); color:var(--text2); }
+  .personnel-table { table-layout:fixed; }
+  .personnel-table th:first-child { width:42%; }
+  .personnel-table td:first-child { width:42%; overflow:hidden; }
+  
+  .tech-table { table-layout:fixed; }
+  .tech-table th:nth-child(1) { width:80px; } /* Cat */
+  .tech-table th:nth-child(2) { width:160px; } /* Svc */
+  .tech-table th:nth-child(3) { width:120px; } /* Unit costs */
+  .tech-table th:nth-child(4) { width:130px; } /* Window */
+  .tech-table th:nth-child(5) { width:90px; } /* Qty */
+  .tech-table th:nth-child(6) { width:110px; } /* First year costs */
+
+  .mo-label { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; margin-bottom:2px; text-align:center; }
+  .add-row-btn { display:flex; align-items:center; justify-content:center; gap:6px; padding:7px 14px; background:var(--card); border:1px dashed var(--border2); border-radius:6px; color:var(--text3); font-size:12px; cursor:pointer; margin-top:8px; width:100%; transition:all .15s; font-family:inherit; }
+  .add-row-btn:hover { border-color:var(--blue-lt); color:var(--blue-lt); background:var(--card2); }
+  .drag-handle { cursor:grab; color:var(--text3); font-size:16px; user-select:none; padding:0 4px; opacity:0.5; }
+  .drag-handle:hover { opacity:1; color:var(--blue-lt); }
+  tr.drag-over-target td { background:rgba(74,157,232,.12) !important; border-top:2px solid var(--blue-lt) !important; }
+  tr.dragging-row { opacity:0.35; }
+  .del-btn { background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; line-height:1; }
+  .del-btn:hover { color:var(--coral-lt); background:rgba(216,79,48,.1); }
+  .merged-tag { display:inline-block; font-size:9px; background:rgba(124,92,219,.2); color:var(--purple-lt); border-radius:3px; padding:1px 5px; margin-left:5px; vertical-align:middle; }
+
+  /* TECH TABLE EDITABLE */
+  .tech-input { background:var(--input-bg); border:1px solid var(--border2); border-radius:4px; color:var(--text); font-size:12px; padding:3px 6px; font-family:inherit; }
+  .tech-input:focus { outline:none; border-color:var(--blue-lt); }
+  .tech-note-textarea { background:var(--input-bg); border:1px solid transparent; border-radius:4px; color:var(--text3); font-size:10px; line-height:1.4; width:100%; resize:vertical; min-height:36px; padding:3px 5px; font-family:inherit; }
+  .tech-note-textarea:focus { outline:none; border-color:var(--border2); }
+  .mo-pair { display:flex; align-items:center; gap:3px; font-size:10px; color:var(--text3); }
+  .year-tag { font-size:9px; font-weight:800; padding:2px 4px; border-radius:3px; background:rgba(255,255,255,0.1); color:var(--text3); min-width:20px; text-align:center; }
+
+  /* RISK CARDS */
+  .risk-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
+  .risk-card .risk-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .risk-card .risk-title { font-size: 14px; font-weight: 600; }
+  .severity-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .8px; flex-shrink: 0; }
+  .severity-high   { background: rgba(216,79,48,.2);  color: var(--coral-lt); }
+  .severity-medium { background: rgba(232,156,30,.2); color: var(--amber-lt); }
+  .severity-low    { background: rgba(18,168,122,.2); color: var(--teal-lt); }
+  .risk-body { font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .risk-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--text3); margin-top: 8px; margin-bottom: 3px; }
+
+  /* RUNWAY CARDS */
+  .runway-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap:12px; margin-bottom: 16px; }
+  .runway-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+
+  /* NARRATIVE TEXTAREAS (Revenue section) */
+  .narrative-textarea { background: var(--input-bg); border: 1px solid transparent; border-radius: 4px; color: var(--text2); font-size: 12px; line-height: 1.5; width: 100%; resize: vertical; min-height: 52px; padding: 5px 7px; font-family: inherit; box-sizing: border-box; }
+  .narrative-textarea:focus { outline: none; border-color: var(--border2); color: var(--text); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .topbar { padding: 12px 16px; }
+    .content { padding: 16px 14px 40px; }
+    .topbar .total-badge { display: none; }
+  }
+
+  /* VERSION CONTROL */
+  .vc-section { padding: 12px 18px; border-top: 1px solid var(--border); }
+  .vc-section-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
+  .vc-btn { display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 10px; margin-bottom: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 7px; color: var(--text2); font-size: 12px; font-weight: 500; cursor: pointer; text-align: left; transition: all .15s; }
+  .vc-btn:hover { border-color: var(--border2); color: var(--text); }
+  .vc-btn.danger { border-color: #ff6b6b44; color: #ff6b6b; }
+  .vc-btn.danger:hover { background: #ff6b6b22; border-color: #ff6b6b; }
+  .vc-badge { display: inline-block; background: var(--blue); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 1px 6px; margin-left: auto; }
+  .autosave-indicator { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text3); margin-top: 4px; }
+  .autosave-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-lt); }
+
+  /* VERSIONS MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 9999; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--card); border: 1px solid var(--border2); border-radius: 14px; width: 520px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal-header h3 { margin: 0; font-size: 15px; }
+  .modal-close { background: none; border: none; color: var(--text3); font-size: 20px; cursor: pointer; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { color: var(--text); background: var(--bg); }
+  .modal-body { overflow-y: auto; padding: 16px 20px; flex: 1; }
+  .vm-section-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; margin: 12px 0 8px; }
+  .vm-section-label:first-child { margin-top: 0; }
+  .version-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+  .version-meta { flex: 1; min-width: 0; }
+  .version-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .version-date { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .v-btn { padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border2); background: var(--card); color: var(--text2); }
+  .v-btn:hover { color: var(--text); }
+  .v-btn.danger { border-color: #ff6b6b44; color: #ff6b6b; }
+  .v-btn.danger:hover { background: #ff6b6b22; border-color: #ff6b6b; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="app-name">propel</div>
+      <div class="sub">Funding Model</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Dashboards</div>
+      <div class="nav-item active" onclick="showSection('summary')">
+        <div class="nav-dot" style="background:var(--teal-lt)"></div> Executive Summary
+      </div>
+      <div class="nav-item" onclick="showSection('curriculum')">
+        <div class="nav-dot" style="background:var(--blue-lt)"></div> Curriculum Scope
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Planning</div>
+      <div class="nav-item" onclick="showSection('outlook')">
+        <div class="nav-dot" style="background:var(--purple-lt)"></div> 3-Year P&L
+      </div>
+      <div class="nav-item" onclick="showSection('revenue')">
+        <div class="nav-dot" style="background:var(--amber-lt)"></div> Revenue Growth
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Operating Budget</div>
+      <div class="nav-item" onclick="showSection('personnel')">
+        <div class="nav-dot" style="background:var(--purple-lt)"></div> Personnel Plan
+      </div>
+      <div class="nav-item" onclick="showSection('tech')">
+        <div class="nav-dot" style="background:var(--teal-lt)"></div> Infrastructure &amp; Tech
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Execution</div>
+      <div class="nav-item" onclick="showSection('phases')">
+        <div class="nav-dot" style="background:var(--amber-lt)"></div> Phase Timeline
+      </div>
+      <div class="nav-item" onclick="showSection('risks')">
+        <div class="nav-dot" style="background:var(--coral-lt)"></div> Risks &amp; Runway
+      </div>
+    </div>
+    <!-- VERSION CONTROL -->
+    <div class="vc-section">
+      <div class="vc-section-label">Version Control</div>
+      <button class="vc-btn" id="btn-undo" onclick="undoLastChange()" disabled>
+        ↩ Undo Last Change
+      </button>
+      <button class="vc-btn" onclick="saveVersion()">
+        💾 Save Version
+      </button>
+      <button class="vc-btn" onclick="showVersionsPanel()">
+        📋 Saved Versions <span class="vc-badge" id="version-count">0</span>
+      </button>
+      <button class="vc-btn danger" onclick="resetToBaseline()">
+        ⚠ Reset to Baseline
+      </button>
+      <div class="autosave-indicator">
+        <div class="autosave-dot"></div> Auto-saved to browser
+      </div>
+    </div>
+
+    <div style="margin-top:auto; padding: 14px 18px; border-top: 1px solid var(--border);">
+      <button class="add-row-btn" style="border-style:solid; border-color:var(--teal-lt); color:var(--teal-lt); margin-bottom:12px; font-weight:600;" onclick="exportToExcel()">
+        📊 Export to Excel (.xlsx)
+      </button>
+      <div style="font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; margin-bottom:4px;">All figures in USD</div>
+      <div style="font-size:11px; color:var(--text3);">Edit any salary or FTE inline to adjust estimates.</div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle navigation">◀</button>
+        <div class="page-title" id="page-title">Funding Overview</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:18px;">
+        <div class="version-tabs">
+          <button class="vtab active" onclick="setVersion('2d')">2.5D Platform (Y1)</button>
+          <button class="vtab" onclick="setVersion('3d')">3D Immersive (Y2+)</button>
+        </div>
+        <div class="total-badge">
+          <div class="total-label">Total Estimate</div>
+          <div class="total-val" id="topbar-total">$0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT AREA -->
+    <div class="content">
+
+      <!-- ====== 3-YEAR P&L OUTLOOK ====== -->
+      <div id="section-outlook" class="tab-content">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(124,92,219,.15)">📈</div>
+          <div class="section-title">3-Year P&amp;L Projection</div>
+          <div class="section-sub">Consolidated View for Investors</div>
+        </div>
+        
+        <div class="table-section">
+          <table class="role-table" style="font-size: 14px;">
+            <thead>
+              <tr>
+                <th>Financial Category</th>
+                <th style="text-align:right">Year 1</th>
+                <th style="text-align:right">Year 2</th>
+                <th style="text-align:right">Year 3</th>
+                <th style="text-align:right">3-Year Total</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-outlook-body">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="assumptions" style="margin-top:24px;">
+          <h4>Investor Rationale: Scaling to Year 3 <span style="font-size:10px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0;">(click any item to edit)</span></h4>
+          <div class="assumption-item"><textarea class="narrative-textarea" oninput="autoResize(this)">Operating Expenses: Scaled based on role-specific start/stop months and yearly salary ramps. Infrastructure costs scale with user growth.</textarea></div>
+          <div class="assumption-item"><textarea class="narrative-textarea" oninput="autoResize(this)">Revenue Engine: Modeled using direct-to-parent (B2C) recurring subscriptions and district (B2B) annual licenses. Year 1 reflects build-time; Year 2 focuses on early traction; Year 3 targets market saturation.</textarea></div>
+          <div class="assumption-item"><textarea class="narrative-textarea" oninput="autoResize(this)">Burn Efficiency: Net loss decreases as revenue scales, demonstrating a clear path toward profitability or high-multiple exit.</textarea></div>
+        </div>
+      </div>
+
+      <!-- ====== REVENUE GROWTH ====== -->
+      <div id="section-revenue" class="tab-content">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(232,156,30,.15)">💰</div>
+          <div class="section-title">Revenue Streams &amp; Projections</div>
+          <div class="section-sub">Define modular revenue engines and scale them over 3 years</div>
+        </div>
+
+        <div class="summary-grid" id="revenue-summary-cards" style="margin-bottom:20px;"></div>
+
+        <div class="insight-panel" style="background:rgba(232,156,30,.05); border:1px solid rgba(232,156,30,.2); border-radius:12px; padding:16px; margin-bottom:20px;">
+          <h3 style="font-size:14px; color:var(--amber-lt); margin-bottom:8px;">Strategic Revenue Flywheel</h3>
+          <p style="font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+            Propel is built on multiple revenue engines: <strong>Consumer (DTC)</strong>, <strong>Institutional (B2B)</strong>, <strong>Platform Partnerships</strong>, and <strong>IP Licensing</strong>. 
+            This diversification reduces risk and demonstrates a high-margin expansion path from software to data and intellectual property.
+          </p>
+        </div>
+
+        <div class="table-section">
+          <table class="role-table" style="font-size: 13px;">
+            <thead>
+              <tr>
+                <th>Revenue Stream &amp; Assumptions</th>
+                <th style="text-align:right">Year 1</th>
+                <th style="text-align:right">Year 2</th>
+                <th style="text-align:right">Year 3</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-revenue-metrics">
+              <!-- Rendered by JS from REVENUE_STREAMS -->
+            </tbody>
+          </table>
+          <button class="add-row-btn" onclick="addRevenueStream()">+ Add Revenue Stream</button>
+        </div>
+
+        <div class="assumptions" style="margin-top:24px;">
+          <h4>Revenue Narratives for Investors <span style="font-size:10px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0;">(click any narrative to edit)</span></h4>
+          <div class="assumption-item">
+            <textarea class="narrative-textarea">Enterprise Engine: District ($20/student) and school ($30/student) licensing combined represent 70%+ of Year 3 revenue. 3-year district contracts provide high stability and low churn. School licensing in Year 1 seeds the pipeline — 10 pilot schools are the primary conversion path to 3 district deals by Year 2. Long procurement cycles (6–18 months) are mitigated by early District Sales Director (Mo 5) and Pilot Coordinator (Mo 6) hires.</textarea>
+          </div>
+          <div class="assumption-item">
+            <textarea class="narrative-textarea">Consumer Flywheel: DTC subscriptions ($12/mo blended) are powered by school pilot spillover — students encounter Propel in class and parents subscribe at home. Prodigy Education benchmarks 5–10% freemium-to-paid conversion; 5% applied to 100K Y2 trial users yields $960K. Character social channels (Jadyn, Billy Mac, Aaliyah) further amplify this funnel by reducing DTC customer acquisition cost as audiences grow across Instagram, TikTok, and YouTube.</textarea>
+          </div>
+          <div class="assumption-item">
+            <textarea class="narrative-textarea">Platform Differentiator: Sponsored rewards + in-game commerce is Propel's strongest competitive moat — no major ed-tech competitor (Prodigy, Khan Academy, Duolingo Kids) has a native branded reward economy. Combined with AI Premium Features ($5–$10/student/mo), these non-subscription streams reach $5M in Year 3, demonstrating a multi-engine monetization model that goes well beyond pure SaaS subscription revenue.</textarea>
+          </div>
+          <div class="assumption-item">
+            <textarea class="narrative-textarea">IP & Data Long Game: AI/Data Licensing (the PROPEL Cognitive Score) and Content/IP platform deals are the highest-margin streams and the most defensible long-term moat. Aggregate learning analytics licensed to districts and research agencies carry near-zero marginal cost. Character IP compounds in value as the user base scales — PBS/Netflix show deals drive app downloads, validate the brand, and build the audience required for a high-multiple exit narrative at Series B and beyond.</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== SUMMARY ====== -->
+      <div id="section-summary" class="tab-content active">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(18,168,122,.15)">💡</div>
+          <div class="section-title">Full Platform — Budget Summary</div>
+        </div>
+        <div class="summary-grid" id="summary-cards"></div>
+
+        <div class="section-header" style="margin-top:24px;">
+          <div class="section-icon" style="background:rgba(30,111,196,.15)">⚙</div>
+          <div class="section-title">Adjustments</div>
+        </div>
+        <div class="contingency-row">
+          <label>Contingency / Buffer</label>
+          <input type="range" min="5" max="30" value="20" step="1" id="contingency-slider" oninput="setContingency(this.value)">
+          <div class="pct" id="contingency-pct">20%</div>
+        </div>
+        <div class="grand-total">
+          <div>
+            <div class="gt-label">Grand Total (Year 1, incl. contingency)</div>
+            <div style="font-size:11px; color:var(--text3); margin-top:4px;" id="grand-total-sub">—</div>
+          </div>
+          <div class="gt-val" id="grand-total">$0</div>
+        </div>
+
+        <div class="assumptions" style="margin-top:24px;">
+          <h4>Key Assumptions & Methodology</h4>
+          <div class="assumption-item">All salaries are US market rates (remote-first, not SF/NYC premium). Benefits loaded at 22% of salary (health insurance, FICA, 401k match) — typical for a US startup at this stage.</div>
+          <div class="assumption-item"><strong style="color:var(--text2);">Year 1 curriculum scope is K–2 (3 grades, default).</strong> This yields 60 units, 300 missions, and 300 original songs — achievable with the current music production team in the build window. K–3 through K–5 content is produced in Year 2 under the same team structure. Change grades to 6 in Curriculum Scope to model full K–5 cost and see how timeline adjusts.</div>
+          <div class="assumption-item">2.5D version: stylized 2D characters + parallax backgrounds + After Effects/Spine animation pipeline. <strong style="color:var(--text2);">Build window: ~14 months at K–2 scope.</strong> This is the Year 1 product — the primary fundraising ask.</div>
+          <div class="assumption-item"><strong style="color:var(--text2);">3D version is a Year 2+ development track, not a Year 1 parallel option.</strong> Fully immersive Three.js/WebGL, rigged 3D characters, open-world navigation, NPC AI, spatial audio, cloud render farm. Revised build window: <strong style="color:var(--coral-lt);">24+ months</strong> (original 16-month estimate was undercooked). 3D is the Series A/B narrative after 2.5D proves product-market fit. The 3D estimate is materially higher due to 4 compounding factors: (1) 3D game engine engineers are a separate hire tier from web engineers; (2) Chromebook GPU optimization is a full-time discipline; (3) 3D art pipeline adds 7+ net-new roles; (4) render farm peaks at $12K/mo during production sprint.</div>
+          <div class="assumption-item"><strong style="color:var(--text2);">Music production corrected:</strong> 3 Composer/Songwriter II roles (increased from 2) produce ~150 songs/year from staff. A Music Production Coordinator-managed outsourced songwriter pool covers the remaining ~150 songs at the same $1,500/song all-in rate. Year 1 music cost at K–2 scope: ~$450K for session recording (300 songs × $1,500). K–5 full scope adds ~$450K in Year 2.</div>
+          <div class="assumption-item"><strong style="color:var(--text2);">COO and CMO are fractional (0.5 FTE each) in Year 1</strong>, saving ~$168K vs. full-time. Full hires triggered at 50+ team members or $3M ARR. This is deliberate capital efficiency, not a capability gap.</div>
+          <div class="assumption-item"><strong style="color:var(--text2);">Contingency set to 20%</strong> (increased from 15%). Ed-tech content production, school procurement, and FERPA compliance work all carry known schedule variance. 15% is appropriate for mature software projects; 20% is appropriate here.</div>
+          <div class="assumption-item"><strong style="color:var(--text2);">Recommended raise: 18 months of runway, not 14.</strong> The 14-month build ends exactly as pilot evaluations complete — a dangerous moment to be running out of cash. See Risks &amp; Runway tab for full analysis.</div>
+          <div class="assumption-item">AI/LLM costs modeled at pilot scale (~5K students). Scale tiers in AI/ML Engineer role note. 2.5D: hint ladder only. 3D: hint ladder + NPC dialogue + world event AI (~3× token volume).</div>
+          <div class="assumption-item">World &amp; Collectibles layer is included. Covers the world map, zone unlocks, item/badge collection (300 items at K–2 scope), weekly goal engine, and inventory system. Propel Arena (real-time multiplayer) is NOT included — separate product, separate funding model.</div>
+          <div class="assumption-item">Year 1 is build-only. No revenue modeled. This is a gross burn estimate for fundraising purposes.</div>
+        </div>
+      </div>
+
+      <!-- ====== CURRICULUM ====== -->
+      <div id="section-curriculum" class="tab-content">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(30,111,196,.15)">📚</div>
+          <div class="section-title">Curriculum Scope (Common Core Baseline)</div>
+          <div class="section-sub">Edit any value — totals update automatically</div>
+        </div>
+        <div class="config-grid">
+          <div class="config-card">
+            <div class="config-label">Grades Covered</div>
+            <div class="config-value"><input class="num-input" style="width:60px;font-size:20px;font-weight:700;background:transparent;border:none;border-bottom:1px solid var(--border2);border-radius:0;" id="cc-grades" value="3" oninput="updateCurriculum()"> K–2</div>
+            <div class="config-sub">Year 1 MVP: K–2 (change to 6 for full K–5 vision)</div>
+          </div>
+          <div class="config-card">
+            <div class="config-label">Subjects</div>
+            <div class="config-value"><input class="num-input" style="width:60px;font-size:20px;font-weight:700;background:transparent;border:none;border-bottom:1px solid var(--border2);border-radius:0;" id="cc-subjects" value="3" oninput="updateCurriculum()">   </div>
+            <div class="config-sub">Math + ELA + Music</div>
+          </div>
+          <div class="config-card">
+            <div class="config-label">Units / Grade / Subject</div>
+            <div class="config-value"><input class="num-input" style="width:60px;font-size:20px;font-weight:700;background:transparent;border:none;border-bottom:1px solid var(--border2);border-radius:0;" id="cc-units" value="10" oninput="updateCurriculum()">   </div>
+            <div class="config-sub">~10 units per grade/subject in CC</div>
+          </div>
+          <div class="config-card">
+            <div class="config-label">Lessons / Unit</div>
+            <div class="config-value"><input class="num-input" style="width:60px;font-size:20px;font-weight:700;background:transparent;border:none;border-bottom:1px solid var(--border2);border-radius:0;" id="cc-lessons" value="5" oninput="updateCurriculum()">   </div>
+            <div class="config-sub">Average per CC unit</div>
+          </div>
+          <div class="config-card">
+            <div class="config-label">Total Units</div>
+            <div class="config-value" id="cc-total-units">120</div>
+            <div class="config-sub">Grades × Subjects × Units</div>
+          </div>
+          <div class="config-card">
+            <div class="config-label">Total Lessons (Missions)</div>
+            <div class="config-value" id="cc-total-lessons">600</div>
+            <div class="config-sub">Total individual missions</div>
+          </div>
+          <div class="config-card">
+            <div class="config-label">Cinematics (1/unit)</div>
+            <div class="config-value" id="cc-cinematics">120</div>
+            <div class="config-sub">Animated intro/outro sequences</div>
+          </div>
+          <div class="config-card">
+            <div class="config-label">Original Songs (1/lesson)</div>
+            <div class="config-value" id="cc-songs">600</div>
+            <div class="config-sub">Work-for-hire music tracks</div>
+          </div>
+          <div class="config-card">
+            <div class="config-label">Unit Scores (1/unit)</div>
+            <div class="config-value" id="cc-scores">120</div>
+            <div class="config-sub">Background/ambient music per unit</div>
+          </div>
+        </div>
+        <div class="assumptions" style="margin-top:4px;">
+          <h4>Curriculum Scope Justification <span style="font-size:10px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0;">(click any item to edit)</span></h4>
+          <div class="assumption-item"><textarea class="narrative-textarea" oninput="autoResize(this)">Common Core Math K–5 has approximately 9–12 major domains/clusters per grade. We use 10 units as a round average. Each unit has ~4–6 lessons; 5 is the midpoint.</textarea></div>
+          <div class="assumption-item"><textarea class="narrative-textarea" oninput="autoResize(this)">Common Core ELA K–5 is similarly structured with Reading Literature, Reading Informational, Writing, Language, and Speaking strands — consolidated into ~10 thematic units.</textarea></div>
+          <div class="assumption-item"><textarea class="narrative-textarea" oninput="autoResize(this)">One cinematic per unit gives narrative continuity and provides the emotional hook at the start of each "mission chain." These are 30–60 second animated sequences.</textarea></div>
+          <div class="assumption-item"><textarea class="narrative-textarea" oninput="autoResize(this)">One original song per lesson is a core Propel differentiator — music as a cognitive lens (Music Lens: Identification). Songs are work-for-hire tracks budgeted separately from staff.</textarea></div>
+        </div>
+      </div>
+
+      <!-- ====== PERSONNEL PLAN ====== -->
+      <div id="section-personnel" class="tab-content">
+
+        <!-- ── Leadership ── -->
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(124,92,219,.15)">👥</div>
+          <div class="section-title">Leadership &amp; Executive Team</div>
+          <div class="section-total" id="section-total-leadership">—</div>
+        </div>
+        <table class="role-table personnel-table">
+          <thead><tr>
+            <th>Role &amp; Description</th><th style="width:70px;">Dept</th><th style="width:58px;"># FTE</th>
+            <th style="width:125px;">Actual Paid Salary (USD)</th><th style="width:105px;">Start/Stop Mo</th><th style="width:100px;">Total Year 1</th>
+          </tr></thead>
+          <tbody id="tbl-leadership"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addRole('leadership')">+ Add Role to Leadership</button>
+
+        <!-- ── Engineering & Product ── -->
+        <div class="section-header" style="margin-top:32px;">
+          <div class="section-icon" style="background:rgba(30,111,196,.15)">💻</div>
+          <div class="section-title">Engineering &amp; Product</div>
+          <div class="section-total" id="section-total-engineering">—</div>
+        </div>
+        <table class="role-table personnel-table">
+          <thead><tr>
+            <th>Role &amp; Description</th><th style="width:70px;">Dept</th><th style="width:58px;"># FTE</th>
+            <th style="width:125px;">Actual Paid Salary (USD)</th><th style="width:105px;">Start/Stop Mo</th><th style="width:100px;">Total Year 1</th>
+          </tr></thead>
+          <tbody id="tbl-engineering"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addRole('engineering')">+ Add Role to Engineering &amp; Product</button>
+
+        <!-- ── Content, Creative & Production ── -->
+        <div class="section-header" style="margin-top:32px;">
+          <div class="section-icon" style="background:rgba(232,156,30,.15)">🎨</div>
+          <div class="section-title">Content, Creative &amp; Production</div>
+          <div class="section-total" id="section-total-content">—</div>
+        </div>
+        <table class="role-table personnel-table">
+          <thead><tr>
+            <th>Role &amp; Description</th><th style="width:70px;">Dept</th><th style="width:58px;"># FTE</th>
+            <th style="width:125px;">Actual Paid Salary (USD)</th><th style="width:105px;">Start/Stop Mo</th><th style="width:100px;">Total Year 1</th>
+          </tr></thead>
+          <tbody id="tbl-content"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addRole('content')">+ Add Role to Content &amp; Creative</button>
+
+        <!-- ── Operations, Growth & GTM ── -->
+        <div class="section-header" style="margin-top:32px;">
+          <div class="section-icon" style="background:rgba(216,79,48,.15)">📣</div>
+          <div class="section-title">Operations, Growth &amp; Go-to-Market</div>
+          <div class="section-total" id="section-total-ops">—</div>
+        </div>
+        <table class="role-table personnel-table">
+          <thead><tr>
+            <th>Role &amp; Description</th><th style="width:70px;">Dept</th><th style="width:58px;"># FTE</th>
+            <th style="width:125px;">Actual Paid Salary (USD)</th><th style="width:105px;">Start/Stop Mo</th><th style="width:100px;">Total Year 1</th>
+          </tr></thead>
+          <tbody id="tbl-ops"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addRole('ops')">+ Add Role to Operations &amp; GTM</button>
+
+        <!-- ── World & Collectibles ── -->
+        <div class="section-header" style="margin-top:32px;">
+          <div class="section-icon" style="background:rgba(124,92,219,.15)">🗺</div>
+          <div class="section-title">World Navigation &amp; Collectibles Layer</div>
+          <div class="section-total" id="section-total-world">—</div>
+        </div>
+        <table class="role-table personnel-table">
+          <thead><tr>
+            <th>Role &amp; Description</th><th style="width:70px;">Dept</th><th style="width:58px;"># FTE</th>
+            <th style="width:125px;">Actual Paid Salary (USD)</th><th style="width:105px;">Start/Stop Mo</th><th style="width:100px;">Total Year 1</th>
+          </tr></thead>
+          <tbody id="tbl-world"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addRole('world')">+ Add Role to World &amp; Collectibles</button>
+      </div>
+
+      <!-- ====== TECH COSTS ====== -->
+      <div id="section-tech" class="tab-content">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(18,168,122,.15)">☁</div>
+          <div class="section-title">Infrastructure, Tech & Non-Human Costs</div>
+          <div class="section-total" id="section-total-tech">—</div>
+        </div>
+        <div id="tech-comparison-panel" style="margin-bottom:20px;"></div>
+        <table class="role-table tech-table">
+          <thead><tr>
+            <th style="width:80px;">Category</th>
+            <th style="width:160px;">Service</th>
+            <th style="width:125px;">Unit Costs (Y1 / Y2 / Y3)</th>
+            <th style="width:130px;">Active Months (Start - Stop)</th>
+            <th style="width:90px;">Qty / Unit</th>
+            <th style="width:110px;">First Year Costs</th>
+            <th>Justification</th>
+          </tr></thead>
+          <tbody id="tbl-tech"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addUserTechRow()">+ Add Infrastructure Line Item</button>
+      </div>
+
+      <!-- ====== PHASES ====== -->
+      <div id="section-phases" class="tab-content">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(232,156,30,.15)">🗓</div>
+          <div class="section-title">Build Phases — Dynamic Roadmap</div>
+          <div style="margin-left:auto; font-size:12px; color:var(--text3);" id="timeline-summary-label">—</div>
+        </div>
+
+        <!-- TIMELINE DRIVER INDICATORS -->
+        <div id="timeline-drivers" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-bottom:20px;"></div>
+
+        <div class="phase-grid" id="phase-grid"></div>
+      </div>
+
+      <!-- ====== RISKS & RUNWAY ====== -->
+      <div id="section-risks" class="tab-content">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(216,79,48,.15)">⚠</div>
+          <div class="section-title">Risks, Mitigations &amp; Runway Analysis</div>
+        </div>
+
+        <div class="section-header" style="margin-top:0; margin-bottom:14px;">
+          <div class="section-icon" style="background:rgba(18,168,122,.15)">💰</div>
+          <div class="section-title">Runway Scenarios</div>
+        </div>
+        <div id="runway-cards" class="runway-grid"></div>
+        <div id="runway-note" style="margin-bottom:28px;"></div>
+
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(216,79,48,.15)">🔍</div>
+          <div class="section-title">Risk Register</div>
+          <div class="section-sub">All mitigations are built into the model assumptions</div>
+        </div>
+        <div id="risk-list"></div>
+      </div>
+
+    </div><!-- end content -->
+  </div><!-- end main -->
+</div><!-- end app -->
+
+<!-- VERSIONS MODAL -->
+<div class="modal-overlay" id="versions-modal" onclick="if(event.target===this)closeVersionsPanel()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Saved Versions &amp; History</h3>
+      <button class="modal-close" onclick="closeVersionsPanel()">✕</button>
+    </div>
+    <div class="modal-body" id="versions-list">
+      <div style="color:var(--text3);font-size:12px;">No versions saved yet.</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="propel_data.js"></script>
+<script src="propel_app.js"></script>
+</body>
+</html>
