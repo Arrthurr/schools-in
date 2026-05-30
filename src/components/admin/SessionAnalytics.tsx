@@ -37,6 +37,9 @@ import {
   formatDuration,
   getSessionStatusConfig,
   calculateSessionDuration,
+  getSessionLocationId,
+  getSessionCheckInTimestamp,
+  getSessionCheckOutTimestamp,
 } from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
 import { getCollection, COLLECTIONS } from "@/lib/firebase/firestore";
@@ -136,9 +139,10 @@ export function SessionAnalytics() {
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    return sessions.filter(
-      (session) => session.checkInTime.toDate() >= startDate
-    );
+    return sessions.filter((session) => {
+      const cin = getSessionCheckInTimestamp(session);
+      return cin ? cin.toDate() >= startDate : false;
+    });
   }, [sessions, filters.dateRange]);
 
   // Get school name by ID
@@ -158,14 +162,18 @@ export function SessionAnalytics() {
     const dateMap = new Map<string, { sessions: number; duration: number }>();
 
     filteredSessions.forEach((session) => {
-      const date = session.checkInTime.toDate().toISOString().split("T")[0];
+      const cin = getSessionCheckInTimestamp(session);
+      if (!cin) return;
+      const date = cin.toDate().toISOString().split("T")[0];
       const existing = dateMap.get(date) || { sessions: 0, duration: 0 };
 
       existing.sessions += 1;
-      if (session.checkOutTime) {
+      const cout = getSessionCheckOutTimestamp(session);
+      if (cout) {
         existing.duration += calculateSessionDuration(
-          session.checkInTime,
-          session.checkOutTime
+          cin,
+          cout,
+          session.durationMinutes
         );
       }
 
@@ -195,10 +203,13 @@ export function SessionAnalytics() {
         duration: 0,
       };
       existing.sessions += 1;
-      if (session.checkOutTime) {
+      const cout = getSessionCheckOutTimestamp(session);
+      const cin = getSessionCheckInTimestamp(session);
+      if (cin && cout) {
         existing.duration += calculateSessionDuration(
-          session.checkInTime,
-          session.checkOutTime
+          cin,
+          cout,
+          session.durationMinutes
         );
       }
       providerMap.set(session.userId, existing);
@@ -226,20 +237,25 @@ export function SessionAnalytics() {
     >();
 
     filteredSessions.forEach((session) => {
-      const existing = schoolMap.get(session.schoolId) || {
+      const locationId = getSessionLocationId(session);
+      if (!locationId) return;
+      const existing = schoolMap.get(locationId) || {
         sessions: 0,
         providers: new Set<string>(),
         duration: 0,
       };
       existing.sessions += 1;
       existing.providers.add(session.userId);
-      if (session.checkOutTime) {
+      const cout = getSessionCheckOutTimestamp(session);
+      const cin = getSessionCheckInTimestamp(session);
+      if (cin && cout) {
         existing.duration += calculateSessionDuration(
-          session.checkInTime,
-          session.checkOutTime
+          cin,
+          cout,
+          session.durationMinutes
         );
       }
-      schoolMap.set(session.schoolId, existing);
+      schoolMap.set(locationId, existing);
     });
 
     return Array.from(schoolMap.entries())
@@ -278,13 +294,17 @@ export function SessionAnalytics() {
     const hourMap = new Map<number, { sessions: number; duration: number }>();
 
     filteredSessions.forEach((session) => {
-      const hour = session.checkInTime.toDate().getHours();
+      const cin = getSessionCheckInTimestamp(session);
+      if (!cin) return;
+      const hour = cin.toDate().getHours();
       const existing = hourMap.get(hour) || { sessions: 0, duration: 0 };
       existing.sessions += 1;
-      if (session.checkOutTime) {
+      const cout = getSessionCheckOutTimestamp(session);
+      if (cin && cout) {
         existing.duration += calculateSessionDuration(
-          session.checkInTime,
-          session.checkOutTime
+          cin,
+          cout,
+          session.durationMinutes
         );
       }
       hourMap.set(hour, existing);
@@ -600,7 +620,7 @@ export function SessionAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {new Set(filteredSessions.map((s) => s.schoolId)).size}
+              {new Set(filteredSessions.map((s) => getSessionLocationId(s)).filter(Boolean)).size}
             </div>
             <p className="text-xs text-muted-foreground">Unique schools</p>
           </CardContent>
@@ -617,17 +637,30 @@ export function SessionAnalytics() {
                 ? formatDuration(
                     Math.round(
                       filteredSessions
-                        .filter((s) => s.checkOutTime)
-                        .reduce(
-                          (sum, s) =>
+                        .filter((s) => {
+                          const cout = getSessionCheckOutTimestamp(s);
+                          const cin = getSessionCheckInTimestamp(s);
+                          return cin && cout;
+                        })
+                        .reduce((sum, s) => {
+                          const cout = getSessionCheckOutTimestamp(s);
+                          const cin = getSessionCheckInTimestamp(s);
+                          return (
                             sum +
-                            calculateSessionDuration(
-                              s.checkInTime,
-                              s.checkOutTime!
-                            ),
-                          0
-                        ) /
-                        filteredSessions.filter((s) => s.checkOutTime).length
+                            (cin && cout
+                              ? calculateSessionDuration(
+                                  cin,
+                                  cout,
+                                  s.durationMinutes
+                                )
+                              : 0)
+                          );
+                        }, 0) /
+                        filteredSessions.filter((s) => {
+                          const cout = getSessionCheckOutTimestamp(s);
+                          const cin = getSessionCheckInTimestamp(s);
+                          return cin && cout;
+                        }).length
                     )
                   )
                 : "0m"}

@@ -29,6 +29,9 @@ import {
 import {
   formatDuration,
   calculateSessionDuration,
+  getSessionLocationId,
+  getSessionCheckInTimestamp,
+  getSessionCheckOutTimestamp,
 } from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
 import { getCollection, COLLECTIONS } from "@/lib/firebase/firestore";
@@ -93,6 +96,7 @@ interface AttendanceSummaryData {
 export function AttendanceSummary() {
   const [_sessions, setSessions] = useState<SessionData[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [providers, setProviders] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,8 +127,10 @@ export function AttendanceSummary() {
         ]);
 
         setSchools(schoolsData as School[]);
+        const users = usersData as User[];
+        setAllUsers(users);
         setProviders(
-          (usersData as User[]).filter((user: User) => user.role === "provider")
+          users.filter((user: User) => user.role === "provider")
         );
       } catch (err) {
         console.error("Error loading initial data:", err);
@@ -194,6 +200,9 @@ export function AttendanceSummary() {
 
   // Load attendance data
   const loadAttendanceData = useCallback(async () => {
+    // Wait until initial schools and users are loaded
+    if (allUsers.length === 0 && schools.length === 0) return;
+
     try {
       setLoading(true);
       setError(null);
@@ -206,7 +215,9 @@ export function AttendanceSummary() {
       const dateRange = getDateRange(filters.dateRange);
       if (dateRange.startDate && dateRange.endDate) {
         filteredSessions = filteredSessions.filter((session) => {
-          const sessionDate = new Date(session.checkInTime.toDate());
+          const ts = getSessionCheckInTimestamp(session);
+          if (!ts) return false;
+          const sessionDate = ts.toDate();
           return (
             sessionDate >= dateRange.startDate! &&
             sessionDate <= dateRange.endDate!
@@ -224,20 +235,21 @@ export function AttendanceSummary() {
       // Apply school filtering
       if (filters.schoolId) {
         filteredSessions = filteredSessions.filter(
-          (session) => session.schoolId === filters.schoolId
+          (session) => getSessionLocationId(session) === filters.schoolId
         );
       }
 
       // Calculate provider attendance summaries
-      const providerSummaries = calculateProviderAttendance(filteredSessions);
+      const providerSummaries = calculateProviderAttendance(filteredSessions, allUsers);
 
       // Calculate school attendance summaries
-      const schoolSummaries = calculateSchoolAttendance(filteredSessions);
+      const schoolSummaries = calculateSchoolAttendance(filteredSessions, schools, allUsers);
 
       // Calculate overall statistics
       const overallStats = calculateOverallStats(
         providerSummaries,
-        schoolSummaries
+        schoolSummaries,
+        allUsers
       );
 
       setAttendanceData({
@@ -253,117 +265,156 @@ export function AttendanceSummary() {
     } finally {
       setLoading(false);
     }
-  }, [filters, getDateRange]);
+  }, [filters, getDateRange, allUsers, schools]);
 
   // Calculate provider attendance data
   const calculateProviderAttendance = (
-    sessions: SessionData[]
+    sessions: SessionData[],
+    allUsers: User[]
   ): ProviderAttendance[] => {
-    const providerMap = new Map<string, ProviderAttendance>();
+    // Internal accumulating types — Sets stored as Sets, not as `any`
+    interface ProviderAccum {
+      providerId: string;
+      providerName: string;
+      totalDays: Set<string>;
+      totalSessions: number;
+      totalDuration: number;
+      schoolsVisited: Set<string>;
+      lastSession?: Date;
+    }
+
+    const providerMap = new Map<string, ProviderAccum>();
 
     sessions.forEach((session) => {
       const providerId = session.userId;
-      const sessionDate = new Date(session.checkInTime.toDate()).toDateString();
+      const cin = getSessionCheckInTimestamp(session);
+      if (!cin) return;
+
+      const sessionDate = cin.toDate().toDateString();
 
       if (!providerMap.has(providerId)) {
         providerMap.set(providerId, {
           providerId,
-          providerName: getProviderName(providerId),
+          providerName: getUserDisplay(providerId, allUsers),
           totalDays: new Set<string>(),
           totalSessions: 0,
           totalDuration: 0,
-          averageSessionDuration: 0,
           schoolsVisited: new Set<string>(),
-          attendanceRate: 0,
           lastSession: undefined,
-        } as any);
+        });
       }
 
       const provider = providerMap.get(providerId)!;
-      (provider.totalDays as any).add(sessionDate);
+      provider.totalDays.add(sessionDate);
       provider.totalSessions++;
 
-      if (session.checkOutTime) {
-        const duration = calculateSessionDuration(
-          session.checkInTime,
-          session.checkOutTime
-        );
-        provider.totalDuration += duration;
+      const cout = getSessionCheckOutTimestamp(session);
+      const duration = calculateSessionDuration(
+        cin,
+        cout ?? undefined,
+        session.durationMinutes
+      );
+      provider.totalDuration += duration;
+
+      const locationId = getSessionLocationId(session);
+      if (locationId) {
+        provider.schoolsVisited.add(locationId);
       }
 
-      (provider.schoolsVisited as any).add(session.schoolId);
-
-      const sessionDateTime = session.checkInTime.toDate();
+      const sessionDateTime = cin.toDate();
       if (!provider.lastSession || sessionDateTime > provider.lastSession) {
         provider.lastSession = sessionDateTime;
       }
     });
 
-    // Convert sets to arrays and calculate averages
+    // Convert sets to values and calculate derived metrics
     return Array.from(providerMap.values()).map((provider) => ({
-      ...provider,
-      totalDays: (provider.totalDays as any).size,
-      schoolsVisited: Array.from(provider.schoolsVisited as any),
+      providerId: provider.providerId,
+      providerName: provider.providerName,
+      totalDays: provider.totalDays.size,
+      totalSessions: provider.totalSessions,
+      totalDuration: provider.totalDuration,
       averageSessionDuration:
         provider.totalSessions > 0
           ? Math.round(provider.totalDuration / provider.totalSessions)
           : 0,
-      attendanceRate: calculateAttendanceRate(
-        provider.totalDays as any,
-        filters
-      ),
+      schoolsVisited: Array.from(provider.schoolsVisited),
+      attendanceRate: calculateAttendanceRate(provider.totalDays, filters),
+      lastSession: provider.lastSession,
     }));
   };
 
   // Calculate school attendance data
   const calculateSchoolAttendance = (
-    sessions: SessionData[]
+    sessions: SessionData[],
+    schools: School[],
+    allUsers: User[]
   ): SchoolAttendance[] => {
-    const schoolMap = new Map<string, SchoolAttendance>();
+    const providerUsers = allUsers.filter((u) => u.role === "provider");
+
+    interface SchoolAccum {
+      schoolId: string;
+      schoolName: string;
+      totalProviders: Set<string>;
+      totalSessions: number;
+      totalDuration: number;
+      providersVisited: Set<string>;
+    }
+
+    const schoolMap = new Map<string, SchoolAccum>();
 
     sessions.forEach((session) => {
-      const schoolId = session.schoolId;
+      const locationId = getSessionLocationId(session);
+      const schoolId = locationId || "__unknown__";
 
       if (!schoolMap.has(schoolId)) {
         schoolMap.set(schoolId, {
           schoolId,
-          schoolName: getSchoolName(schoolId),
+          schoolName: getSchoolName(schoolId, schools),
           totalProviders: new Set<string>(),
           totalSessions: 0,
           totalDuration: 0,
-          averageSessionDuration: 0,
           providersVisited: new Set<string>(),
-          coverageRate: 0,
-        } as any);
+        });
       }
 
       const school = schoolMap.get(schoolId)!;
-      (school.totalProviders as any).add(session.userId);
-      (school.providersVisited as any).add(session.userId);
       school.totalSessions++;
 
-      if (session.checkOutTime) {
+      const cin = getSessionCheckInTimestamp(session);
+      const cout = getSessionCheckOutTimestamp(session);
+      if (cin) {
         const duration = calculateSessionDuration(
-          session.checkInTime,
-          session.checkOutTime
+          cin,
+          cout ?? undefined,
+          session.durationMinutes
         );
         school.totalDuration += duration;
       }
+
+      // Provider-specific metrics: exclude admin users
+      const user = allUsers.find((u) => u.id === session.userId);
+      if (user?.role === "provider") {
+        school.totalProviders.add(session.userId);
+        school.providersVisited.add(session.userId);
+      }
     });
 
-    // Convert sets to arrays and calculate averages
     return Array.from(schoolMap.values()).map((school) => ({
-      ...school,
-      totalProviders: (school.totalProviders as any).size,
-      providersVisited: Array.from(school.providersVisited as any),
+      schoolId: school.schoolId,
+      schoolName: school.schoolName,
+      totalProviders: school.totalProviders.size,
+      totalSessions: school.totalSessions,
+      totalDuration: school.totalDuration,
       averageSessionDuration:
         school.totalSessions > 0
           ? Math.round(school.totalDuration / school.totalSessions)
           : 0,
+      providersVisited: Array.from(school.providersVisited),
       coverageRate:
-        providers.length > 0
+        providerUsers.length > 0
           ? Math.round(
-              ((school.totalProviders as any).size / providers.length) * 100
+              (school.totalProviders.size / providerUsers.length) * 100
             )
           : 0,
     }));
@@ -372,25 +423,31 @@ export function AttendanceSummary() {
   // Calculate overall statistics
   const calculateOverallStats = (
     providerSummaries: ProviderAttendance[],
-    schoolSummaries: SchoolAttendance[]
+    schoolSummaries: SchoolAttendance[],
+    allUsers: User[]
   ) => {
-    const totalProviders = providerSummaries.length;
+    const providerOnlySummaries = providerSummaries.filter((ps) => {
+      const user = allUsers.find((u) => u.id === ps.providerId);
+      return user?.role === "provider";
+    });
+
+    const totalProviders = providerOnlySummaries.length;
     const totalSchools = schoolSummaries.length;
     const averageAttendanceRate =
       totalProviders > 0
         ? Math.round(
-            providerSummaries.reduce((sum, p) => sum + p.attendanceRate, 0) /
+            providerOnlySummaries.reduce((sum, p) => sum + p.attendanceRate, 0) /
               totalProviders
           )
         : 0;
-    const totalSessionDays = providerSummaries.reduce(
+    const totalSessionDays = providerOnlySummaries.reduce(
       (sum, p) => sum + p.totalDays,
       0
     );
 
     const mostActiveProvider =
-      providerSummaries.length > 0
-        ? providerSummaries.reduce((most, current) =>
+      providerOnlySummaries.length > 0
+        ? providerOnlySummaries.reduce((most, current) =>
             current.totalSessions > most.totalSessions ? current : most
           ).providerName
         : "";
@@ -452,15 +509,19 @@ export function AttendanceSummary() {
   }, [loadAttendanceData]);
 
   // Get school name by ID
-  const getSchoolName = (schoolId: string) => {
-    const school = schools.find((s) => s.id === schoolId);
+  const getSchoolName = (schoolId: string, schoolsList: School[]) => {
+    const school = schoolsList.find((s) => s.id === schoolId);
     return school?.name || "Unknown School";
   };
 
-  // Get provider name by ID
-  const getProviderName = (userId: string) => {
-    const provider = providers.find((p) => p.id === userId);
-    return provider?.displayName || provider?.email || "Unknown Provider";
+  // Get display label for any user (provider or admin)
+  const getUserDisplay = (userId: string, users: User[]) => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return "Unknown Provider";
+    if (user.role === "admin") {
+      return `Admin (${user.displayName || user.email})`;
+    }
+    return user.displayName || user.email;
   };
 
   // Handle filter changes
@@ -674,8 +735,27 @@ export function AttendanceSummary() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserCheck className="h-5 w-5" />
-            Provider Attendance Summary (
-            {attendanceData.providerSummaries.length} providers)
+            {(() => {
+              const adminSummaries = attendanceData.providerSummaries.filter(
+                (ps) => {
+                  const user = allUsers.find((u) => u.id === ps.providerId);
+                  return user?.role === "admin";
+                }
+              );
+              const providerSummariesOnly =
+                attendanceData.providerSummaries.length -
+                adminSummaries.length;
+              return (
+                <>
+                  Provider Attendance Summary ({providerSummariesOnly}{" "}
+                  providers
+                  {adminSummaries.length > 0 && (
+                    <> + {adminSummaries.length} admin user{adminSummaries.length !== 1 ? "s" : ""}</>
+                  )}
+                  )
+                </>
+              );
+            })()}
           </CardTitle>
         </CardHeader>
         <CardContent>

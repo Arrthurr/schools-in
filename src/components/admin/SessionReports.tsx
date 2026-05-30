@@ -46,6 +46,7 @@ import {
   calculateSessionDuration,
   getSessionCheckInTimestamp,
   getSessionCheckOutTimestamp,
+  getSessionLocationId,
 } from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
 import { getCollection, COLLECTIONS } from "@/lib/firebase/firestore";
@@ -102,13 +103,11 @@ interface ReportSummary {
   completedSessionsCount: number;
 }
 
-const getSessionLocationId = (session: SessionData) =>
-  session.locationId || session.schoolId;
-
 export function SessionReports() {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [providers, setProviders] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ReportFilters>({
@@ -184,9 +183,11 @@ export function SessionReports() {
           getCollection(COLLECTIONS.USERS),
         ]);
 
+        const all = usersData as User[];
+        setAllUsers(all);
         setSchools(schoolsData as School[]);
         setProviders(
-          (usersData as User[]).filter((user: User) => user.role === "provider")
+          all.filter((user: User) => user.role === "provider")
         );
       } catch (err) {
         console.error("Error loading initial data:", err);
@@ -353,8 +354,12 @@ export function SessionReports() {
 
   // Get provider name by ID
   const getProviderName = (userId: string) => {
-    const provider = providers.find((p) => p.id === userId);
-    return provider?.displayName || provider?.email || "Unknown Provider";
+    const user = allUsers.find((u) => u.id === userId);
+    if (!user) return "Unknown Provider";
+    if (user.role === "admin") {
+      return `Admin (${user.displayName || user.email})`;
+    }
+    return user.displayName || user.email;
   };
 
   // Handle filter changes
@@ -399,7 +404,7 @@ export function SessionReports() {
       return [
       session.id || "N/A",
       getProviderName(session.userId),
-      getSchoolName(getSessionLocationId(session)),
+      getSchoolName(getSessionLocationId(session) || ""),
       cin ? new Date(cin.toDate()).toLocaleString() : "N/A",
       cout ? new Date(cout.toDate()).toLocaleString() : "N/A",
       cin && (cout || (typeof session.durationMinutes === "number" && session.durationMinutes >= 0))
@@ -738,7 +743,7 @@ export function SessionReports() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <School className="h-4 w-4 text-muted-foreground" />
-                            {getSchoolName(getSessionLocationId(session))}
+                            {getSchoolName(getSessionLocationId(session) || "")}
                           </div>
                         </TableCell>
                         <TableCell>

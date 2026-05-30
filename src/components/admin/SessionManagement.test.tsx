@@ -28,6 +28,8 @@ jest.mock("../../lib/utils/session", () => ({
     }
   ),
   calculateSessionDuration: jest.fn(() => 60),
+  getSessionLocationId: jest.fn((session: any) => session.locationId ?? session.schoolId),
+  getSessionCheckInTimestamp: jest.fn((session: any) => session.checkInTime ?? session.startTime),
 }));
 
 jest.mock("../../lib/hooks/useCachedAuth", () => ({

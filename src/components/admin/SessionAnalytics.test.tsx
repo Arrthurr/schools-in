@@ -50,6 +50,9 @@ jest.mock("../../lib/utils/session", () => ({
   formatDuration: (minutes: number) => `${minutes}m`,
   getSessionStatusConfig: (status: string) => ({ label: status }),
   calculateSessionDuration: () => 60, // 1 hour
+  getSessionLocationId: (session: any) => session.locationId ?? session.schoolId,
+  getSessionCheckInTimestamp: (session: any) => session.checkInTime ?? session.startTime,
+  getSessionCheckOutTimestamp: (session: any) => session.checkOutTime ?? session.endTime ?? undefined,
 }));
 
 const mockSchools = [
