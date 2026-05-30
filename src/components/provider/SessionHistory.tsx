@@ -74,10 +74,11 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
     const uniqueSchools = new Map<string, string>();
 
     sessions.forEach((session) => {
-      if (!uniqueSchools.has(session.schoolId)) {
+      const schoolId = session.schoolId ?? "";
+      if (!uniqueSchools.has(schoolId)) {
         const schoolName =
-          schoolNames.get(session.schoolId) || "Unknown School";
-        uniqueSchools.set(session.schoolId, schoolName);
+          schoolNames.get(schoolId) || "Unknown School";
+        uniqueSchools.set(schoolId, schoolName);
       }
     });
 
@@ -97,16 +98,17 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
       const names = new Map<string, string>();
 
       for (const session of sessions) {
-        if (!names.has(session.schoolId)) {
+        const schoolId = session.schoolId ?? "";
+        if (!names.has(schoolId)) {
           try {
-            const school = await CachedSchoolService.getSchoolById(session.schoolId);
+            const school = await CachedSchoolService.getSchoolById(schoolId);
             if (school) {
-              names.set(session.schoolId, school.name);
+              names.set(schoolId, school.name);
             } else {
-              names.set(session.schoolId, "Unknown School");
+              names.set(schoolId, "Unknown School");
             }
           } catch (err) {
-            names.set(session.schoolId, "Unknown School");
+            names.set(schoolId, "Unknown School");
           }
         }
       }
@@ -354,7 +356,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   <TableCell className="font-medium">
                     <div className="flex items-center">
                       <MapPin className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {schoolNames.get(session.schoolId) || "Loading..."}
+                      {schoolNames.get(session.schoolId ?? "") || "Loading..."}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -445,7 +447,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
         session={selectedSession}
         schoolName={
           selectedSession
-            ? schoolNames.get(selectedSession.schoolId)
+            ? schoolNames.get(selectedSession.schoolId ?? "")
             : undefined
         }
         isOpen={isModalOpen}

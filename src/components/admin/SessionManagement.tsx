@@ -42,6 +42,9 @@ import {
   formatDuration,
   getSessionStatusConfig,
   calculateSessionDuration,
+  getSessionLocationId,
+  getSessionCheckInTimestamp,
+  getSessionCheckOutTimestamp,
 } from "@/lib/utils/session";
 import { SessionData } from "@/lib/utils/session";
 import { useCachedAuth } from "@/lib/hooks/useCachedAuth";
@@ -164,7 +167,8 @@ export function SessionManagement() {
   const openEditDialog = (session: SessionData) => {
     setSelectedSession(session);
 
-    const checkInDate = session.checkInTime.toDate();
+    const cin = getSessionCheckInTimestamp(session);
+    const checkInDate = cin ? cin.toDate() : new Date();
     const checkOutDate = session.checkOutTime?.toDate();
 
     setCorrectionForm({
@@ -192,10 +196,11 @@ export function SessionManagement() {
     setSelectedSession(session);
 
     const now = new Date();
+    const cin = getSessionCheckInTimestamp(session);
+    const cinDate = cin ? cin.toDate() : new Date();
     setCorrectionForm({
-      checkInDate: session.checkInTime.toDate().toISOString().split("T")[0],
-      checkInTime: session.checkInTime
-        .toDate()
+      checkInDate: cinDate.toISOString().split("T")[0],
+      checkInTime: cinDate
         .toTimeString()
         .split(" ")[0]
         .slice(0, 5),
@@ -319,9 +324,10 @@ export function SessionManagement() {
     const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
 
     return sessions.filter((session) => {
+      const cin = getSessionCheckInTimestamp(session);
       const isStuck =
         session.status === "active" &&
-        session.checkInTime.toDate() < twelveHoursAgo;
+        (cin ? cin.toDate() < twelveHoursAgo : false);
       const isPaused = session.status === "paused";
       const hasErrorNeedingReview =
         session.status === "error" && session.needsAdminReview !== false;
@@ -414,9 +420,12 @@ export function SessionManagement() {
                       <TableCell className="font-medium">
                         {getProviderName(session.userId)}
                       </TableCell>
-                      <TableCell>{getSchoolName(session.schoolId)}</TableCell>
+                      <TableCell>{getSchoolName(getSessionLocationId(session) || "")}</TableCell>
                       <TableCell>
-                        {session.checkInTime.toDate().toLocaleString()}
+                        {(() => {
+                          const cin = getSessionCheckInTimestamp(session);
+                          return cin ? cin.toDate().toLocaleString() : "Unknown";
+                        })()}
                       </TableCell>
                       <TableCell>
                         {session.checkOutTime
@@ -430,7 +439,7 @@ export function SessionManagement() {
                           : formatDuration(
                               Math.floor(
                                 (Date.now() -
-                                  session.checkInTime.toDate().getTime()) /
+                                  (getSessionCheckInTimestamp(session)?.toDate().getTime() ?? Date.now())) /
                                   (1000 * 60)
                               )
                             )}
@@ -543,14 +552,18 @@ export function SessionManagement() {
                       <TableCell className="font-medium">
                         {getProviderName(session.userId)}
                       </TableCell>
-                      <TableCell>{getSchoolName(session.schoolId)}</TableCell>
+                      <TableCell>{getSchoolName(getSessionLocationId(session) || "")}</TableCell>
                       <TableCell>
-                        {session.checkInTime.toDate().toLocaleString()}
+                        {(() => {
+                          const cin = getSessionCheckInTimestamp(session);
+                          return cin ? cin.toDate().toLocaleString() : "Unknown";
+                        })()}
                       </TableCell>
                       <TableCell>
-                        {session.checkOutTime
-                          ? session.checkOutTime.toDate().toLocaleString()
-                          : "Active"}
+                        {(() => {
+                          const cout = getSessionCheckOutTimestamp(session);
+                          return cout ? cout.toDate().toLocaleString() : "Active";
+                        })()}
                       </TableCell>
                       <TableCell>
                         {session.checkOutTime
@@ -564,7 +577,7 @@ export function SessionManagement() {
                           : formatDuration(
                               Math.floor(
                                 (Date.now() -
-                                  session.checkInTime.toDate().getTime()) /
+                                  (getSessionCheckInTimestamp(session)?.toDate().getTime() ?? Date.now())) /
                                   (1000 * 60)
                               )
                             )}
@@ -615,7 +628,7 @@ export function SessionManagement() {
               Correct session data for{" "}
               {selectedSession ? getProviderName(selectedSession.userId) : ""}
               {" at "}
-              {selectedSession ? getSchoolName(selectedSession.schoolId) : ""}
+              {selectedSession ? getSchoolName(getSessionLocationId(selectedSession) || "") : ""}
             </DialogDescription>
           </DialogHeader>
 
@@ -801,7 +814,7 @@ export function SessionManagement() {
               This will force-close the active session for{" "}
               {selectedSession ? getProviderName(selectedSession.userId) : ""}
               {" at "}
-              {selectedSession ? getSchoolName(selectedSession.schoolId) : ""}.
+              {selectedSession ? getSchoolName(getSessionLocationId(selectedSession) || "") : ""}.
               The check-out time will be set to now.
             </DialogDescription>
           </DialogHeader>

@@ -58,6 +58,9 @@ jest.mock("../../lib/utils/session", () => ({
   getSessionCheckOutTimestamp: jest.fn((session: { checkOutTime?: unknown; endTime?: unknown }) =>
     session.checkOutTime ?? session.endTime
   ),
+  getSessionLocationId: jest.fn((session: { locationId?: string; schoolId?: string }) =>
+    session.locationId ?? session.schoolId
+  ),
 }));
 
 const renderReports = async () => {
@@ -177,5 +180,58 @@ describe("SessionReports Component", () => {
         screen.getByText(/composite index/i)
       ).toBeInTheDocument();
     });
+  });
+
+  it("displays admin users as 'Admin (...)' label in session table", async () => {
+    const mockUsers = [
+      { id: "admin-1", role: "admin", displayName: "Admin User", email: "admin@test.com" },
+      { id: "provider-1", role: "provider", displayName: "Prov One", email: "p1@test.com" },
+    ];
+    const mockSessions = [
+      {
+        id: "session-a1",
+        data: () => ({
+          userId: "admin-1",
+          status: "completed",
+          startTime: { toDate: () => new Date(), toMillis: () => Date.now() },
+        }),
+      },
+    ];
+
+    mockGetCollection.mockImplementation((collectionName: string) => {
+      if (collectionName === "users") return Promise.resolve(mockUsers);
+      if (collectionName === "locations") return Promise.resolve([{ id: "loc-1", name: "School One" }]);
+      return Promise.resolve([]);
+    });
+    (firestore.getDocs as jest.Mock).mockResolvedValue({ docs: mockSessions });
+
+    render(<SessionReports />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Admin (Admin User)")).toBeInTheDocument();
+    });
+  });
+
+  it("excludes admin users from provider filter dropdown", async () => {
+    const mockUsers = [
+      { id: "admin-1", role: "admin", displayName: "Admin User", email: "admin@test.com" },
+      { id: "provider-1", role: "provider", displayName: "Prov One", email: "p1@test.com" },
+    ];
+
+    mockGetCollection.mockImplementation((collectionName: string) => {
+      if (collectionName === "users") return Promise.resolve(mockUsers);
+      if (collectionName === "locations") return Promise.resolve([]);
+      return Promise.resolve([]);
+    });
+
+    const user = userEvent.setup();
+    render(<SessionReports />);
+
+    await screen.findByText("Session Data (0 sessions)");
+
+    await user.click(screen.getByLabelText("Provider"));
+
+    expect(await screen.findByRole("option", { name: "Prov One" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Admin/ })).not.toBeInTheDocument();
   });
 });

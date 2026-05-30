@@ -6,7 +6,7 @@ import { Coordinates } from "./location";
 export interface SessionData {
   id?: string;
   userId: string;
-  schoolId: string;
+  schoolId?: string; // legacy sessions use schoolId
   locationId?: string; // newer sessions use locationId as the primary key
   /** Canonical session start (Firestore / Cloud Functions). Prefer for queries. */
   startTime?: Timestamp;
@@ -204,6 +204,11 @@ export const getSessionCheckOutTimestamp = (
     ? session.checkOutTime
     : session.endTime ?? undefined;
 
+/** Resolve the canonical location identifier for a session. */
+export const getSessionLocationId = (
+  session: Pick<SessionData, "locationId" | "schoolId">
+): string | undefined => session.locationId ?? session.schoolId;
+
 // Validate session data
 export const validateSessionData = (
   sessionData: Partial<SessionData>
@@ -214,8 +219,8 @@ export const validateSessionData = (
     errors.push("User ID is required");
   }
 
-  if (!sessionData.schoolId) {
-    errors.push("School ID is required");
+  if (!sessionData.locationId && !sessionData.schoolId) {
+    errors.push("Location ID or school ID is required");
   }
 
   if (!sessionData.checkInLocation) {

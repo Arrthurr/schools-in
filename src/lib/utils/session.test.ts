@@ -6,6 +6,7 @@ import {
   formatDuration,
   formatDurationDetailed,
   formatSessionTime,
+  getSessionLocationId,
   getSessionStatusColor,
   getSessionStatusConfig,
   validateSessionData,
@@ -191,6 +192,28 @@ describe("Session Utilities", () => {
     });
   });
 
+  describe("getSessionLocationId", () => {
+    it("prefers locationId over schoolId when both are present", () => {
+      const result = getSessionLocationId({
+        locationId: "loc-new",
+        schoolId: "school-legacy",
+      });
+      expect(result).toBe("loc-new");
+    });
+
+    it("falls back to schoolId when locationId is missing", () => {
+      const result = getSessionLocationId({
+        schoolId: "school-legacy",
+      });
+      expect(result).toBe("school-legacy");
+    });
+
+    it("returns undefined when neither locationId nor schoolId exists", () => {
+      const result = getSessionLocationId({});
+      expect(result).toBeUndefined();
+    });
+  });
+
   describe("validateSessionData", () => {
     const validCoordinates: Coordinates = {
       latitude: 40.7128,
@@ -216,14 +239,26 @@ describe("Session Utilities", () => {
       expect(validateSessionData(invalidData)).toContain("User ID is required");
     });
 
-    it("returns errors for missing schoolId", () => {
+    it("returns errors when both locationId and schoolId are missing", () => {
       const invalidData: Partial<SessionData> = {
         userId: "user123",
         checkInLocation: validCoordinates,
         checkInTime: mockTimestamp,
       };
       expect(validateSessionData(invalidData)).toContain(
-        "School ID is required"
+        "Location ID or school ID is required"
+      );
+    });
+
+    it("accepts a session with only locationId (no schoolId)", () => {
+      const locationOnlyData: Partial<SessionData> = {
+        userId: "user456",
+        locationId: "loc-new",
+        checkInLocation: validCoordinates,
+        checkInTime: mockTimestamp,
+      };
+      expect(validateSessionData(locationOnlyData)).not.toContain(
+        "Location ID or school ID is required"
       );
     });
 
