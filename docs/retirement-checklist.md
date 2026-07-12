@@ -44,8 +44,8 @@ Stop mutations, schedules, and client access. Project stays; production stops.
 
 ### Stop CI from redeploying
 
-- [x] Disable deploy workflow: renamed to [`.github/workflows/deploy.yml.disabled`](../.github/workflows/deploy.yml.disabled) (local)
-- [ ] Commit and push the rename so `origin/main` no longer has an active `deploy.yml` (until then, GitHub still runs the remote file)
+- [x] Disable deploy workflow: renamed to [`.github/workflows/deploy.yml.disabled`](../.github/workflows/deploy.yml.disabled)
+- [x] Commit and push the rename so `origin/main` no longer has an active `deploy.yml` (`11102063`)
 - [ ] Confirm nothing else redeploys this project (other workflows, local scripts, teammates) — `ci.yml` remains; it does not deploy
 
 ### Cloud Functions
