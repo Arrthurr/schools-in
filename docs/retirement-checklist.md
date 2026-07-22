@@ -52,22 +52,24 @@ Stop mutations, schedules, and client access. Project stays; production stops.
 
 Includes session APIs, `cleanupStaleSessions`, `checkLateProviders`, `generateDailyStats`, M365 sync, push/VAPID helpers, feedback notify.
 
-- [ ] List: `firebase functions:list --project schools-in-check`
-- [ ] Delete all functions (Console → Functions, or `firebase functions:delete … --project schools-in-check`)
-- [ ] Confirm [Cloud Scheduler](https://console.cloud.google.com/cloudscheduler?project=schools-in-check) has no leftover jobs
+- [x] List: `firebase functions:list --project schools-in-check`
+- [x] Delete all functions (Console → Functions, or `firebase functions:delete … --project schools-in-check`)
+- [x] Confirm [Cloud Scheduler](https://console.cloud.google.com/cloudscheduler?project=schools-in-check) has no leftover jobs (3 tasks removed)
 
 ### Auth
 
-- [ ] Disable all sign-in providers: [Authentication → Sign-in method](https://console.firebase.google.com/project/schools-in-check/authentication/providers)
+- [x] Disable all sign-in providers: [Authentication → Sign-in method](https://console.firebase.google.com/project/schools-in-check/authentication/providers) (including Microsoft); Auth users/entries removed
 
 ### Hosting
 
-- [ ] Disable or clear Hosting for site `schools-in-check` (Console → Hosting → manage site / unrelease), **or** leave a blank/minimal page — no farewell required
-- [ ] Confirm https://schools-in-check.web.app no longer serves the live app (or is intentionally blank)
+- [x] Disabled Hosting via `firebase hosting:disable --project schools-in-check`
+- [x] Confirmed https://schools-in-check.web.app no longer serves the live app
 
 ### Lockdown (until Phase 5 data purge)
 
-- [ ] Deploy deny-all Firestore + Storage rules so nothing can read/write while you finish teardown
+- [ ] Optional: Deploy deny-all Firestore + Storage rules so nothing can read/write while you finish teardown
+
+**Phase 3 complete** (Functions, Scheduler, Auth, Hosting). Deny-all rules optional before Phase 5. → **Phase 4** (revoke external secrets).
 
 ---
 
